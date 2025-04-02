@@ -14,7 +14,11 @@ class EmpresaForm(forms.ModelForm):
 class FuncionarioForm(forms.ModelForm):
     class Meta:
         model = Funcionario
-        fields = ['empresa', 'tipo', 'telefone', 'cargo']
+        fields = ['usuario', 'empresas', 'tipo', 'telefone', 'cargo']
+        widgets = {
+            'empresas': forms.CheckboxSelectMultiple(),
+            'tipo': forms.Select(choices=Funcionario.TIPO_CHOICES),
+        }
 
 class UserForm(UserCreationForm):
     class Meta:

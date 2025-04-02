@@ -26,85 +26,59 @@ def home(request):
 
 @login_required
 def dashboard(request):
-    logger.info(f"Iniciando carregamento do dashboard para usuário: {request.user.username}")
     try:
-        # 1. Determina o tipo de usuário e suas permissões
-        is_admin_user = request.user.is_superuser
-        is_support_user = request.user.is_staff and not is_admin_user
+        # Verifica se o usuário tem funcionários associados
+        funcionarios = request.user.funcionarios.all()
+        if not funcionarios.exists():
+            messages.error(request, "Usuário não possui funcionários associados. Por favor, contate o administrador.")
+            return redirect('login')
         
-        logger.info(f"Tipo de usuário - Admin: {is_admin_user}, Suporte: {is_support_user}")
-
-        # 2. Obtém a empresa do usuário (se não for admin)
-        empresa = None
-        if not is_admin_user:
-            try:
-                funcionario = Funcionario.objects.select_related('empresa').get(usuario=request.user)
-                empresa = funcionario.empresa
-                logger.info(f"Empresa do usuário encontrada: {empresa.nome if empresa else 'Nenhuma'}")
-            except Funcionario.DoesNotExist:
-                logger.error(f"Funcionário não encontrado para o usuário {request.user.username}")
-                messages.error(request, 'Erro: Usuário não possui um funcionário associado. Por favor, contate o administrador.')
-                return redirect('home')
-            except Exception as e:
-                logger.error(f"Erro ao buscar funcionário: {str(e)}", exc_info=True)
-                messages.error(request, 'Erro ao buscar informações do funcionário. Por favor, contate o administrador.')
-                return redirect('home')
-
-        # 3. Define a query base
+        # Se for admin, pode ver todos os tickets
+        if request.user.is_superuser:
+            tickets = Ticket.objects.all().order_by('-criado_em')
+            total_tickets = tickets.count()
+            tickets_abertos = tickets.filter(status='aberto').count()
+            tickets_fechados = tickets.filter(status='fechado').count()
+        
+        # Se for staff (suporte), pode ver tickets da sua empresa
+        elif request.user.is_staff:
+            # Pega todas as empresas do funcionário
+            empresas_ids = [empresa.id for funcionario in funcionarios for empresa in funcionario.empresas.all()]
+            tickets = Ticket.objects.filter(empresa_id__in=empresas_ids).order_by('-criado_em')
+            total_tickets = tickets.count()
+            tickets_abertos = tickets.filter(status='aberto').count()
+            tickets_fechados = tickets.filter(status='fechado').count()
+        
+        # Se for cliente, só vê seus próprios tickets
+        else:
+            tickets = Ticket.objects.filter(criado_por=request.user).order_by('-criado_em')
+            total_tickets = tickets.count()
+            tickets_abertos = tickets.filter(status='aberto').count()
+            tickets_fechados = tickets.filter(status='fechado').count()
+        
+        # Paginação
+        paginator = Paginator(tickets, 10)
+        page = request.GET.get('page')
         try:
-            if is_admin_user:
-                logger.info("Buscando todos os tickets (admin)")
-                tickets = Ticket.objects.all()
-            elif is_support_user:
-                logger.info(f"Buscando tickets da empresa {empresa.nome}")
-                tickets = Ticket.objects.filter(empresa=empresa)
-            else:
-                logger.info("Buscando tickets do usuário (cliente)")
-                tickets = Ticket.objects.filter(
-                    empresa=empresa,
-                    criado_por=request.user
-                )
-
-            # 4. Otimiza a query
-            tickets = tickets.select_related('criado_por', 'empresa').order_by('-criado_em')
-            
-            # 5. Calcula estatísticas
-            total = tickets.count()
-            abertos = tickets.filter(status='aberto').count()
-            fechados = tickets.filter(status='fechado').count()
-            
-            logger.info(f"Estatísticas - Total: {total}, Abertos: {abertos}, Fechados: {fechados}")
-
-            context = {
-                'total_tickets': total,
-                'tickets_abertos': abertos,
-                'tickets_fechados': fechados,
-            }
-
-            # 6. Paginação
-            paginator = Paginator(tickets, 10)
-            page = request.GET.get('page', 1)
-            try:
-                context['tickets'] = paginator.page(page)
-                logger.info(f"Página {page} carregada com sucesso")
-            except PageNotAnInteger:
-                context['tickets'] = paginator.page(1)
-                logger.info("Redirecionado para primeira página")
-            except EmptyPage:
-                context['tickets'] = paginator.page(paginator.num_pages)
-                logger.info("Redirecionado para última página")
-
-            return render(request, 'tickets/dashboard.html', context)
-
-        except Exception as e:
-            logger.error(f"Erro ao processar tickets: {str(e)}", exc_info=True)
-            messages.error(request, f'Erro ao processar tickets: {str(e)}')
-            return redirect('home')
-
+            tickets = paginator.page(page)
+        except PageNotAnInteger:
+            tickets = paginator.page(1)
+        except EmptyPage:
+            tickets = paginator.page(paginator.num_pages)
+        
+        context = {
+            'tickets': tickets,
+            'total_tickets': total_tickets,
+            'tickets_abertos': tickets_abertos,
+            'tickets_fechados': tickets_fechados,
+        }
+        
+        return render(request, 'tickets/dashboard.html', context)
+        
     except Exception as e:
-        logger.error(f"Erro geral no dashboard: {str(e)}", exc_info=True)
-        messages.error(request, f'Erro ao carregar o dashboard: {str(e)}')
-        return redirect('home')
+        logger.error(f"Erro no dashboard: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar o dashboard. Por favor, tente novamente.")
+        return redirect('login')
 
 @login_required
 def criar_ticket(request):
