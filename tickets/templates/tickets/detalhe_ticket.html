@@ -1,0 +1,79 @@
+{% extends 'tickets/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="card-title mb-0">Ticket #{{ ticket.id }}</h2>
+                    <div>
+                        <a href="{% url 'editar_ticket' ticket.pk %}" class="btn btn-warning">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>{{ ticket.titulo }}</h5>
+                    <p class="text-muted">
+                        Criado por {{ ticket.criado_por.username }} em {{ ticket.criado_em|date:"d/m/Y H:i" }}
+                    </p>
+                </div>
+
+                <div class="mb-3">
+                    <span class="badge {% if ticket.status == 'aberto' %}bg-success
+                                      {% elif ticket.status == 'em_andamento' %}bg-primary
+                                      {% elif ticket.status == 'pendente' %}bg-warning
+                                      {% elif ticket.status == 'resolvido' %}bg-info
+                                      {% else %}bg-secondary{% endif %}">
+                        {{ ticket.get_status_display }}
+                    </span>
+                    <span class="badge {% if ticket.prioridade == 'baixa' %}bg-success
+                                      {% elif ticket.prioridade == 'media' %}bg-warning
+                                      {% elif ticket.prioridade == 'alta' %}bg-danger
+                                      {% else %}bg-dark{% endif %}">
+                        {{ ticket.get_prioridade_display }}
+                    </span>
+                </div>
+
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        {{ ticket.descricao|linebreaks }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Comentários</h5>
+                {% for comentario in comentarios %}
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="card-subtitle mb-2 text-muted">
+                                    {{ comentario.autor.username }} - {{ comentario.criado_em|date:"d/m/Y H:i" }}
+                                </h6>
+                            </div>
+                            <p class="card-text">{{ comentario.conteudo|linebreaks }}</p>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-center">Nenhum comentário ainda.</p>
+                {% endfor %}
+
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-primary">Adicionar Comentário</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

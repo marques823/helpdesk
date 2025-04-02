@@ -1,0 +1,128 @@
+{% extends 'tickets/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Dashboard</h2>
+                <a href="{% url 'criar_ticket' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Novo Ticket
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total de Tickets</h5>
+                    <p class="card-text display-6">{{ total_tickets|default:"0" }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Tickets Abertos</h5>
+                    <p class="card-text display-6">{{ tickets_abertos|default:"0" }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Tickets Fechados</h5>
+                    <p class="card-text display-6">{{ tickets_fechados|default:"0" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    {% if tickets %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Assunto</th>
+                                        <th>Status</th>
+                                        <th>Prioridade</th>
+                                        <th>Empresa</th>
+                                        <th>Criado em</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ticket in tickets %}
+                                        <tr>
+                                            <td>#{{ ticket.id }}</td>
+                                            <td>{{ ticket.assunto|default:"Sem assunto" }}</td>
+                                            <td>
+                                                <span class="badge {% if ticket.status == 'aberto' %}bg-warning{% elif ticket.status == 'fechado' %}bg-success{% else %}bg-secondary{% endif %}">
+                                                    {{ ticket.get_status_display|default:"Desconhecido" }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge {% if ticket.prioridade == 'alta' %}bg-danger{% elif ticket.prioridade == 'media' %}bg-warning{% else %}bg-info{% endif %}">
+                                                    {{ ticket.get_prioridade_display|default:"Normal" }}
+                                                </span>
+                                            </td>
+                                            <td>{{ ticket.empresa.nome|default:"Sem empresa" }}</td>
+                                            <td>{{ ticket.criado_em|date:"d/m/Y H:i"|default:"-" }}</td>
+                                            <td>
+                                                <a href="{% url 'detalhe_ticket' ticket.pk %}" class="btn btn-sm btn-info">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if tickets.has_other_pages %}
+                            <nav aria-label="Navegação de páginas">
+                                <ul class="pagination justify-content-center">
+                                    {% if tickets.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ tickets.previous_page_number }}">Anterior</a>
+                                        </li>
+                                    {% endif %}
+
+                                    {% for num in tickets.paginator.page_range %}
+                                        {% if tickets.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if tickets.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ tickets.next_page_number }}">Próxima</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            Nenhum ticket encontrado.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
