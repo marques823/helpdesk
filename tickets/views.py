@@ -34,13 +34,13 @@ def dashboard(request):
         
         logger.info(f"Tipo de usuário - Admin: {is_admin_user}, Suporte: {is_support_user}")
 
-        # 2. Obtém a empresa do usuário (se não for admin)
-        empresa = None
+        # 2. Obtém as empresas do usuário (se não for admin)
+        empresas = None
         if not is_admin_user:
             try:
-                funcionario = Funcionario.objects.select_related('empresa').get(usuario=request.user)
-                empresa = funcionario.empresa
-                logger.info(f"Empresa do usuário encontrada: {empresa.nome if empresa else 'Nenhuma'}")
+                funcionario = Funcionario.objects.select_related('usuario').get(usuario=request.user)
+                empresas = funcionario.empresas.all()
+                logger.info(f"Empresas do usuário encontradas: {[e.nome for e in empresas]}")
             except Funcionario.DoesNotExist:
                 logger.error(f"Funcionário não encontrado para o usuário {request.user.username}")
                 messages.error(request, 'Erro: Usuário não possui um funcionário associado. Por favor, contate o administrador.')
@@ -56,12 +56,12 @@ def dashboard(request):
                 logger.info("Buscando todos os tickets (admin)")
                 tickets = Ticket.objects.all()
             elif is_support_user:
-                logger.info(f"Buscando tickets da empresa {empresa.nome}")
-                tickets = Ticket.objects.filter(empresa=empresa)
+                logger.info(f"Buscando tickets das empresas {[e.nome for e in empresas]}")
+                tickets = Ticket.objects.filter(empresa__in=empresas)
             else:
                 logger.info("Buscando tickets do usuário (cliente)")
                 tickets = Ticket.objects.filter(
-                    empresa=empresa,
+                    empresa__in=empresas,
                     criado_por=request.user
                 )
 
@@ -113,7 +113,17 @@ def criar_ticket(request):
         if form.is_valid():
             ticket = form.save(commit=False)
             ticket.criado_por = request.user
-            ticket.empresa = request.user.funcionario.empresa
+            
+            # Se o usuário não for admin, usa a primeira empresa do funcionário
+            if not request.user.is_superuser:
+                funcionario = Funcionario.objects.get(usuario=request.user)
+                empresas = funcionario.empresas.all()
+                if empresas.exists():
+                    ticket.empresa = empresas.first()
+                else:
+                    messages.error(request, 'Erro: Usuário não possui empresas atribuídas.')
+                    return redirect('dashboard')
+            
             ticket.save()
             messages.success(request, 'Ticket criado com sucesso!')
             return redirect('detalhe_ticket', pk=ticket.pk)
@@ -123,6 +133,13 @@ def criar_ticket(request):
         if not request.user.is_superuser:
             form.fields.pop('empresa', None)
             form.fields.pop('atribuido_para', None)
+            
+            # Se o usuário tiver apenas uma empresa, preenche automaticamente
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            empresas = funcionario.empresas.all()
+            if empresas.count() == 1:
+                form.initial['empresa'] = empresas.first()
+    
     return render(request, 'tickets/criar_ticket.html', {'form': form})
 
 @login_required
@@ -130,8 +147,13 @@ def detalhe_ticket(request, pk):
     ticket = get_object_or_404(Ticket, pk=pk)
     
     # Verifica permissão
-    if not request.user.is_superuser and ticket.empresa != request.user.funcionario.empresa:
-        raise Http404
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if ticket.empresa not in funcionario.empresas.all():
+                raise Http404
+        except Funcionario.DoesNotExist:
+            raise Http404
     
     comentarios = ticket.comentarios.all().order_by('-criado_em')
     
@@ -158,8 +180,13 @@ def editar_ticket(request, pk):
     ticket = get_object_or_404(Ticket, pk=pk)
     
     # Verifica permissão
-    if not request.user.is_superuser and ticket.empresa != request.user.funcionario.empresa:
-        raise Http404
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if ticket.empresa not in funcionario.empresas.all():
+                raise Http404
+        except Funcionario.DoesNotExist:
+            raise Http404
     
     if request.method == 'POST':
         form = TicketForm(request.POST, instance=ticket)

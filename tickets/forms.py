@@ -14,7 +14,10 @@ class EmpresaForm(forms.ModelForm):
 class FuncionarioForm(forms.ModelForm):
     class Meta:
         model = Funcionario
-        fields = ['empresa', 'tipo', 'telefone', 'cargo']
+        fields = ['empresas', 'tipo', 'telefone', 'cargo']
+        widgets = {
+            'empresas': forms.SelectMultiple(attrs={'class': 'form-control'}),
+        }
 
 class UserForm(UserCreationForm):
     class Meta:
@@ -24,7 +27,7 @@ class UserForm(UserCreationForm):
 class TicketForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ['titulo', 'descricao', 'status', 'prioridade', 'empresa', 'atribuido_para']
+        fields = ['titulo', 'descricao', 'status', 'prioridade', 'empresa', 'atribuido_a']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 4}),
         }
@@ -35,7 +38,7 @@ class TicketForm(forms.ModelForm):
         if hasattr(self.instance, 'criado_por') and hasattr(self.instance.criado_por, 'funcionario'):
             if self.instance.criado_por.funcionario.tipo != 'admin':
                 self.fields.pop('empresa', None)
-                self.fields.pop('atribuido_para', None)
+                self.fields.pop('atribuido_a', None)
 
 class ComentarioForm(forms.ModelForm):
     class Meta:
