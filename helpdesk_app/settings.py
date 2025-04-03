@@ -27,7 +27,14 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '10.10.10.2', 'helpdesk.tecnicolitoral.com', '*']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '10.10.10.2',
+    'helpdesk.tecnicolitoral.com',
+    'helpdesk.tecnicolitoral.com:8002',
+    '*'
+]
 
 
 # Application definition
@@ -162,7 +169,11 @@ SESSION_COOKIE_AGE = 3600  # 1 hora
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 # Configurações de CSRF
-CSRF_TRUSTED_ORIGINS = ['https://helpdesk.tecnicolitoral.com']
+CSRF_TRUSTED_ORIGINS = [
+    'https://helpdesk.tecnicolitoral.com',
+    'https://helpdesk.tecnicolitoral.com:8002',
+    'http://helpdesk.tecnicolitoral.com:8002'
+]
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
