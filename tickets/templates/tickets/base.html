@@ -18,12 +18,12 @@
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'tickets:dashboard' %}">
                                 <i class="bi bi-speedometer2"></i> Dashboard
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'criar_ticket' %}active{% endif %}" href="{% url 'criar_ticket' %}">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'criar_ticket' %}active{% endif %}" href="{% url 'tickets:criar_ticket' %}">
                                 <i class="bi bi-plus-circle"></i> Novo Ticket
                             </a>
                         </li>
@@ -34,12 +34,12 @@
                                 </a>
                                 <ul class="dropdown-menu">
                                     <li>
-                                        <a class="dropdown-item {% if request.resolver_match.url_name == 'lista_empresas' %}active{% endif %}" href="{% url 'lista_empresas' %}">
+                                        <a class="dropdown-item {% if request.resolver_match.url_name == 'lista_empresas' %}active{% endif %}" href="{% url 'tickets:lista_empresas' %}">
                                             <i class="bi bi-building"></i> Empresas
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item {% if request.resolver_match.url_name == 'lista_funcionarios' %}active{% endif %}" href="{% url 'lista_funcionarios' %}">
+                                        <a class="dropdown-item {% if request.resolver_match.url_name == 'lista_funcionarios' %}active{% endif %}" href="{% url 'tickets:lista_funcionarios' %}">
                                             <i class="bi bi-people"></i> Funcionários
                                         </a>
                                     </li>

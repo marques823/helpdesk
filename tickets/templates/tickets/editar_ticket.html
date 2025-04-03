@@ -1,4 +1,4 @@
-{% extends 'tickets/base.html' %}
+{% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
 {% block content %}
@@ -8,15 +8,16 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2 class="card-title mb-0">Editar Ticket #{{ ticket.id }}</h2>
-                    <a href="{% url 'detalhe_ticket' ticket.pk %}" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left"></i> Voltar
+                    <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
                     </a>
                 </div>
 
                 <form method="post">
                     {% csrf_token %}
                     {{ form|crispy }}
-                    <div class="d-grid gap-2">
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary me-md-2">Cancelar</a>
                         <button type="submit" class="btn btn-primary">Salvar Alterações</button>
                     </div>
                 </form>

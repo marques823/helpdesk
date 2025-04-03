@@ -1,48 +1,47 @@
-{% extends 'tickets/base.html' %}
+{% extends 'base.html' %}
+{% load ticket_tags %}
 
 {% block content %}
-<div class="container">
-    <div class="row mb-4">
-        <div class="col">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2>Dashboard</h2>
-                <a href="{% url 'criar_ticket' %}" class="btn btn-primary">
-                    <i class="bi bi-plus-circle"></i> Novo Ticket
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Total de Tickets</h5>
-                    <p class="card-text display-6">{{ total_tickets|default:"0" }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Tickets Abertos</h5>
-                    <p class="card-text display-6">{{ tickets_abertos|default:"0" }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Tickets Fechados</h5>
-                    <p class="card-text display-6">{{ tickets_fechados|default:"0" }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
+<div class="container mt-4">
     <div class="row">
-        <div class="col">
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Estatísticas</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Total de Tickets:</span>
+                        <span class="badge bg-primary">{{ total_tickets }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Abertos:</span>
+                        <span class="badge bg-danger">{{ tickets_abertos }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Fechados:</span>
+                        <span class="badge bg-success">{{ tickets_fechados }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {% with funcionario=user.funcionarios.first %}
+                {% if funcionario and funcionario.is_admin or funcionario.is_suporte %}
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Ações</h5>
+                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary w-100 mb-2">
+                                <i class="fas fa-plus"></i> Novo Ticket
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="col-md-9">
             <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Tickets</h5>
+                </div>
                 <div class="card-body">
                     {% if tickets %}
                         <div class="table-responsive">
@@ -51,10 +50,9 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Assunto</th>
-                                        <th>Status</th>
-                                        <th>Prioridade</th>
                                         <th>Empresa</th>
-                                        <th>Criado em</th>
+                                        <th>Status</th>
+                                        <th>Data</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -62,23 +60,31 @@
                                     {% for ticket in tickets %}
                                         <tr>
                                             <td>#{{ ticket.id }}</td>
-                                            <td>{{ ticket.assunto|default:"Sem assunto" }}</td>
+                                            <td>{{ ticket.titulo }}</td>
+                                            <td>{{ ticket.empresa.nome }}</td>
                                             <td>
-                                                <span class="badge {% if ticket.status == 'aberto' %}bg-warning{% elif ticket.status == 'fechado' %}bg-success{% else %}bg-secondary{% endif %}">
-                                                    {{ ticket.get_status_display|default:"Desconhecido" }}
+                                                <span class="badge {% if ticket.status == 'aberto' %}bg-danger
+                                                                  {% elif ticket.status == 'em_andamento' %}bg-primary
+                                                                  {% elif ticket.status == 'pendente' %}bg-warning
+                                                                  {% elif ticket.status == 'resolvido' %}bg-success
+                                                                  {% else %}bg-secondary{% endif %}">
+                                                    {{ ticket.get_status_display }}
                                                 </span>
                                             </td>
+                                            <td>{{ ticket.criado_em|date:"d/m/Y H:i" }}</td>
                                             <td>
-                                                <span class="badge {% if ticket.prioridade == 'alta' %}bg-danger{% elif ticket.prioridade == 'media' %}bg-warning{% else %}bg-info{% endif %}">
-                                                    {{ ticket.get_prioridade_display|default:"Normal" }}
-                                                </span>
-                                            </td>
-                                            <td>{{ ticket.empresa.nome|default:"Sem empresa" }}</td>
-                                            <td>{{ ticket.criado_em|date:"d/m/Y H:i"|default:"-" }}</td>
-                                            <td>
-                                                <a href="{% url 'detalhe_ticket' ticket.pk %}" class="btn btn-sm btn-info">
-                                                    <i class="bi bi-eye"></i>
+                                                <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-eye"></i>
                                                 </a>
+                                                {% with funcionario=user.funcionarios.first %}
+                                                    {% if funcionario %}
+                                                        {% if funcionario|pode_editar:ticket %}
+                                                            <a href="{% url 'tickets:editar_ticket' ticket.id %}" class="btn btn-sm btn-warning">
+                                                                <i class="fas fa-edit"></i>
+                                                            </a>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                {% endwith %}
                                             </td>
                                         </tr>
                                     {% endfor %}
@@ -87,7 +93,7 @@
                         </div>
 
                         {% if tickets.has_other_pages %}
-                            <nav aria-label="Navegação de páginas">
+                            <nav aria-label="Page navigation" class="mt-4">
                                 <ul class="pagination justify-content-center">
                                     {% if tickets.has_previous %}
                                         <li class="page-item">
@@ -100,7 +106,7 @@
                                             <li class="page-item active">
                                                 <span class="page-link">{{ num }}</span>
                                             </li>
-                                        {% else %}
+                                        {% elif num > tickets.number|add:'-3' and num < tickets.number|add:'3' %}
                                             <li class="page-item">
                                                 <a class="page-link" href="?page={{ num }}">{{ num }}</a>
                                             </li>
@@ -116,9 +122,7 @@
                             </nav>
                         {% endif %}
                     {% else %}
-                        <div class="alert alert-info">
-                            Nenhum ticket encontrado.
-                        </div>
+                        <p class="text-center">Nenhum ticket encontrado.</p>
                     {% endif %}
                 </div>
             </div>

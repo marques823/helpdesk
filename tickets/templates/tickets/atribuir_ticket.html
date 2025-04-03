@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Atribuir Ticket</h3>
+                </div>
+                <div class="card-body">
+                    <p><strong>Ticket:</strong> {{ ticket.assunto }}</p>
+                    <p><strong>Empresa:</strong> {{ ticket.empresa.nome }}</p>
+                    <p><strong>Status:</strong> {{ ticket.get_status_display }}</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <button type="submit" class="btn btn-primary">Atribuir</button>
+                        <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

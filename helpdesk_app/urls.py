@@ -22,12 +22,10 @@ from tickets import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
-    path('tickets/criar/', views.criar_ticket, name='criar_ticket'),
-    path('tickets/<int:pk>/', views.detalhe_ticket, name='detalhe_ticket'),
-    path('tickets/<int:pk>/editar/', views.editar_ticket, name='editar_ticket'),
-    path('login/', auth_views.LoginView.as_view(template_name='tickets/login.html'), name='login'),
-    path('logout/', views.logout_view, name='logout'),
+    path('tickets/', include('tickets.urls', namespace='tickets')),
     
     # URLs para gerenciamento de empresas
     path('empresas/', views.lista_empresas, name='lista_empresas'),
