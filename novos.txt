@@ -47,9 +47,9 @@ Permitir a atribuição de um ticket para mais de um usuário dentro da mesma em
 
 Organização da tela de tickets:
 
-Tickets resolvidos devem aparecer por último ou incluir um filtro para exibição (Em aberto / Em andamento / Resolvido).
+opção de ordenar Tickets, incluir filtro para exibição (Em aberto / Em andamento / Resolvido. etc.).
 
-Implementar navegação rápida entre tickets abertos para facilitar a visualização.
+Implementar navegação rápida entre tickets na tela de exibição.
 
 Exibir comentários nos tickets, permitindo melhor acompanhamento das interações.
 

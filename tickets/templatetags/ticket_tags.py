@@ -27,4 +27,25 @@ def pode_ver(funcionario, ticket):
             return funcionario.pode_ver_ticket(ticket)
         return False
     except:
-        return False 
+        return False
+
+@register.filter
+def status_color(status):
+    color_map = {
+        'aberto': 'primary',
+        'em_andamento': 'warning',
+        'pendente': 'info',
+        'resolvido': 'success',
+        'fechado': 'secondary',
+    }
+    return color_map.get(status, 'secondary')
+
+@register.filter
+def prioridade_color(prioridade):
+    color_map = {
+        'baixa': 'success',
+        'media': 'info',
+        'alta': 'warning',
+        'urgente': 'danger',
+    }
+    return color_map.get(prioridade, 'secondary') 

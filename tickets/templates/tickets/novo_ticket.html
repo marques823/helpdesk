@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="card-title mb-0">Novo Ticket</h2>
+                    <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="ticketForm">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <div id="camposPersonalizados">
+                            {% if campos_personalizados %}
+                                <h4 class="mt-4">Campos Personalizados</h4>
+                                {% for campo in campos_personalizados %}
+                                    <div class="form-group">
+                                        <label for="campo_{{ campo.id }}">
+                                            {{ campo.nome }}{% if campo.obrigatorio %}*{% endif %}
+                                        </label>
+                                        {% if campo.tipo == 'text' %}
+                                            <input type="text" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                        {% elif campo.tipo == 'number' %}
+                                            <input type="number" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                        {% elif campo.tipo == 'date' %}
+                                            <input type="date" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                        {% elif campo.tipo == 'selection' %}
+                                            <select class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                                <option value="">Selecione...</option>
+                                                {% for opcao in campo.opcoes.splitlines %}
+                                                    <option value="{{ opcao }}">{{ opcao }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% elif campo.tipo == 'checkbox' %}
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}">
+                                                <label class="form-check-label" for="campo_{{ campo.id }}">{{ campo.nome }}</label>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Criar Ticket
+                            </button>
+                            <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const empresaSelect = document.querySelector('select[name="empresa"]');
+    if (empresaSelect) {
+        empresaSelect.addEventListener('change', function() {
+            const empresaId = this.value;
+            if (empresaId) {
+                window.location.href = `{% url 'tickets:criar_ticket' %}?empresa=${empresaId}`;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% endblock %} 

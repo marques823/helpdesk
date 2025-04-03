@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="card-title mb-0">Campos Personalizados - {{ empresa.nome }}</h2>
+                    <a href="{% url 'tickets:lista_empresas' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Adicionar Novo Campo</h4>
+                            <form method="post">
+                                {% csrf_token %}
+                                {{ form|crispy }}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Adicionar Campo
+                                </button>
+                            </form>
+                        </div>
+                        <div class="col-md-6">
+                            <h4>Campos Existentes</h4>
+                            {% if campos %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Nome</th>
+                                                <th>Tipo</th>
+                                                <th>Obrigatório</th>
+                                                <th>Ordem</th>
+                                                <th>Status</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for campo in campos %}
+                                            <tr>
+                                                <td>{{ campo.nome }}</td>
+                                                <td>{{ campo.get_tipo_display }}</td>
+                                                <td>
+                                                    {% if campo.obrigatorio %}
+                                                        <span class="badge bg-success">Sim</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Não</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ campo.ordem }}</td>
+                                                <td>
+                                                    {% if campo.ativo %}
+                                                        <span class="badge bg-success">Ativo</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">Inativo</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <a href="{% url 'tickets:editar_campo_personalizado' campo.id %}" class="btn btn-sm btn-warning">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a href="{% url 'tickets:excluir_campo_personalizado' campo.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este campo?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">Nenhum campo personalizado cadastrado.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

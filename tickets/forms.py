@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Empresa, Funcionario, Ticket, Comentario
+from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado
 
 class EmpresaForm(forms.ModelForm):
     class Meta:
@@ -116,4 +116,68 @@ class AtribuirTicketForm(forms.ModelForm):
         fields = ['atribuido_a']
         widgets = {
             'atribuido_a': forms.Select(attrs={'class': 'form-control'}),
-        } 
+        }
+
+class CampoPersonalizadoForm(forms.ModelForm):
+    class Meta:
+        model = CampoPersonalizado
+        fields = ['nome', 'tipo', 'obrigatorio', 'opcoes', 'ordem', 'ativo']
+        widgets = {
+            'opcoes': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def clean_opcoes(self):
+        opcoes = self.cleaned_data.get('opcoes', '')
+        tipo = self.cleaned_data.get('tipo')
+        
+        if tipo == 'selecao' and not opcoes:
+            raise forms.ValidationError("Para campos do tipo 'Seleção', é necessário informar as opções.")
+        
+        if tipo != 'selecao' and opcoes:
+            raise forms.ValidationError("Opções só podem ser definidas para campos do tipo 'Seleção'.")
+        
+        return opcoes
+
+class ValorCampoPersonalizadoForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        self.empresa = kwargs.pop('empresa', None)
+        super().__init__(*args, **kwargs)
+        
+        if self.empresa:
+            campos = CampoPersonalizado.objects.filter(empresa=self.empresa, ativo=True).order_by('ordem', 'nome')
+            for campo in campos:
+                field_name = f'campo_{campo.id}'
+                if campo.tipo == 'texto':
+                    self.fields[field_name] = forms.CharField(
+                        label=campo.nome,
+                        required=campo.obrigatorio,
+                        widget=forms.TextInput(attrs={'class': 'form-control'})
+                    )
+                elif campo.tipo == 'numero':
+                    self.fields[field_name] = forms.DecimalField(
+                        label=campo.nome,
+                        required=campo.obrigatorio,
+                        widget=forms.NumberInput(attrs={'class': 'form-control'})
+                    )
+                elif campo.tipo == 'data':
+                    self.fields[field_name] = forms.DateField(
+                        label=campo.nome,
+                        required=campo.obrigatorio,
+                        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+                    )
+                elif campo.tipo == 'selecao':
+                    opcoes = [(op.strip(), op.strip()) for op in campo.opcoes.split(',')]
+                    self.fields[field_name] = forms.ChoiceField(
+                        label=campo.nome,
+                        required=campo.obrigatorio,
+                        choices=opcoes,
+                        widget=forms.Select(attrs={'class': 'form-control'})
+                    )
+                elif campo.tipo == 'checkbox':
+                    self.fields[field_name] = forms.BooleanField(
+                        label=campo.nome,
+                        required=campo.obrigatorio,
+                        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+                    )
+                
+                self.fields[field_name].campo_id = campo.id 

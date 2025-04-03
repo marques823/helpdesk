@@ -21,7 +21,7 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'dashboard' %}">Helpdesk</a>
+            <a class="navbar-brand" href="{% url 'tickets:dashboard' %}">Helpdesk</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -29,11 +29,11 @@
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                            <a class="nav-link" href="{% url 'tickets:dashboard' %}">Dashboard</a>
                         </li>
-                        {% if user.funcionario_set.first.pode_criar_ticket %}
+                        {% if user.funcionarios.first.pode_criar_ticket %}
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'criar_ticket' %}">Novo Ticket</a>
+                                <a class="nav-link" href="{% url 'tickets:criar_ticket' %}">Novo Ticket</a>
                             </li>
                         {% endif %}
                     {% endif %}

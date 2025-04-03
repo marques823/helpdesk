@@ -103,6 +103,18 @@ class Funcionario(models.Model):
         # Admin e suporte podem atribuir tickets
         return self.is_admin() or self.is_suporte()
     
+    def pode_comentar_ticket(self):
+        # Admin, suporte e cliente podem comentar em tickets que têm acesso
+        return True
+    
+    def pode_comentar_ticket_especifico(self, ticket):
+        # Verifica se o funcionário tem acesso à empresa do ticket
+        if not self.tem_acesso_empresa(ticket.empresa):
+            return False
+        
+        # Admin, suporte e cliente podem comentar em tickets que têm acesso
+        return True
+    
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         # Atualiza as permissões do usuário baseado no tipo
@@ -191,3 +203,38 @@ class HistoricoTicket(models.Model):
     
     def __str__(self):
         return f"Histórico #{self.id} - {self.get_tipo_alteracao_display()} - Ticket #{self.ticket.id}"
+
+class CampoPersonalizado(models.Model):
+    TIPO_CHOICES = [
+        ('texto', 'Texto'),
+        ('numero', 'Número'),
+        ('data', 'Data'),
+        ('selecao', 'Seleção'),
+        ('checkbox', 'Checkbox'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='campos_personalizados')
+    nome = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
+    obrigatorio = models.BooleanField(default=False)
+    opcoes = models.TextField(blank=True, help_text="Para campos do tipo 'Seleção', insira as opções separadas por vírgula")
+    ordem = models.IntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        unique_together = ['empresa', 'nome']
+
+    def __str__(self):
+        return f"{self.nome} ({self.get_tipo_display()}) - {self.empresa.nome}"
+
+class ValorCampoPersonalizado(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='valores_campos_personalizados')
+    campo = models.ForeignKey(CampoPersonalizado, on_delete=models.CASCADE)
+    valor = models.TextField()
+
+    class Meta:
+        unique_together = ['ticket', 'campo']
+
+    def __str__(self):
+        return f"{self.campo.nome}: {self.valor}"

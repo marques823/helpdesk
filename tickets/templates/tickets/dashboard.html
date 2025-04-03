@@ -1,128 +1,163 @@
 {% extends 'base.html' %}
+{% load crispy_forms_tags %}
 {% load ticket_tags %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row">
-        <div class="col-md-3">
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Estatísticas</h5>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Total de Tickets:</span>
-                        <span class="badge bg-primary">{{ total_tickets }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Abertos:</span>
-                        <span class="badge bg-danger">{{ tickets_abertos }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <span>Fechados:</span>
-                        <span class="badge bg-success">{{ tickets_fechados }}</span>
-                    </div>
-                </div>
-            </div>
-
-            {% with funcionario=user.funcionarios.first %}
-                {% if funcionario and funcionario.is_admin or funcionario.is_suporte %}
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Ações</h5>
-                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary w-100 mb-2">
-                                <i class="fas fa-plus"></i> Novo Ticket
-                            </a>
-                        </div>
-                    </div>
-                {% endif %}
-            {% endwith %}
-        </div>
-
-        <div class="col-md-9">
+        <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Tickets</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="card-title mb-0">Dashboard</h2>
+                        <div class="btn-group">
+                            {% if funcionario %}
+                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Novo Ticket
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
-                    {% if tickets %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Assunto</th>
-                                        <th>Empresa</th>
-                                        <th>Status</th>
-                                        <th>Data</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for ticket in tickets %}
-                                        <tr>
-                                            <td>#{{ ticket.id }}</td>
-                                            <td>{{ ticket.titulo }}</td>
-                                            <td>{{ ticket.empresa.nome }}</td>
-                                            <td>
-                                                <span class="badge {% if ticket.status == 'aberto' %}bg-danger
-                                                                  {% elif ticket.status == 'em_andamento' %}bg-primary
-                                                                  {% elif ticket.status == 'pendente' %}bg-warning
-                                                                  {% elif ticket.status == 'resolvido' %}bg-success
-                                                                  {% else %}bg-secondary{% endif %}">
-                                                    {{ ticket.get_status_display }}
-                                                </span>
-                                            </td>
-                                            <td>{{ ticket.criado_em|date:"d/m/Y H:i" }}</td>
-                                            <td>
-                                                <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-info">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                {% with funcionario=user.funcionarios.first %}
-                                                    {% if funcionario %}
-                                                        {% if funcionario|pode_editar:ticket %}
-                                                            <a href="{% url 'tickets:editar_ticket' ticket.id %}" class="btn btn-sm btn-warning">
-                                                                <i class="fas fa-edit"></i>
-                                                            </a>
-                                                        {% endif %}
-                                                    {% endif %}
-                                                {% endwith %}
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="status" class="form-label">Status</label>
+                                    <select name="status" id="status" class="form-select">
+                                        <option value="">Todos</option>
+                                        {% for status_value, status_label in status_choices %}
+                                            <option value="{{ status_value }}" {% if status_filter == status_value %}selected{% endif %}>
+                                                {{ status_label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="prioridade" class="form-label">Prioridade</label>
+                                    <select name="prioridade" id="prioridade" class="form-select">
+                                        <option value="">Todas</option>
+                                        {% for prioridade_value, prioridade_label in prioridade_choices %}
+                                            <option value="{{ prioridade_value }}" {% if prioridade_filter == prioridade_value %}selected{% endif %}>
+                                                {{ prioridade_label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="empresa" class="form-label">Empresa</label>
+                                    <select name="empresa" id="empresa" class="form-select">
+                                        <option value="">Todas</option>
+                                        {% for empresa in empresas %}
+                                            <option value="{{ empresa.id }}" {% if empresa_filter == empresa.id|stringformat:"i" %}selected{% endif %}>
+                                                {{ empresa.nome }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="order_by" class="form-label">Ordenar por</label>
+                                    <select name="order_by" id="order_by" class="form-select">
+                                        <option value="-criado_em" {% if order_by == '-criado_em' %}selected{% endif %}>Data de Criação (mais recente)</option>
+                                        <option value="criado_em" {% if order_by == 'criado_em' %}selected{% endif %}>Data de Criação (mais antiga)</option>
+                                        <option value="prioridade" {% if order_by == 'prioridade' %}selected{% endif %}>Prioridade</option>
+                                        <option value="-prioridade" {% if order_by == '-prioridade' %}selected{% endif %}>Prioridade (invertida)</option>
+                                        <option value="status" {% if order_by == 'status' %}selected{% endif %}>Status</option>
+                                        <option value="-status" {% if order_by == '-status' %}selected{% endif %}>Status (invertido)</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-filter"></i> Filtrar
+                                    </button>
+                                    <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Limpar Filtros
+                                    </a>
+                                </div>
+                            </form>
                         </div>
+                    </div>
 
-                        {% if tickets.has_other_pages %}
-                            <nav aria-label="Page navigation" class="mt-4">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Título</th>
+                                            <th>Status</th>
+                                            <th>Prioridade</th>
+                                            <th>Empresa</th>
+                                            <th>Criado por</th>
+                                            <th>Atribuído a</th>
+                                            <th>Data de Criação</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for ticket in tickets %}
+                                            <tr>
+                                                <td>{{ ticket.id }}</td>
+                                                <td>{{ ticket.titulo }}</td>
+                                                <td><span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></td>
+                                                <td><span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span></td>
+                                                <td>{{ ticket.empresa.nome }}</td>
+                                                <td>{{ ticket.criado_por.username }}</td>
+                                                <td>{% if ticket.atribuido_a %}{{ ticket.atribuido_a.usuario.username }}{% else %}-{% endif %}</td>
+                                                <td>{{ ticket.criado_em|date:"d/m/Y H:i" }}</td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="9" class="text-center">Nenhum ticket encontrado.</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if tickets.has_other_pages %}
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <nav aria-label="Page navigation">
                                 <ul class="pagination justify-content-center">
                                     {% if tickets.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ tickets.previous_page_number }}">Anterior</a>
-                                        </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo;</span>
+                                        </a>
+                                    </li>
                                     {% endif %}
-
-                                    {% for num in tickets.paginator.page_range %}
-                                        {% if tickets.number == num %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ num }}</span>
-                                            </li>
-                                        {% elif num > tickets.number|add:'-3' and num < tickets.number|add:'3' %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                                            </li>
+                                    
+                                    {% for i in tickets.paginator.page_range %}
+                                        {% if tickets.number == i %}
+                                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                                        {% else %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}">{{ i }}</a></li>
                                         {% endif %}
                                     {% endfor %}
-
+                                    
                                     {% if tickets.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ tickets.next_page_number }}">Próxima</a>
-                                        </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Next">
+                                            <span aria-hidden="true">&raquo;</span>
+                                        </a>
+                                    </li>
                                     {% endif %}
                                 </ul>
                             </nav>
-                        {% endif %}
-                    {% else %}
-                        <p class="text-center">Nenhum ticket encontrado.</p>
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
             </div>
