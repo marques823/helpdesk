@@ -168,14 +168,21 @@ AUTHENTICATION_BACKENDS = [
 SESSION_COOKIE_AGE = 3600  # 1 hora
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
-# Configurações de CSRF
+# Configurações de CSRF e segurança
 CSRF_TRUSTED_ORIGINS = [
     'https://helpdesk.tecnicolitoral.com',
     'https://helpdesk.tecnicolitoral.com:8002',
-    'http://helpdesk.tecnicolitoral.com:8002'
+    'http://helpdesk.tecnicolitoral.com:8002',
+    'http://10.10.10.2:8002',
+    'http://10.10.10.2:8000',
+    'http://localhost:8000'
 ]
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+SECURE_SSL_REDIRECT = False  # Definido como False pois não estamos usando HTTPS em desenvolvimento
+SECURE_HSTS_SECONDS = 31536000  # 1 ano
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Logging
