@@ -67,11 +67,17 @@
                     <p class="text-center">Nenhum comentário ainda.</p>
                 {% endfor %}
 
-                <form method="post" class="mt-4">
-                    {% csrf_token %}
-                    {{ form|crispy }}
-                    <button type="submit" class="btn btn-primary">Adicionar Comentário</button>
-                </form>
+                {% if pode_comentar %}
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <button type="submit" class="btn btn-primary">Adicionar Comentário</button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-info mt-4">
+                        Você não tem permissão para comentar neste ticket.
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>

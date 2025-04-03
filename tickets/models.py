@@ -52,6 +52,22 @@ class Funcionario(models.Model):
             self.usuario.is_superuser = False
             self.usuario.save()
 
+    def pode_comentar_ticket(self, ticket):
+        # Verifica se o funcionário tem acesso à empresa do ticket
+        if self.empresa != ticket.empresa:
+            return False
+        
+        # Admin, suporte e cliente podem comentar em tickets que têm acesso
+        return True
+
+    def pode_atribuir_ticket(self, ticket):
+        # Verifica se o funcionário tem acesso à empresa do ticket
+        if self.empresa != ticket.empresa:
+            return False
+        
+        # Admin e suporte podem atribuir tickets
+        return self.tipo in ['admin', 'suporte']
+
     class Meta:
         verbose_name = 'Funcionário'
         verbose_name_plural = 'Funcionários'

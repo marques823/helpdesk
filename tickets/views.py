@@ -130,8 +130,13 @@ def detalhe_ticket(request, pk):
     ticket = get_object_or_404(Ticket, pk=pk)
     
     # Verifica permissão
-    if not request.user.is_superuser and ticket.empresa != request.user.funcionario.empresa:
-        raise Http404
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if not funcionario.pode_comentar_ticket(ticket):
+                raise Http404
+        except Funcionario.DoesNotExist:
+            raise Http404
     
     comentarios = ticket.comentarios.all().order_by('-criado_em')
     
@@ -147,10 +152,20 @@ def detalhe_ticket(request, pk):
     else:
         form = ComentarioForm()
     
+    # Verifica se o usuário pode comentar
+    pode_comentar = False
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            pode_comentar = funcionario.pode_comentar_ticket(ticket)
+        except Funcionario.DoesNotExist:
+            pass
+    
     return render(request, 'tickets/detalhe_ticket.html', {
         'ticket': ticket,
         'comentarios': comentarios,
-        'form': form
+        'form': form,
+        'pode_comentar': pode_comentar or request.user.is_superuser
     })
 
 @login_required
