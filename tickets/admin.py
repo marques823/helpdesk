@@ -9,10 +9,15 @@ class EmpresaAdmin(admin.ModelAdmin):
 
 @admin.register(Funcionario)
 class FuncionarioAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'empresa', 'tipo', 'telefone', 'cargo')
-    list_filter = ('tipo', 'empresa')
-    search_fields = ('usuario__username', 'usuario__first_name', 'usuario__last_name', 'empresa__nome')
-    ordering = ('empresa__nome', 'usuario__first_name')
+    list_display = ('usuario', 'get_empresas', 'tipo', 'telefone', 'cargo')
+    list_filter = ('tipo',)
+    search_fields = ('usuario__username', 'usuario__first_name', 'usuario__last_name')
+    ordering = ('usuario__first_name',)
+    filter_horizontal = ('empresas',)
+
+    def get_empresas(self, obj):
+        return ", ".join([e.nome for e in obj.empresas.all()])
+    get_empresas.short_description = 'Empresas'
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
