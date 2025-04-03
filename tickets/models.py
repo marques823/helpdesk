@@ -209,32 +209,37 @@ class CampoPersonalizado(models.Model):
         ('texto', 'Texto'),
         ('numero', 'Número'),
         ('data', 'Data'),
+        ('booleano', 'Sim/Não'),
         ('selecao', 'Seleção'),
-        ('checkbox', 'Checkbox'),
     ]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='campos_personalizados')
     nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     obrigatorio = models.BooleanField(default=False)
-    opcoes = models.TextField(blank=True, help_text="Para campos do tipo 'Seleção', insira as opções separadas por vírgula")
-    ordem = models.IntegerField(default=0)
-    ativo = models.BooleanField(default=True)
-
-    class Meta:
-        ordering = ['ordem', 'nome']
-        unique_together = ['empresa', 'nome']
+    opcoes = models.TextField(blank=True, null=True, help_text='Opções para campo do tipo seleção (uma por linha)')
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.nome} ({self.get_tipo_display()}) - {self.empresa.nome}"
+
+    class Meta:
+        verbose_name = 'Campo Personalizado'
+        verbose_name_plural = 'Campos Personalizados'
+        unique_together = ['empresa', 'nome']
 
 class ValorCampoPersonalizado(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='valores_campos_personalizados')
     campo = models.ForeignKey(CampoPersonalizado, on_delete=models.CASCADE)
     valor = models.TextField()
-
-    class Meta:
-        unique_together = ['ticket', 'campo']
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.campo.nome}: {self.valor}"
+        return f"{self.campo.nome}: {self.valor} ({self.ticket.titulo})"
+
+    class Meta:
+        verbose_name = 'Valor de Campo Personalizado'
+        verbose_name_plural = 'Valores de Campos Personalizados'
+        unique_together = ['ticket', 'campo']

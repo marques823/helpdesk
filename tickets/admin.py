@@ -40,10 +40,9 @@ class HistoricoTicketAdmin(admin.ModelAdmin):
 
 @admin.register(CampoPersonalizado)
 class CampoPersonalizadoAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'empresa', 'tipo', 'obrigatorio', 'ordem', 'ativo')
-    list_filter = ('empresa', 'tipo', 'obrigatorio', 'ativo')
+    list_display = ('nome', 'empresa', 'tipo', 'obrigatorio')
+    list_filter = ('empresa', 'tipo', 'obrigatorio')
     search_fields = ('nome', 'empresa__nome')
-    list_editable = ('ordem', 'ativo')
 
 @admin.register(ValorCampoPersonalizado)
 class ValorCampoPersonalizadoAdmin(admin.ModelAdmin):

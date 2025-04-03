@@ -121,9 +121,9 @@ class AtribuirTicketForm(forms.ModelForm):
 class CampoPersonalizadoForm(forms.ModelForm):
     class Meta:
         model = CampoPersonalizado
-        fields = ['nome', 'tipo', 'obrigatorio', 'opcoes', 'ordem', 'ativo']
+        fields = ['nome', 'tipo', 'obrigatorio', 'opcoes']
         widgets = {
-            'opcoes': forms.Textarea(attrs={'rows': 3}),
+            'opcoes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Digite uma opção por linha'}),
         }
 
     def clean_opcoes(self):
@@ -144,7 +144,7 @@ class ValorCampoPersonalizadoForm(forms.Form):
         super().__init__(*args, **kwargs)
         
         if self.empresa:
-            campos = CampoPersonalizado.objects.filter(empresa=self.empresa, ativo=True).order_by('ordem', 'nome')
+            campos = CampoPersonalizado.objects.filter(empresa=self.empresa).order_by('nome')
             for campo in campos:
                 field_name = f'campo_{campo.id}'
                 if campo.tipo == 'texto':
@@ -166,14 +166,14 @@ class ValorCampoPersonalizadoForm(forms.Form):
                         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
                     )
                 elif campo.tipo == 'selecao':
-                    opcoes = [(op.strip(), op.strip()) for op in campo.opcoes.split(',')]
+                    opcoes = [(op.strip(), op.strip()) for op in campo.opcoes.splitlines()]
                     self.fields[field_name] = forms.ChoiceField(
                         label=campo.nome,
                         required=campo.obrigatorio,
-                        choices=opcoes,
+                        choices=[('', '---')] + opcoes,
                         widget=forms.Select(attrs={'class': 'form-control'})
                     )
-                elif campo.tipo == 'checkbox':
+                elif campo.tipo == 'booleano':
                     self.fields[field_name] = forms.BooleanField(
                         label=campo.nome,
                         required=campo.obrigatorio,
