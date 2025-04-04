@@ -7,15 +7,15 @@ from django.contrib.auth import logout
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
 from django.db import connection, models
+from django.db.models import Q, Avg, F
+from django.db.models.functions import ExpressionWrapper
+from django.db.models.fields import DurationField
 import logging
 from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado
 from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import models
 import json
-from django.db.models import Q
 from datetime import datetime
-from django.db.models.functions import F, ExpressionWrapper, DurationField, Avg
 from django.urls import reverse
 from django.template.loader import render_to_string
 

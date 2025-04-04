@@ -299,17 +299,19 @@
     // Gráfico de distribuição por prioridade
     document.addEventListener('DOMContentLoaded', function() {
         var ctx = document.getElementById('prioridadeChart').getContext('2d');
+        
+        // Definir os dados do gráfico
+        var baixaPrioridade = {% if baixa_prioridade %}{{ baixa_prioridade }}{% else %}0{% endif %};
+        var mediaPrioridade = {% if media_prioridade %}{{ media_prioridade }}{% else %}0{% endif %};
+        var altaPrioridade = {% if alta_prioridade %}{{ alta_prioridade }}{% else %}0{% endif %};
+        var urgentePrioridade = {% if urgente_prioridade %}{{ urgente_prioridade }}{% else %}0{% endif %};
+        
         var myChart = new Chart(ctx, {
             type: 'pie',
             data: {
                 labels: ['Baixa', 'Média', 'Alta', 'Urgente'],
                 datasets: [{
-                    data: [
-                        {{ baixa_prioridade }},
-                        {{ media_prioridade }},
-                        {{ alta_prioridade }},
-                        {{ urgente_prioridade }}
-                    ],
+                    data: [baixaPrioridade, mediaPrioridade, altaPrioridade, urgentePrioridade],
                     backgroundColor: [
                         '#17a2b8',   // info
                         '#007bff',   // primary
