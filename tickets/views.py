@@ -8,7 +8,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
 from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
-from django.db.models.functions import *
+from django.db.models.functions import Concat, Cast, TruncDate
 import logging
 from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado
 from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm
