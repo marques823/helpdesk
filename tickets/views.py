@@ -182,11 +182,6 @@ def criar_ticket(request):
         campos_personalizados = None
         if empresa_id:
             try:
-                campos_personalizados = CampoPersonalizado.objects.filter(
-                    empresa_id=empresa_id,
-                    ativo=True
-                ).order_by('ordem', 'nome')
-                
                 # Verifica se o usuário tem acesso à empresa
                 empresa = Empresa.objects.get(id=empresa_id)
                 if not request.user.is_superuser and not funcionario.empresas.filter(id=empresa_id).exists():
@@ -196,6 +191,12 @@ def criar_ticket(request):
                 # Se o usuário está tentando acessar uma empresa que não é dele, redirecione
                 if funcionario and funcionario.empresas.count() == 1 and str(funcionario.empresas.first().id) != empresa_id:
                     return redirect('tickets:criar_ticket')
+                
+                # Busca os campos personalizados ativos para a empresa, ordenados por ordem e nome
+                campos_personalizados = CampoPersonalizado.objects.filter(
+                    empresa_id=empresa_id,
+                    ativo=True
+                ).order_by('ordem', 'nome')
                 
             except (Empresa.DoesNotExist, ValueError):
                 # Se a empresa não existe ou o ID não é válido, limpe o valor
@@ -460,6 +461,9 @@ def editar_ticket(request, ticket_id):
                 messages.error(request, 'Você não tem acesso a esta empresa.')
                 return redirect('tickets:dashboard')
         
+        # Carrega os valores dos campos personalizados existentes
+        valores_campos = ValorCampoPersonalizado.objects.filter(ticket=ticket).select_related('campo')
+        
         # Obtém as empresas e funcionários disponíveis
         if request.user.is_superuser:
             empresas = Empresa.objects.all()
@@ -482,23 +486,57 @@ def editar_ticket(request, ticket_id):
                     'atribuido_a': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
                 }
                 
-                form.save()
+                ticket_salvo = form.save()
+                
+                # Processa os valores dos campos personalizados
+                campos_alterados = []
+                for valor in valores_campos:
+                    # Só processa os campos editáveis
+                    if valor.campo.editavel:
+                        campo_id = valor.campo.id
+                        campo_valor = request.POST.get(f'campo_{campo_id}')
+                        
+                        # Processa o valor de acordo com o tipo do campo
+                        if valor.campo.tipo == 'booleano':
+                            novo_valor = 'true' if campo_valor == 'true' else 'false'
+                        else:
+                            novo_valor = campo_valor or ''
+                        
+                        # Se o valor mudou, atualiza e registra no histórico
+                        if novo_valor != valor.valor:
+                            # Registra a alteração para o histórico
+                            campos_alterados.append({
+                                'campo': valor.campo.nome,
+                                'valor_anterior': valor.valor,
+                                'valor_novo': novo_valor
+                            })
+                            
+                            # Atualiza o valor do campo
+                            valor.valor = novo_valor
+                            valor.save()
                 
                 # Registra a edição no histórico
+                dados_novos = {
+                    'titulo': ticket_salvo.titulo,
+                    'descricao': ticket_salvo.descricao,
+                    'status': ticket_salvo.status,
+                    'prioridade': ticket_salvo.prioridade,
+                    'empresa': ticket_salvo.empresa.nome,
+                    'atribuido_a': ticket_salvo.atribuido_a.usuario.username if ticket_salvo.atribuido_a else None
+                }
+                
+                # Adiciona os campos personalizados alterados aos dados do histórico
+                if campos_alterados:
+                    dados_anteriores['campos_personalizados'] = {item['campo']: item['valor_anterior'] for item in campos_alterados}
+                    dados_novos['campos_personalizados'] = {item['campo']: item['valor_novo'] for item in campos_alterados}
+                
                 registrar_historico(
-                    ticket=ticket,
+                    ticket=ticket_salvo,
                     tipo_alteracao='edicao',
                     usuario=request.user,
                     descricao=f'Ticket editado por {request.user.get_full_name()}',
                     dados_anteriores=dados_anteriores,
-                    dados_novos={
-                        'titulo': ticket.titulo,
-                        'descricao': ticket.descricao,
-                        'status': ticket.status,
-                        'prioridade': ticket.prioridade,
-                        'empresa': ticket.empresa.nome,
-                        'atribuido_a': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
-                    }
+                    dados_novos=dados_novos
                 )
                 
                 messages.success(request, 'Ticket atualizado com sucesso!')
@@ -512,7 +550,8 @@ def editar_ticket(request, ticket_id):
         
         return render(request, 'tickets/editar_ticket.html', {
             'form': form,
-            'ticket': ticket
+            'ticket': ticket,
+            'campos_personalizados': valores_campos
         })
     except Exception as e:
         logger.error(f"Erro ao editar ticket: {str(e)}")

@@ -220,6 +220,7 @@ class CampoPersonalizado(models.Model):
     opcoes = models.TextField(blank=True, null=True, help_text='Opções para campo do tipo seleção (uma por linha)')
     ordem = models.IntegerField(default=0)
     ativo = models.BooleanField(default=True)
+    editavel = models.BooleanField(default=True, help_text='Se marcado, este campo poderá ser editado após a criação do ticket')
     criado_em = models.DateTimeField(default=timezone.now)
     atualizado_em = models.DateTimeField(auto_now=True)
 

@@ -42,7 +42,7 @@ class UserForm(UserCreationForm):
 class TicketForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ['titulo', 'descricao', 'status', 'prioridade', 'empresa', 'atribuido_a']
+        fields = ['empresa', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 4}),
             'empresa': forms.Select(attrs={'class': 'form-control', 'id': 'id_empresa'}),
@@ -52,6 +52,13 @@ class TicketForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # Define a ordem dos campos
+        self.fields_order = ['empresa', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
+        
+        # Reorganiza os campos na ordem desejada
+        original_fields = self.fields
+        self.fields = {k: original_fields[k] for k in self.fields_order if k in original_fields}
         
         # Se o usuário não for admin, filtra as empresas e funcionários
         if self.user and not self.user.is_superuser:
@@ -130,9 +137,10 @@ class AtribuirTicketForm(forms.ModelForm):
 class CampoPersonalizadoForm(forms.ModelForm):
     class Meta:
         model = CampoPersonalizado
-        fields = ['nome', 'tipo', 'obrigatorio', 'opcoes']
+        fields = ['nome', 'tipo', 'obrigatorio', 'opcoes', 'ordem', 'ativo', 'editavel']
         widgets = {
             'opcoes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Digite uma opção por linha'}),
+            'ordem': forms.NumberInput(attrs={'min': 0}),
         }
 
     def clean_opcoes(self):

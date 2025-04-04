@@ -34,6 +34,7 @@
                                                 <th>Nome</th>
                                                 <th>Tipo</th>
                                                 <th>Obrigatório</th>
+                                                <th>Editável</th>
                                                 <th>Ordem</th>
                                                 <th>Status</th>
                                                 <th>Ações</th>
@@ -46,6 +47,13 @@
                                                 <td>{{ campo.get_tipo_display }}</td>
                                                 <td>
                                                     {% if campo.obrigatorio %}
+                                                        <span class="badge bg-success">Sim</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Não</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if campo.editavel %}
                                                         <span class="badge bg-success">Sim</span>
                                                     {% else %}
                                                         <span class="badge bg-secondary">Não</span>
