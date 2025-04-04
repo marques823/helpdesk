@@ -45,7 +45,7 @@ class TicketForm(forms.ModelForm):
         fields = ['titulo', 'descricao', 'status', 'prioridade', 'empresa', 'atribuido_a']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 4}),
-            'empresa': forms.Select(attrs={'class': 'form-control'}),
+            'empresa': forms.Select(attrs={'class': 'form-control', 'id': 'id_empresa'}),
             'atribuido_a': forms.Select(attrs={'class': 'form-control'}),
         }
 
@@ -74,11 +74,20 @@ class TicketForm(forms.ModelForm):
                 self.fields.pop('empresa', None)
                 self.fields.pop('atribuido_a', None)
         else:
-            # Para admin, mostra todas as empresas e funcionários
+            # Para admin, mostra todas as empresas
             self.fields['empresa'].queryset = Empresa.objects.all()
-            self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
-                tipo__in=['admin', 'suporte']
-            ).distinct()
+            
+            # Inicialmente, não mostra funcionários até que uma empresa seja selecionada
+            empresa_id = self.initial.get('empresa') or self.data.get('empresa')
+            if empresa_id:
+                # Se uma empresa for selecionada, mostra apenas funcionários daquela empresa
+                self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
+                    empresas__id=empresa_id,
+                    tipo__in=['admin', 'suporte']
+                ).distinct()
+            else:
+                # Se nenhuma empresa for selecionada, não mostra funcionários
+                self.fields['atribuido_a'].queryset = Funcionario.objects.none()
 
     def clean(self):
         cleaned_data = super().clean()

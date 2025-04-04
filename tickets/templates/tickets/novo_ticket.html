@@ -21,28 +21,31 @@
                             {% if campos_personalizados %}
                                 <h4 class="mt-4">Campos Personalizados</h4>
                                 {% for campo in campos_personalizados %}
-                                    <div class="form-group">
+                                    <div class="form-group mb-3">
                                         <label for="campo_{{ campo.id }}">
                                             {{ campo.nome }}{% if campo.obrigatorio %}*{% endif %}
                                         </label>
-                                        {% if campo.tipo == 'text' %}
+                                        {% if campo.tipo == 'texto' %}
                                             <input type="text" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
-                                        {% elif campo.tipo == 'number' %}
+                                        {% elif campo.tipo == 'numero' %}
                                             <input type="number" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
-                                        {% elif campo.tipo == 'date' %}
+                                        {% elif campo.tipo == 'data' %}
                                             <input type="date" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
-                                        {% elif campo.tipo == 'selection' %}
+                                        {% elif campo.tipo == 'selecao' %}
                                             <select class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
                                                 <option value="">Selecione...</option>
                                                 {% for opcao in campo.opcoes.splitlines %}
                                                     <option value="{{ opcao }}">{{ opcao }}</option>
                                                 {% endfor %}
                                             </select>
-                                        {% elif campo.tipo == 'checkbox' %}
+                                        {% elif campo.tipo == 'booleano' %}
                                             <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}">
-                                                <label class="form-check-label" for="campo_{{ campo.id }}">{{ campo.nome }}</label>
+                                                <input type="checkbox" class="form-check-input" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" value="true">
+                                                <label class="form-check-label" for="campo_{{ campo.id }}">Sim</label>
                                             </div>
+                                        {% endif %}
+                                        {% if campo.tipo != 'booleano' and not campo.obrigatorio %}
+                                            <small class="form-text text-muted">Este campo é opcional</small>
                                         {% endif %}
                                     </div>
                                 {% endfor %}
@@ -73,8 +76,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const empresaId = this.value;
             if (empresaId) {
                 window.location.href = `{% url 'tickets:criar_ticket' %}?empresa=${empresaId}`;
+            } else {
+                // Recarregue a página sem o parâmetro de empresa
+                window.location.href = `{% url 'tickets:criar_ticket' %}`;
             }
         });
+    }
+    
+    // Destaque os campos personalizados para melhor visualização
+    const camposPersonalizadosDiv = document.getElementById('camposPersonalizados');
+    if (camposPersonalizadosDiv && camposPersonalizadosDiv.children.length > 0) {
+        camposPersonalizadosDiv.classList.add('p-3', 'bg-light', 'rounded', 'mt-4', 'mb-4', 'border');
     }
 });
 </script>

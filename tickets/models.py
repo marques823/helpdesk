@@ -219,6 +219,7 @@ class CampoPersonalizado(models.Model):
     obrigatorio = models.BooleanField(default=False)
     opcoes = models.TextField(blank=True, null=True, help_text='Opções para campo do tipo seleção (uma por linha)')
     ordem = models.IntegerField(default=0)
+    ativo = models.BooleanField(default=True)
     criado_em = models.DateTimeField(default=timezone.now)
     atualizado_em = models.DateTimeField(auto_now=True)
 

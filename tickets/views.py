@@ -169,17 +169,41 @@ def criar_ticket(request):
                 messages.error(request, 'Você não está associado a nenhuma empresa.')
                 return redirect('tickets:dashboard')
 
+        # Automaticamente seleciona a empresa se o usuário tiver apenas uma
+        initial_data = {}
+        if funcionario and empresas.count() == 1:
+            initial_data['empresa'] = empresas.first().id
+            empresa_id = str(empresas.first().id)
+        else:
+            # Obtém a empresa selecionada do formulário POST ou da query string
+            empresa_id = request.POST.get('empresa') if request.method == 'POST' else request.GET.get('empresa')
+
         # Obtém os campos personalizados da empresa selecionada
-        empresa_id = request.POST.get('empresa') if request.method == 'POST' else request.GET.get('empresa')
         campos_personalizados = None
         if empresa_id:
-            campos_personalizados = CampoPersonalizado.objects.filter(
-                empresa_id=empresa_id,
-                ativo=True
-            ).order_by('ordem')
+            try:
+                campos_personalizados = CampoPersonalizado.objects.filter(
+                    empresa_id=empresa_id,
+                    ativo=True
+                ).order_by('ordem', 'nome')
+                
+                # Verifica se o usuário tem acesso à empresa
+                empresa = Empresa.objects.get(id=empresa_id)
+                if not request.user.is_superuser and not funcionario.empresas.filter(id=empresa_id).exists():
+                    messages.error(request, 'Você não tem acesso a esta empresa.')
+                    return redirect('tickets:dashboard')
+                
+                # Se o usuário está tentando acessar uma empresa que não é dele, redirecione
+                if funcionario and funcionario.empresas.count() == 1 and str(funcionario.empresas.first().id) != empresa_id:
+                    return redirect('tickets:criar_ticket')
+                
+            except (Empresa.DoesNotExist, ValueError):
+                # Se a empresa não existe ou o ID não é válido, limpe o valor
+                empresa_id = None
+                campos_personalizados = None
 
         if request.method == 'POST':
-            form = TicketForm(request.POST, user=request.user)
+            form = TicketForm(request.POST, user=request.user, initial=initial_data)
             if form.is_valid():
                 ticket = form.save(commit=False)
                 ticket.criado_por = request.user
@@ -188,18 +212,26 @@ def criar_ticket(request):
                 # Salva os valores dos campos personalizados
                 if campos_personalizados:
                     for campo in campos_personalizados:
-                        valor = request.POST.get(f'campo_{campo.id}')
-                        if valor:
-                            ValorCampoPersonalizado.objects.create(
-                                ticket=ticket,
-                                campo=campo,
-                                valor=valor
-                            )
+                        campo_valor = request.POST.get(f'campo_{campo.id}')
+                        if campo_valor or campo.tipo == 'booleano':
+                            # Para campos booleanos, verifica se o checkbox foi marcado
+                            if campo.tipo == 'booleano':
+                                valor = 'true' if campo_valor == 'true' else 'false'
+                            else:
+                                valor = campo_valor or ''
+                                
+                            # Só salva se o valor não estiver vazio ou se for um campo booleano
+                            if valor or campo.tipo == 'booleano':
+                                ValorCampoPersonalizado.objects.create(
+                                    ticket=ticket,
+                                    campo=campo,
+                                    valor=valor
+                                )
 
                 messages.success(request, 'Ticket criado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket.id)
         else:
-            form = TicketForm(user=request.user)
+            form = TicketForm(user=request.user, initial=initial_data)
 
         context = {
             'form': form,
