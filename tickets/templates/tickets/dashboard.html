@@ -26,15 +26,13 @@
                                 <div class="col-md-12 mb-3">
                                     <div class="input-group">
                                         <input type="text" name="q" class="form-control" placeholder="Pesquisar tickets por título, descrição, empresa, criador ou ID..." value="{{ termo_pesquisa }}">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-search"></i> Pesquisar
-                                        </button>
                                         {% if termo_pesquisa %}
-                                            <a href="{% url 'tickets:dashboard' %}{% if status_filter %}?status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" class="btn btn-outline-secondary">
+                                            <a href="{% url 'tickets:dashboard' %}{% if status_filter or prioridade_filter or empresa_filter or order_by %}?{% if status_filter %}status={{ status_filter }}{% if prioridade_filter or empresa_filter or order_by %}&{% endif %}{% endif %}{% if prioridade_filter %}prioridade={{ prioridade_filter }}{% if empresa_filter or order_by %}&{% endif %}{% endif %}{% if empresa_filter %}empresa={{ empresa_filter }}{% if order_by %}&{% endif %}{% endif %}{% if order_by %}order_by={{ order_by }}{% endif %}{% endif %}" class="btn btn-outline-secondary">
                                                 <i class="fas fa-times"></i> Limpar pesquisa
                                             </a>
                                         {% endif %}
                                     </div>
+                                    <small class="text-muted mt-1"><i class="fas fa-info-circle"></i> A pesquisa é realizada automaticamente enquanto você digita</small>
                                     <div class="text-end mt-2">
                                         <button class="btn btn-link btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdvancedSearch" aria-expanded="false" aria-controls="collapseAdvancedSearch">
                                             <i class="fas fa-cog"></i> Opções avançadas de pesquisa
@@ -112,9 +110,6 @@
                                     </select>
                                 </div>
                                 <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-filter"></i> Filtrar
-                                    </button>
                                     <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
                                         <i class="fas fa-times"></i> Limpar Todos os Filtros e Pesquisa
                                     </a>
@@ -129,7 +124,7 @@
                                 <div class="alert alert-info mb-3">
                                     <i class="fas fa-search"></i> Resultados da pesquisa por: <strong>"{{ termo_pesquisa }}"</strong> 
                                     <span class="badge bg-primary">{{ tickets.paginator.count }} resultado(s)</span>
-                                    <a href="{% url 'tickets:dashboard' %}{% if status_filter %}?status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" class="btn btn-sm btn-outline-secondary float-end">
+                                    <a href="{% url 'tickets:dashboard' %}{% if status_filter or prioridade_filter or empresa_filter or order_by %}?{% if status_filter %}status={{ status_filter }}{% if prioridade_filter or empresa_filter or order_by %}&{% endif %}{% endif %}{% if prioridade_filter %}prioridade={{ prioridade_filter }}{% if empresa_filter or order_by %}&{% endif %}{% endif %}{% if empresa_filter %}empresa={{ empresa_filter }}{% if order_by %}&{% endif %}{% endif %}{% if order_by %}order_by={{ order_by }}{% endif %}{% endif %}" class="btn btn-sm btn-outline-secondary float-end">
                                         <i class="fas fa-times"></i> Limpar pesquisa
                                     </a>
                                 </div>
@@ -217,4 +212,80 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Aguardar o carregamento completo do documento
+    document.addEventListener('DOMContentLoaded', function() {
+        // Variáveis para controle de debounce
+        let searchTimeout = null;
+        const searchInput = document.querySelector('input[name="q"]');
+        const searchForm = searchInput.closest('form');
+        
+        // Função para executar a pesquisa
+        function performSearch() {
+            // Se o campo estiver vazio e não houver outros filtros ativos, não faz nada
+            if (searchInput.value.trim() === '' && 
+                !document.getElementById('status').value && 
+                !document.getElementById('prioridade').value && 
+                !document.getElementById('empresa').value &&
+                document.getElementById('order_by').value === '-criado_em') {
+                return;
+            }
+            
+            // Salvar a posição atual do cursor
+            const cursorPosition = searchInput.selectionStart;
+            
+            // Criar um campo oculto para armazenar a posição do cursor
+            const cursorPosField = document.createElement('input');
+            cursorPosField.type = 'hidden';
+            cursorPosField.name = 'cursor_pos';
+            cursorPosField.value = cursorPosition;
+            searchForm.appendChild(cursorPosField);
+            
+            // Enviar o formulário
+            searchForm.submit();
+        }
+        
+        // Adicionar evento de input ao campo de pesquisa com debounce
+        searchInput.addEventListener('input', function() {
+            // Limpar o timeout anterior para evitar múltiplas submissões
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Definir um novo timeout (500ms de delay)
+            searchTimeout = setTimeout(performSearch, 500);
+        });
+        
+        // Eventos para os filtros (executa imediatamente)
+        document.getElementById('status').addEventListener('change', performSearch);
+        document.getElementById('prioridade').addEventListener('change', performSearch);
+        document.getElementById('empresa').addEventListener('change', performSearch);
+        document.getElementById('order_by').addEventListener('change', performSearch);
+        
+        // Restaurar o foco no campo de pesquisa e posicionar o cursor
+        if (searchInput.value) {
+            searchInput.focus();
+            
+            // Recuperar a posição do cursor da URL se disponível
+            const urlParams = new URLSearchParams(window.location.search);
+            const cursorPos = urlParams.get('cursor_pos');
+            
+            if (cursorPos !== null) {
+                const position = parseInt(cursorPos, 10);
+                if (!isNaN(position)) {
+                    searchInput.setSelectionRange(position, position);
+                } else {
+                    // Se não tiver posição salva, coloca o cursor no final
+                    searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+                }
+            } else {
+                // Se não tiver posição salva, coloca o cursor no final
+                searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+            }
+        }
+    });
+</script>
 {% endblock %} 
