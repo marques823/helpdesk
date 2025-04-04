@@ -186,6 +186,7 @@ class HistoricoTicket(models.Model):
         ('status', 'Alteração de Status'),
         ('prioridade', 'Alteração de Prioridade'),
         ('comentario', 'Comentário'),
+        ('nota_tecnica', 'Nota Técnica'),
     ]
     
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='historico')
@@ -265,22 +266,27 @@ class ValorCampoPersonalizado(models.Model):
         unique_together = ['ticket', 'campo']
 
 class NotaTecnica(models.Model):
+    """
+    Modelo para armazenar anotações técnicas sobre o serviço executado ou sobre o equipamento.
+    Essas notas são feitas por técnicos e podem ser usadas para documentação e relatórios técnicos.
+    """
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='notas_tecnicas')
-    tecnico = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notas_tecnicas')
-    texto = models.TextField(verbose_name='Anotações Técnicas')
+    tecnico = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='notas_tecnicas')
+    descricao = models.TextField(verbose_name="Descrição da nota técnica")
+    equipamento = models.CharField(max_length=255, blank=True, null=True, verbose_name="Equipamento relacionado")
+    solucao_aplicada = models.TextField(blank=True, null=True, verbose_name="Solução aplicada")
+    pendencias = models.TextField(blank=True, null=True, verbose_name="Pendências", help_text="Itens pendentes ou que precisam de acompanhamento")
     criado_em = models.DateTimeField(default=timezone.now)
     atualizado_em = models.DateTimeField(default=timezone.now)
 
     def save(self, *args, **kwargs):
-        # Se for um novo objeto (não tem ID), defina criado_em
         if not self.id:
             self.criado_em = timezone.now()
-        # Sempre atualize atualizado_em ao salvar
         self.atualizado_em = timezone.now()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Nota técnica de {self.tecnico.username} para o ticket #{self.ticket.id}"
+        return f"Nota técnica #{self.id} - Ticket #{self.ticket.id}"
 
     class Meta:
         verbose_name = 'Nota Técnica'

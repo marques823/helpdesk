@@ -96,10 +96,28 @@ class ValorCampoPersonalizadoAdmin(admin.ModelAdmin):
         obj.atualizado_em = timezone.now()
         super().save_model(request, obj, form, change)
 
-# Registramos NotaTecnica apenas para uso interno, não aparece na interface
+@admin.register(NotaTecnica)
 class NotaTecnicaAdmin(admin.ModelAdmin):
-    def get_model_perms(self, request):
-        # Não exibe no menu de administração
-        return {}
-
-admin.site.register(NotaTecnica, NotaTecnicaAdmin)
+    list_display = ('ticket', 'tecnico', 'equipamento', 'criado_em')
+    list_filter = ('tecnico', 'criado_em')
+    search_fields = ('ticket__titulo', 'descricao', 'equipamento', 'solucao_aplicada')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('ticket', 'tecnico', 'descricao')
+        }),
+        ('Detalhes técnicos', {
+            'fields': ('equipamento', 'solucao_aplicada', 'pendencias')
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se for uma nova instância
+            obj.criado_em = timezone.now()
+        obj.atualizado_em = timezone.now()
+        super().save_model(request, obj, form, change)

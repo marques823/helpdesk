@@ -1,0 +1,90 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Editar Nota Técnica #{{ nota.id }} - Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Ticket #{{ ticket.id }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}">Notas Técnicas</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Editar Nota #{{ nota.id }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2>Editar Nota Técnica #{{ nota.id }}</h2>
+            <h5 class="text-muted">Ticket #{{ ticket.id }} - {{ ticket.titulo }}</h5>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Editar Nota Técnica</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                            {{ form.descricao }}
+                            {% if form.descricao.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.descricao.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.equipamento.id_for_label }}">{{ form.equipamento.label }}</label>
+                            {{ form.equipamento }}
+                            {% if form.equipamento.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.equipamento.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Especifique o equipamento relacionado à nota técnica.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.solucao_aplicada.id_for_label }}">{{ form.solucao_aplicada.label }}</label>
+                            {{ form.solucao_aplicada }}
+                            {% if form.solucao_aplicada.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.solucao_aplicada.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.pendencias.id_for_label }}">{{ form.pendencias.label }}</label>
+                            {{ form.pendencias }}
+                            {% if form.pendencias.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.pendencias.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">{{ form.pendencias.help_text }}</small>
+                        </div>
+                        
+                        <div class="form-group text-right">
+                            <a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">Atualizar Nota Técnica</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

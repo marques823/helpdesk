@@ -10,8 +10,8 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado
-from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica
+from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm
 from django.core.exceptions import ObjectDoesNotExist
 import json
 from datetime import datetime
@@ -156,23 +156,200 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
 
 @login_required
 def historico_ticket(request, ticket_id):
-    try:
-        ticket = get_object_or_404(Ticket, id=ticket_id)
-        
-        # Verificar permissões
-        if not request.user.is_superuser:
-            funcionario = request.user.funcionarios.first()
-            if not funcionario or not funcionario.pode_ver_ticket(ticket):
-                messages.error(request, 'Você não tem permissão para ver o histórico deste ticket.')
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    
+    # Verifica permissão
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if not funcionario.pode_ver_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para visualizar este ticket.')
                 return redirect('tickets:dashboard')
+        except Funcionario.DoesNotExist:
+            messages.error(request, 'Você não possui um perfil de funcionário.')
+            return redirect('tickets:dashboard')
+    
+    historico = ticket.historico.all().order_by('-data_alteracao')
+    return render(request, 'tickets/historico_ticket.html', {
+        'ticket': ticket,
+        'historico': historico
+    })
+
+@login_required
+def listar_notas_tecnicas(request, ticket_id):
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    
+    # Verifica permissão
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if not funcionario.pode_ver_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para visualizar este ticket.')
+                return redirect('tickets:dashboard')
+            if not funcionario.is_suporte() and not funcionario.is_admin():
+                messages.error(request, 'Apenas técnicos e administradores podem acessar as notas técnicas.')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+        except Funcionario.DoesNotExist:
+            messages.error(request, 'Você não possui um perfil de funcionário.')
+            return redirect('tickets:dashboard')
+    
+    notas = ticket.notas_tecnicas.all().order_by('-criado_em')
+    return render(request, 'tickets/listar_notas_tecnicas.html', {
+        'ticket': ticket,
+        'notas': notas
+    })
+
+@login_required
+def adicionar_nota_tecnica(request, ticket_id):
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    
+    # Verifica permissão
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if not funcionario.pode_ver_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para visualizar este ticket.')
+                return redirect('tickets:dashboard')
+            if not funcionario.is_suporte() and not funcionario.is_admin():
+                messages.error(request, 'Apenas técnicos e administradores podem adicionar notas técnicas.')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+        except Funcionario.DoesNotExist:
+            messages.error(request, 'Você não possui um perfil de funcionário.')
+            return redirect('tickets:dashboard')
+    else:
+        # Para superusuários, precisamos obter um funcionário válido
+        try:
+            funcionario = Funcionario.objects.filter(
+                usuario=request.user,
+                tipo__in=['admin', 'suporte']
+            ).first()
+            if not funcionario:
+                messages.error(request, 'Você precisa ter um perfil de técnico ou administrador para adicionar notas técnicas.')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+        except Exception:
+            messages.error(request, 'Erro ao verificar seu perfil de funcionário.')
+            return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+    
+    if request.method == 'POST':
+        form = NotaTecnicaForm(request.POST, ticket=ticket, tecnico=funcionario)
+        if form.is_valid():
+            nota = form.save()
+            
+            # Registrar no histórico
+            HistoricoTicket.objects.create(
+                ticket=ticket,
+                tipo_alteracao='nota_tecnica',
+                usuario=request.user,
+                descricao=f'Nota técnica adicionada por {funcionario.usuario.get_full_name() or funcionario.usuario.username}',
+                dados_novos={
+                    'nota_id': nota.id,
+                    'acao': 'adicao',
+                    'equipamento': nota.equipamento if nota.equipamento else 'Não especificado'
+                }
+            )
+            
+            messages.success(request, 'Nota técnica adicionada com sucesso!')
+            return redirect('tickets:listar_notas_tecnicas', ticket_id=ticket_id)
+    else:
+        form = NotaTecnicaForm(ticket=ticket, tecnico=funcionario)
+    
+    return render(request, 'tickets/adicionar_nota_tecnica.html', {
+        'ticket': ticket,
+        'form': form
+    })
+
+@login_required
+def editar_nota_tecnica(request, nota_id):
+    nota = get_object_or_404(NotaTecnica, pk=nota_id)
+    ticket = nota.ticket
+    
+    # Verifica permissão
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if not funcionario.pode_ver_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para visualizar este ticket.')
+                return redirect('tickets:dashboard')
+            # Apenas o técnico que criou a nota ou um admin pode editar
+            if not funcionario.is_admin() and funcionario != nota.tecnico:
+                messages.error(request, 'Você não tem permissão para editar esta nota técnica.')
+                return redirect('tickets:listar_notas_tecnicas', ticket_id=ticket.id)
+        except Funcionario.DoesNotExist:
+            messages.error(request, 'Você não possui um perfil de funcionário.')
+            return redirect('tickets:dashboard')
+    
+    if request.method == 'POST':
+        form = NotaTecnicaForm(request.POST, instance=nota)
+        if form.is_valid():
+            form.save()
+            
+            # Registrar no histórico
+            HistoricoTicket.objects.create(
+                ticket=ticket,
+                tipo_alteracao='nota_tecnica',
+                usuario=request.user,
+                descricao=f'Nota técnica #{nota.id} editada por {request.user.get_full_name() or request.user.username}',
+                dados_novos={
+                    'nota_id': nota.id,
+                    'acao': 'edicao',
+                    'equipamento': nota.equipamento if nota.equipamento else 'Não especificado'
+                }
+            )
+            
+            messages.success(request, 'Nota técnica atualizada com sucesso!')
+            return redirect('tickets:listar_notas_tecnicas', ticket_id=ticket.id)
+    else:
+        form = NotaTecnicaForm(instance=nota)
+    
+    return render(request, 'tickets/editar_nota_tecnica.html', {
+        'ticket': ticket,
+        'nota': nota,
+        'form': form
+    })
+
+@login_required
+def excluir_nota_tecnica(request, nota_id):
+    nota = get_object_or_404(NotaTecnica, pk=nota_id)
+    ticket = nota.ticket
+    
+    # Verifica permissão
+    if not request.user.is_superuser:
+        try:
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            if not funcionario.pode_ver_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para visualizar este ticket.')
+                return redirect('tickets:dashboard')
+            # Apenas o técnico que criou a nota ou um admin pode excluir
+            if not funcionario.is_admin() and funcionario != nota.tecnico:
+                messages.error(request, 'Você não tem permissão para excluir esta nota técnica.')
+                return redirect('tickets:listar_notas_tecnicas', ticket_id=ticket.id)
+        except Funcionario.DoesNotExist:
+            messages.error(request, 'Você não possui um perfil de funcionário.')
+            return redirect('tickets:dashboard')
+    
+    if request.method == 'POST':
+        nota_id = nota.id
+        nota.delete()
         
-        return render(request, 'tickets/historico_ticket.html', {
-            'ticket': ticket
-        })
-    except Exception as e:
-        logger.error(f"Erro ao carregar histórico do ticket: {str(e)}")
-        messages.error(request, 'Erro ao carregar histórico do ticket.')
-        return redirect('tickets:dashboard')
+        # Registrar no histórico
+        HistoricoTicket.objects.create(
+            ticket=ticket,
+            tipo_alteracao='nota_tecnica',
+            usuario=request.user,
+            descricao=f'Nota técnica #{nota_id} excluída por {request.user.get_full_name() or request.user.username}',
+            dados_novos={
+                'nota_id': nota_id,
+                'acao': 'exclusao'
+            }
+        )
+        
+        messages.success(request, 'Nota técnica excluída com sucesso!')
+        return redirect('tickets:listar_notas_tecnicas', ticket_id=ticket.id)
+    
+    return render(request, 'tickets/excluir_nota_tecnica.html', {
+        'ticket': ticket,
+        'nota': nota
+    })
 
 @login_required
 def criar_ticket(request):
