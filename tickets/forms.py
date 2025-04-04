@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado
+from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica
 
 class EmpresaForm(forms.ModelForm):
     class Meta:
@@ -197,4 +197,30 @@ class ValorCampoPersonalizadoForm(forms.Form):
                         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
                     )
                 
-                self.fields[field_name].campo_id = campo.id 
+                self.fields[field_name].campo_id = campo.id
+
+class NotaTecnicaForm(forms.ModelForm):
+    class Meta:
+        model = NotaTecnica
+        fields = ['descricao', 'equipamento', 'solucao_aplicada', 'pendencias']
+        widgets = {
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Descreva o problema técnico ou observações sobre o equipamento'}),
+            'equipamento': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Servidor Dell PowerEdge R740, Impressora HP LaserJet Pro'}),
+            'solucao_aplicada': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descreva a solução aplicada ou as ações executadas'}),
+            'pendencias': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Liste pendências ou itens que precisam de acompanhamento'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        self.ticket = kwargs.pop('ticket', None)
+        self.tecnico = kwargs.pop('tecnico', None)
+        super().__init__(*args, **kwargs)
+        
+    def save(self, commit=True):
+        nota = super().save(commit=False)
+        if self.ticket:
+            nota.ticket = self.ticket
+        if self.tecnico:
+            nota.tecnico = self.tecnico
+        if commit:
+            nota.save()
+        return nota 

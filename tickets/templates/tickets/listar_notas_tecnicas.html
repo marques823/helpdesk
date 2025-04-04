@@ -1,0 +1,114 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+{% load ticket_tags %}
+
+{% block title %}Notas Técnicas - Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Ticket #{{ ticket.id }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Notas Técnicas</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>Notas Técnicas - Ticket #{{ ticket.id }}</h2>
+            <h5 class="text-muted">{{ ticket.titulo }}</h5>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="{% url 'tickets:adicionar_nota_tecnica' ticket_id=ticket.id %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Adicionar Nota Técnica
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Resumo do Ticket</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Status:</strong> <span class="badge badge-{{ ticket.status|status_class }}">{{ ticket.get_status_display }}</span></p>
+                    <p><strong>Prioridade:</strong> <span class="badge badge-{{ ticket.prioridade|priority_class }}">{{ ticket.get_prioridade_display }}</span></p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Empresa:</strong> {{ ticket.empresa.nome }}</p>
+                    <p><strong>Criado por:</strong> {{ ticket.criado_por.get_full_name|default:ticket.criado_por.username }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Aberto em:</strong> {{ ticket.criado_em|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Atualizado em:</strong> {{ ticket.atualizado_em|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if notas %}
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Notas Técnicas ({{ notas.count }})</h5>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for nota in notas %}
+                        <div class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <h5 class="mb-1">
+                                        {% if nota.equipamento %}
+                                            <span class="badge badge-info">{{ nota.equipamento }}</span>
+                                        {% endif %}
+                                        <span class="ml-2">Nota #{{ nota.id }}</span>
+                                    </h5>
+                                    <small class="text-muted">
+                                        Por {{ nota.tecnico.usuario.get_full_name|default:nota.tecnico.usuario.username }} em {{ nota.criado_em|date:"d/m/Y H:i" }}
+                                    </small>
+                                </div>
+                                <div>
+                                    <a href="{% url 'tickets:editar_nota_tecnica' nota_id=nota.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </a>
+                                    <a href="{% url 'tickets:excluir_nota_tecnica' nota_id=nota.id %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i> Excluir
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <h6 class="card-subtitle mb-2 font-weight-bold">Descrição</h6>
+                            <p class="card-text">{{ nota.descricao|linebreaks }}</p>
+                            
+                            {% if nota.solucao_aplicada %}
+                                <h6 class="card-subtitle mb-2 font-weight-bold">Solução Aplicada</h6>
+                                <p class="card-text">{{ nota.solucao_aplicada|linebreaks }}</p>
+                            {% endif %}
+                            
+                            {% if nota.pendencias %}
+                                <h6 class="card-subtitle mb-2 font-weight-bold">Pendências</h6>
+                                <p class="card-text">{{ nota.pendencias|linebreaks }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <p>Nenhuma nota técnica registrada para este ticket.</p>
+            <a href="{% url 'tickets:adicionar_nota_tecnica' ticket_id=ticket.id %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Adicionar Nota Técnica
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

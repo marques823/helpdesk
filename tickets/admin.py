@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado
+from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica
 from django.utils import timezone
 
 @admin.register(Empresa)
@@ -70,6 +70,32 @@ class ValorCampoPersonalizadoAdmin(admin.ModelAdmin):
     list_filter = ('campo__empresa', 'campo__nome')
     search_fields = ('ticket__titulo', 'campo__nome', 'valor')
     readonly_fields = ('criado_em', 'atualizado_em')
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se for uma nova instância
+            obj.criado_em = timezone.now()
+        obj.atualizado_em = timezone.now()
+        super().save_model(request, obj, form, change)
+
+@admin.register(NotaTecnica)
+class NotaTecnicaAdmin(admin.ModelAdmin):
+    list_display = ('ticket', 'tecnico', 'equipamento', 'criado_em')
+    list_filter = ('tecnico', 'criado_em')
+    search_fields = ('ticket__titulo', 'descricao', 'equipamento', 'solucao_aplicada')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('ticket', 'tecnico', 'descricao')
+        }),
+        ('Detalhes técnicos', {
+            'fields': ('equipamento', 'solucao_aplicada', 'pendencias')
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
     
     def save_model(self, request, obj, form, change):
         if not change:  # Se for uma nova instância
