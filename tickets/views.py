@@ -960,13 +960,12 @@ def relatorio_tickets(request):
     porcentagem_resolvidos = round((resolvidos / total_tickets * 100) if total_tickets > 0 else 0, 1)
     
     # Tempo médio de resolução (em dias)
+    # Modificando para evitar o uso de contains lookup em JSON que não é suportado pelo SQLite
     tempo_medio = tickets_query.filter(
-        status__in=['resolvido', 'fechado'],
-        historico__tipo_alteracao='status',
-        historico__dados_novos__contains={'status': 'resolvido'}
+        status__in=['resolvido', 'fechado']
     ).annotate(
         tempo_resolucao=ExpressionWrapper(
-            F('historico__data_alteracao') - F('criado_em'),
+            F('atualizado_em') - F('criado_em'),
             output_field=DurationField()
         )
     ).aggregate(media=Avg('tempo_resolucao'))
