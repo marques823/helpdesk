@@ -109,20 +109,48 @@
         </form>
     </div>
     
-    <div class="row">
+    <div class="row mb-4">
         <div class="col">
-            <div class="export-buttons">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Exportar Relatório
+            <div class="export-buttons" style="display: flex; flex-wrap: wrap; gap: 15px;">
+                <form method="GET" action="/tickets/relatorios/export/tickets/" target="_blank">
+                    <input type="hidden" name="format" value="csv">
+                    {% for key, value in request.GET.items %}
+                        {% if key != 'format' and key != 'page' and value %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-file-csv mr-2"></i> CSV
                     </button>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="#" onclick="exportReport('pdf')">PDF</a>
-                        <a class="dropdown-item" href="#" onclick="exportReport('excel')">Excel</a>
-                        <a class="dropdown-item" href="#" onclick="exportReport('csv')">CSV</a>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-info ml-2" onclick="window.print()">Imprimir</button>
+                </form>
+                
+                <form method="GET" action="/tickets/relatorios/export/tickets/" target="_blank">
+                    <input type="hidden" name="format" value="excel">
+                    {% for key, value in request.GET.items %}
+                        {% if key != 'format' and key != 'page' and value %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-file-excel mr-2"></i> Excel
+                    </button>
+                </form>
+                
+                <form method="GET" action="/tickets/relatorios/export/tickets/" target="_blank">
+                    <input type="hidden" name="format" value="pdf">
+                    {% for key, value in request.GET.items %}
+                        {% if key != 'format' and key != 'page' and value %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-file-pdf mr-2"></i> PDF
+                    </button>
+                </form>
+                
+                <button type="button" class="btn btn-info" onclick="window.print()">
+                    <i class="fas fa-print mr-2"></i> Imprimir
+                </button>
             </div>
         </div>
     </div>
@@ -337,13 +365,5 @@
             options: opcoesGrafico
         });
     });
-    
-    // Função para exportar relatório
-    function exportReport(format) {
-        var formData = new FormData(document.getElementById('report-form'));
-        formData.append('format', format);
-        
-        window.location.href = "{% url 'tickets:exportar_relatorio' 'tickets' %}?" + new URLSearchParams(formData).toString();
-    }
 </script>
 {% endblock %} 

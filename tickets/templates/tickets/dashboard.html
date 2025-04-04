@@ -12,10 +12,13 @@
                         <h2 class="card-title mb-0">Dashboard</h2>
                         <div class="btn-group">
                             {% if funcionario %}
-                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary">
+                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary me-2">
                                 <i class="fas fa-plus"></i> Novo Ticket
                             </a>
                             {% endif %}
+                            <a href="{% url 'tickets:relatorios_menu' %}" class="btn btn-info">
+                                <i class="fas fa-chart-bar"></i> Relatórios
+                            </a>
                         </div>
                     </div>
                 </div>
