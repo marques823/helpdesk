@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado
+from django.utils import timezone
 
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
@@ -40,13 +41,38 @@ class HistoricoTicketAdmin(admin.ModelAdmin):
 
 @admin.register(CampoPersonalizado)
 class CampoPersonalizadoAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'empresa', 'tipo', 'obrigatorio', 'ordem', 'ativo')
-    list_filter = ('empresa', 'tipo', 'obrigatorio', 'ativo')
+    list_display = ('nome', 'empresa', 'tipo', 'obrigatorio', 'ativo', 'editavel')
+    list_filter = ('empresa', 'tipo', 'obrigatorio', 'ativo', 'editavel')
     search_fields = ('nome', 'empresa__nome')
-    list_editable = ('ordem', 'ativo')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    fieldsets = (
+        (None, {
+            'fields': ('empresa', 'nome', 'tipo', 'obrigatorio')
+        }),
+        ('Opções avançadas', {
+            'fields': ('opcoes', 'ordem', 'ativo', 'editavel')
+        }),
+        ('Datas', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se for uma nova instância
+            obj.criado_em = timezone.now()
+        obj.atualizado_em = timezone.now()
+        super().save_model(request, obj, form, change)
 
 @admin.register(ValorCampoPersonalizado)
 class ValorCampoPersonalizadoAdmin(admin.ModelAdmin):
     list_display = ('ticket', 'campo', 'valor')
     list_filter = ('campo__empresa', 'campo__nome')
     search_fields = ('ticket__titulo', 'campo__nome', 'valor')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se for uma nova instância
+            obj.criado_em = timezone.now()
+        obj.atualizado_em = timezone.now()
+        super().save_model(request, obj, form, change)

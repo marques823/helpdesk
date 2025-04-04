@@ -15,41 +15,46 @@
                 <div class="card-body">
                     <form method="post" id="ticketForm">
                         {% csrf_token %}
-                        {{ form|crispy }}
                         
-                        <div id="camposPersonalizados">
-                            {% if campos_personalizados %}
-                                <h4 class="mt-4">Campos Personalizados</h4>
-                                {% for campo in campos_personalizados %}
-                                    <div class="form-group">
-                                        <label for="campo_{{ campo.id }}">
-                                            {{ campo.nome }}{% if campo.obrigatorio %}*{% endif %}
-                                        </label>
-                                        {% if campo.tipo == 'text' %}
-                                            <input type="text" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
-                                        {% elif campo.tipo == 'number' %}
-                                            <input type="number" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
-                                        {% elif campo.tipo == 'date' %}
-                                            <input type="date" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
-                                        {% elif campo.tipo == 'selection' %}
-                                            <select class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
-                                                <option value="">Selecione...</option>
-                                                {% for opcao in campo.opcoes.splitlines %}
-                                                    <option value="{{ opcao }}">{{ opcao }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        {% elif campo.tipo == 'checkbox' %}
-                                            <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}">
-                                                <label class="form-check-label" for="campo_{{ campo.id }}">{{ campo.nome }}</label>
-                                            </div>
-                                        {% endif %}
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
+                        {# Renderiza os campos básicos do formulário #}
+                        {% for field in form %}
+                            {{ field|as_crispy_field }}
+                        {% endfor %}
                         
-                        <div class="d-flex justify-content-between mt-3">
+                        {# Renderiza os campos personalizados integrados #}
+                        {% if campos_personalizados %}
+                            {% for campo in campos_personalizados %}
+                                <div class="mb-3">
+                                    <label for="campo_{{ campo.id }}" class="form-label">
+                                        {{ campo.nome }}{% if campo.obrigatorio %}*{% endif %}
+                                    </label>
+                                    {% if campo.tipo == 'texto' %}
+                                        <input type="text" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                    {% elif campo.tipo == 'numero' %}
+                                        <input type="number" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                    {% elif campo.tipo == 'data' %}
+                                        <input type="date" class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                    {% elif campo.tipo == 'selecao' %}
+                                        <select class="form-control" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+                                            <option value="">Selecione...</option>
+                                            {% for opcao in campo.opcoes.splitlines %}
+                                                <option value="{{ opcao }}">{{ opcao }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    {% elif campo.tipo == 'booleano' %}
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="campo_{{ campo.id }}" name="campo_{{ campo.id }}" value="true">
+                                            <label class="form-check-label" for="campo_{{ campo.id }}">Sim</label>
+                                        </div>
+                                    {% endif %}
+                                    {% if campo.tipo != 'booleano' and not campo.obrigatorio %}
+                                        <small class="form-text text-muted">Este campo é opcional</small>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between mt-4">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Criar Ticket
                             </button>
@@ -67,14 +72,34 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Manipula a mudança da empresa selecionada
     const empresaSelect = document.querySelector('select[name="empresa"]');
     if (empresaSelect) {
         empresaSelect.addEventListener('change', function() {
             const empresaId = this.value;
             if (empresaId) {
                 window.location.href = `{% url 'tickets:criar_ticket' %}?empresa=${empresaId}`;
+            } else {
+                window.location.href = `{% url 'tickets:criar_ticket' %}`;
             }
         });
+    }
+    
+    // Garantir que os campos personalizados sejam exibidos após o campo 'atribuido_a'
+    const atribuidoAField = document.querySelector('[name="atribuido_a"]');
+    if (atribuidoAField) {
+        const atribuidoADiv = atribuidoAField.closest('.mb-3');
+        const customFields = document.querySelectorAll('[id^="campo_"]');
+        
+        if (atribuidoADiv && customFields.length > 0) {
+            // Se atribuidoA existe, coloca os campos personalizados depois dele
+            customFields.forEach(field => {
+                const fieldDiv = field.closest('.mb-3');
+                if (fieldDiv) {
+                    atribuidoADiv.parentNode.insertBefore(fieldDiv, atribuidoADiv.nextSibling);
+                }
+            });
+        }
     }
 });
 </script>

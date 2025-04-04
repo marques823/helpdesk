@@ -209,32 +209,57 @@ class CampoPersonalizado(models.Model):
         ('texto', 'Texto'),
         ('numero', 'Número'),
         ('data', 'Data'),
+        ('booleano', 'Sim/Não'),
         ('selecao', 'Seleção'),
-        ('checkbox', 'Checkbox'),
     ]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='campos_personalizados')
     nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     obrigatorio = models.BooleanField(default=False)
-    opcoes = models.TextField(blank=True, help_text="Para campos do tipo 'Seleção', insira as opções separadas por vírgula")
+    opcoes = models.TextField(blank=True, null=True, help_text='Opções para campo do tipo seleção (uma por linha)')
     ordem = models.IntegerField(default=0)
     ativo = models.BooleanField(default=True)
+    editavel = models.BooleanField(default=True, help_text='Se marcado, este campo poderá ser editado após a criação do ticket')
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(default=timezone.now)
 
-    class Meta:
-        ordering = ['ordem', 'nome']
-        unique_together = ['empresa', 'nome']
+    def save(self, *args, **kwargs):
+        # Se for um novo objeto (não tem ID), defina criado_em
+        if not self.id:
+            self.criado_em = timezone.now()
+        # Sempre atualize atualizado_em ao salvar
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nome} ({self.get_tipo_display()}) - {self.empresa.nome}"
+
+    class Meta:
+        verbose_name = 'Campo Personalizado'
+        verbose_name_plural = 'Campos Personalizados'
+        unique_together = ['empresa', 'nome']
+        ordering = ['ordem', 'nome']
 
 class ValorCampoPersonalizado(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='valores_campos_personalizados')
     campo = models.ForeignKey(CampoPersonalizado, on_delete=models.CASCADE)
     valor = models.TextField()
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(default=timezone.now)
 
-    class Meta:
-        unique_together = ['ticket', 'campo']
+    def save(self, *args, **kwargs):
+        # Se for um novo objeto (não tem ID), defina criado_em
+        if not self.id:
+            self.criado_em = timezone.now()
+        # Sempre atualize atualizado_em ao salvar
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.campo.nome}: {self.valor}"
+        return f"{self.campo.nome}: {self.valor} ({self.ticket.titulo})"
+
+    class Meta:
+        verbose_name = 'Valor de Campo Personalizado'
+        verbose_name_plural = 'Valores de Campos Personalizados'
+        unique_together = ['ticket', 'campo']

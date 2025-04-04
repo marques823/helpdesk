@@ -42,16 +42,23 @@ class UserForm(UserCreationForm):
 class TicketForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ['titulo', 'descricao', 'status', 'prioridade', 'empresa', 'atribuido_a']
+        fields = ['empresa', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 4}),
-            'empresa': forms.Select(attrs={'class': 'form-control'}),
+            'empresa': forms.Select(attrs={'class': 'form-control', 'id': 'id_empresa'}),
             'atribuido_a': forms.Select(attrs={'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # Define a ordem dos campos
+        self.fields_order = ['empresa', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
+        
+        # Reorganiza os campos na ordem desejada
+        original_fields = self.fields
+        self.fields = {k: original_fields[k] for k in self.fields_order if k in original_fields}
         
         # Se o usuário não for admin, filtra as empresas e funcionários
         if self.user and not self.user.is_superuser:
@@ -74,11 +81,20 @@ class TicketForm(forms.ModelForm):
                 self.fields.pop('empresa', None)
                 self.fields.pop('atribuido_a', None)
         else:
-            # Para admin, mostra todas as empresas e funcionários
+            # Para admin, mostra todas as empresas
             self.fields['empresa'].queryset = Empresa.objects.all()
-            self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
-                tipo__in=['admin', 'suporte']
-            ).distinct()
+            
+            # Inicialmente, não mostra funcionários até que uma empresa seja selecionada
+            empresa_id = self.initial.get('empresa') or self.data.get('empresa')
+            if empresa_id:
+                # Se uma empresa for selecionada, mostra apenas funcionários daquela empresa
+                self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
+                    empresas__id=empresa_id,
+                    tipo__in=['admin', 'suporte']
+                ).distinct()
+            else:
+                # Se nenhuma empresa for selecionada, não mostra funcionários
+                self.fields['atribuido_a'].queryset = Funcionario.objects.none()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -121,9 +137,10 @@ class AtribuirTicketForm(forms.ModelForm):
 class CampoPersonalizadoForm(forms.ModelForm):
     class Meta:
         model = CampoPersonalizado
-        fields = ['nome', 'tipo', 'obrigatorio', 'opcoes', 'ordem', 'ativo']
+        fields = ['nome', 'tipo', 'obrigatorio', 'opcoes', 'ordem', 'ativo', 'editavel']
         widgets = {
-            'opcoes': forms.Textarea(attrs={'rows': 3}),
+            'opcoes': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Digite uma opção por linha'}),
+            'ordem': forms.NumberInput(attrs={'min': 0}),
         }
 
     def clean_opcoes(self):
@@ -144,7 +161,7 @@ class ValorCampoPersonalizadoForm(forms.Form):
         super().__init__(*args, **kwargs)
         
         if self.empresa:
-            campos = CampoPersonalizado.objects.filter(empresa=self.empresa, ativo=True).order_by('ordem', 'nome')
+            campos = CampoPersonalizado.objects.filter(empresa=self.empresa).order_by('nome')
             for campo in campos:
                 field_name = f'campo_{campo.id}'
                 if campo.tipo == 'texto':
@@ -166,14 +183,14 @@ class ValorCampoPersonalizadoForm(forms.Form):
                         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
                     )
                 elif campo.tipo == 'selecao':
-                    opcoes = [(op.strip(), op.strip()) for op in campo.opcoes.split(',')]
+                    opcoes = [(op.strip(), op.strip()) for op in campo.opcoes.splitlines()]
                     self.fields[field_name] = forms.ChoiceField(
                         label=campo.nome,
                         required=campo.obrigatorio,
-                        choices=opcoes,
+                        choices=[('', '---')] + opcoes,
                         widget=forms.Select(attrs={'class': 'form-control'})
                     )
-                elif campo.tipo == 'checkbox':
+                elif campo.tipo == 'booleano':
                     self.fields[field_name] = forms.BooleanField(
                         label=campo.nome,
                         required=campo.obrigatorio,
