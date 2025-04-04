@@ -8,12 +8,12 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-header">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <h2 class="card-title mb-0">Dashboard</h2>
-                        <div class="btn-group">
+                        <div>
                             {% if funcionario %}
                             <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Novo Ticket
+                                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Novo Ticket</span>
                             </a>
                             {% endif %}
                         </div>
@@ -23,7 +23,7 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <form method="get" class="row g-3">
-                                <div class="col-md-3">
+                                <div class="col-md-3 col-6">
                                     <label for="status" class="form-label">Status</label>
                                     <select name="status" id="status" class="form-select">
                                         <option value="">Todos</option>
@@ -34,7 +34,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-3 col-6">
                                     <label for="prioridade" class="form-label">Prioridade</label>
                                     <select name="prioridade" id="prioridade" class="form-select">
                                         <option value="">Todas</option>
@@ -45,7 +45,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-3 col-6">
                                     <label for="empresa" class="form-label">Empresa</label>
                                     <select name="empresa" id="empresa" class="form-select">
                                         <option value="">Todas</option>
@@ -56,24 +56,26 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-3 col-6">
                                     <label for="order_by" class="form-label">Ordenar por</label>
                                     <select name="order_by" id="order_by" class="form-select">
-                                        <option value="-criado_em" {% if order_by == '-criado_em' %}selected{% endif %}>Data de Criação (mais recente)</option>
-                                        <option value="criado_em" {% if order_by == 'criado_em' %}selected{% endif %}>Data de Criação (mais antiga)</option>
+                                        <option value="-criado_em" {% if order_by == '-criado_em' %}selected{% endif %}>Data (recente)</option>
+                                        <option value="criado_em" {% if order_by == 'criado_em' %}selected{% endif %}>Data (antiga)</option>
                                         <option value="prioridade" {% if order_by == 'prioridade' %}selected{% endif %}>Prioridade</option>
-                                        <option value="-prioridade" {% if order_by == '-prioridade' %}selected{% endif %}>Prioridade (invertida)</option>
+                                        <option value="-prioridade" {% if order_by == '-prioridade' %}selected{% endif %}>Prioridade (inv)</option>
                                         <option value="status" {% if order_by == 'status' %}selected{% endif %}>Status</option>
-                                        <option value="-status" {% if order_by == '-status' %}selected{% endif %}>Status (invertido)</option>
+                                        <option value="-status" {% if order_by == '-status' %}selected{% endif %}>Status (inv)</option>
                                     </select>
                                 </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-filter"></i> Filtrar
-                                    </button>
-                                    <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
-                                        <i class="fas fa-times"></i> Limpar Filtros
-                                    </a>
+                                <div class="col-12 mt-3">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-filter"></i> <span class="d-none d-sm-inline">Filtrar</span>
+                                        </button>
+                                        <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
+                                            <i class="fas fa-times"></i> <span class="d-none d-sm-inline">Limpar Filtros</span>
+                                        </a>
+                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -89,30 +91,28 @@
                                             <th>Título</th>
                                             <th>Status</th>
                                             <th>Prioridade</th>
-                                            <th>Empresa</th>
-                                            <th>Criado por</th>
-                                            <th>Atribuído a</th>
-                                            <th>Data de Criação</th>
-                                            <th>Ações</th>
+                                            <th class="d-none d-md-table-cell">Empresa</th>
+                                            <th class="d-none d-md-table-cell">Criado por</th>
+                                            <th class="d-none d-lg-table-cell">Atribuído a</th>
+                                            <th class="d-none d-lg-table-cell">Data de Criação</th>
+                                            <th class="text-center">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for ticket in tickets %}
-                                            <tr>
+                                            <tr class="ticket-row" data-href="{% url 'tickets:detalhe_ticket' ticket.id %}">
                                                 <td>{{ ticket.id }}</td>
                                                 <td>{{ ticket.titulo }}</td>
                                                 <td><span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></td>
                                                 <td><span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span></td>
-                                                <td>{{ ticket.empresa.nome }}</td>
-                                                <td>{{ ticket.criado_por.username }}</td>
-                                                <td>{% if ticket.atribuido_a %}{{ ticket.atribuido_a.usuario.username }}{% else %}-{% endif %}</td>
-                                                <td>{{ ticket.criado_em|date:"d/m/Y H:i" }}</td>
-                                                <td>
-                                                    <div class="btn-group">
-                                                        <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-info">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                    </div>
+                                                <td class="d-none d-md-table-cell">{{ ticket.empresa.nome }}</td>
+                                                <td class="d-none d-md-table-cell">{{ ticket.criado_por.username }}</td>
+                                                <td class="d-none d-lg-table-cell">{% if ticket.atribuido_a %}{{ ticket.atribuido_a.usuario.username }}{% else %}-{% endif %}</td>
+                                                <td class="d-none d-lg-table-cell">{{ ticket.criado_em|date:"d/m/Y H:i" }}</td>
+                                                <td class="text-center">
+                                                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-info">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                         {% empty %}
@@ -130,10 +130,10 @@
                     <div class="row mt-4">
                         <div class="col-md-12">
                             <nav aria-label="Page navigation">
-                                <ul class="pagination justify-content-center">
+                                <ul class="pagination pagination-sm flex-wrap justify-content-center">
                                     {% if tickets.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Previous">
+                                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Previous">
                                             <span aria-hidden="true">&laquo;</span>
                                         </a>
                                     </li>
@@ -143,13 +143,13 @@
                                         {% if tickets.number == i %}
                                         <li class="page-item active"><span class="page-link">{{ i }}</span></li>
                                         {% else %}
-                                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}">{{ i }}</a></li>
+                                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}">{{ i }}</a></li>
                                         {% endif %}
                                     {% endfor %}
                                     
                                     {% if tickets.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Next">
+                                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Next">
                                             <span aria-hidden="true">&raquo;</span>
                                         </a>
                                     </li>
@@ -164,4 +164,53 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Torna as linhas da tabela de tickets clicáveis
+    document.addEventListener('DOMContentLoaded', function() {
+        const ticketRows = document.querySelectorAll('tr.ticket-row');
+        ticketRows.forEach(row => {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', function(e) {
+                // Se o clique não foi em um botão ou link, navega para a URL
+                if (!e.target.closest('a') && !e.target.closest('button')) {
+                    const url = this.getAttribute('data-href');
+                    if (url) {
+                        window.location.href = url;
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Estilo para destacar as linhas clicáveis */
+    tr.ticket-row:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+        transition: background-color 0.2s;
+    }
+    
+    /* Ajustes para dispositivos móveis */
+    @media (max-width: 767.98px) {
+        .table th, .table td {
+            padding: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .badge {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.4rem;
+            font-size: 0.75rem;
+        }
+    }
+</style>
 {% endblock %} 
