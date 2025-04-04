@@ -1,0 +1,42 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Menu de Relatórios{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Relatórios</h1>
+    
+    <div class="row mt-4">
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Relatório de Tickets</h5>
+                    <p class="card-text">Gere relatórios detalhados sobre os tickets, filtrados por status, prioridade, empresa, etc.</p>
+                    <a href="{% url 'tickets:relatorio_tickets' %}" class="btn btn-primary">Acessar</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Relatório de Empresas</h5>
+                    <p class="card-text">Estatísticas e detalhes sobre as empresas e seus tickets.</p>
+                    <a href="{% url 'tickets:relatorio_empresas' %}" class="btn btn-primary">Acessar</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Relatório de Técnicos</h5>
+                    <p class="card-text">Análise de desempenho e estatísticas de atendimento por técnico.</p>
+                    <a href="{% url 'tickets:relatorio_tecnicos' %}" class="btn btn-primary">Acessar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

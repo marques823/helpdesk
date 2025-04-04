@@ -1,0 +1,63 @@
+- Implementação concluida
+
+1. Correções e Melhorias na Gestão de Empresas e Usuários
+Permitir a atribuição de várias empresas para um único usuário, assim como já existe a atribuição de vários funcionários para uma única empresa.
+Restrições de acesso:
+Usuários (incluindo administradores) que pertencem a uma empresa só podem visualizar e editar informações de suas respectivas empresas.
+Se um administrador criar uma empresa, ele pode gerenciá-la.
+Durante a criação de tickets ou qualquer funcionalidade, garantir que:
+Um funcionário da empresa X (com permissão de suporte, cliente ou admin) não possa criar tickets para a empresa Y.
+Um funcionário da empresa X não possa atribuir serviços para usuários da empresa Y, a menos que o administrador tenha concedido a ele acesso a ambas (X e Y).
+2. Ajustes na Criação de Tickets
+Preenchimento automático da empresa:
+Se o usuário estiver atribuído a apenas uma empresa, o campo da empresa deve ser preenchido automaticamente.
+Correção da exibição de campos:
+Os campos "Empresa" e "Atribuir" devem ser exibidos antes de salvar o ticket, não depois.
+Exibição correta das empresas:
+O campo "Empresa" deve listar apenas as empresas atribuídas ao usuário.
+Atribuição correta de funcionários:
+O campo "Atribuir" deve exibir apenas funcionários da empresa selecionada no campo anterior.
+3. Melhorias na Exibição e Organização dos Tickets
+Melhoria no Dashboard:
+O campo "Assunto" que atualmente exibe "Sem assunto" deve exibir o título do ticket.
+Exibição do nome do usuário logado:
+Exibir apenas o primeiro nome do usuário na interface.
+Permissões na visualização de tickets:
+Os tickets devem ser exibidos apenas para quem foi atribuído.
+Permitir a atribuição de um ticket para mais de um usuário dentro da mesma empresa.
+Organização da tela de tickets:
+opção de ordenar Tickets, incluir filtro para exibição (Em aberto / Em andamento / Resolvido. etc.).
+Implementar navegação rápida entre tickets na tela de exibição.
+Exibir comentários nos tickets, permitindo melhor acompanhamento das interações.
+4. Implementação de Campos Personalizados para Empresas
+Criar uma funcionalidade na página de administração (apenas para superusuários) para permitir a criação de campos personalizados por empresa.
+Esses campos personalizados devem ser utilizados durante a criação de novos tickets para empresas que possuam necessidades específicas.
+5. Melhorias na Gestão e Manutenção do Sistema
+Possibilidade de alterar o status de um ticket diretamente da tela de visualização, facilitando o trabalho de técnicos em campo.
+
+- funcionalidades á serem implementadas
+
+Implementar backup do banco de dados, garantindo a segurança das informações.
+Implementação de relatórios:
+Criar relatórios filtráveis.
+Incluir a possibilidade de imprimir ou salvar em PDF.
+Criar um painel separado para cada nova empresa:
+Esse recurso é essencial para futuras vendas do serviço para condomínios e empresas que precisam gerir chamados de manutenção.
+
+6. Ordem Recomendada de Implementação
+feito - Gerenciamento de múltiplas empresas para usuários
+feito - Restrições de acesso e visibilidade de empresas e tickets
+feito - Correções na criação de tickets (preenchimento automático, exibição de campos, atribuição correta de usuários e empresas)
+feito - Melhorias no dashboard e na exibição de tickets
+feito - Exibição do primeiro nome do usuário logado
+feito - Organização e filtros na tela de tickets
+feito - Exibição e gerenciamento de comentários em tickets
+feito - Criação de campos personalizados para empresas (admin only)
+feito - Implementação de alteração de status diretamente na visualização do ticket
+feito - melhorar visualização em celular.
+feito - Implementar um campo de pesquisa
+feito - criar mais um campo de notas onde o tecnico vai fazer anotações sobre o serviço executado ou sobre o equipamento
+feito - Implementação de backup do banco de dados
+feito - Criação de relatórios filtráveis e exportáveis
+
+Desenvolvimento do painel separado por empresa para futuras comercializações

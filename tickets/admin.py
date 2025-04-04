@@ -1,7 +1,26 @@
 from django.contrib import admin
-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado
+from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica
 from django.utils import timezone
+from django.urls import path
+from . import admin_views
 
+# Obtém uma referência para o site de administração existente
+admin_site = admin.site
+
+# Adiciona URLs personalizadas ao site de administração padrão
+original_get_urls = admin_site.get_urls
+
+def custom_get_urls():
+    urls = original_get_urls()
+    urls += [
+        path('backups/', admin_views.backup_manager, name='backup_manager'),
+        path('backups/download/<int:backup_id>/', admin_views.download_backup, name='backup_download'),
+    ]
+    return urls
+
+admin_site.get_urls = custom_get_urls
+
+# Registramos todos os nossos modelos normalmente
 @admin.register(Empresa)
 class EmpresaAdmin(admin.ModelAdmin):
     list_display = ('nome', 'cnpj', 'telefone', 'email')
@@ -76,3 +95,11 @@ class ValorCampoPersonalizadoAdmin(admin.ModelAdmin):
             obj.criado_em = timezone.now()
         obj.atualizado_em = timezone.now()
         super().save_model(request, obj, form, change)
+
+# Registramos NotaTecnica apenas para uso interno, não aparece na interface
+class NotaTecnicaAdmin(admin.ModelAdmin):
+    def get_model_perms(self, request):
+        # Não exibe no menu de administração
+        return {}
+
+admin.site.register(NotaTecnica, NotaTecnicaAdmin)

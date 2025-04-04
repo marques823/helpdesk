@@ -1,0 +1,78 @@
+[1mdiff --git a/helpdesk_app/settings.py b/helpdesk_app/settings.py[m
+[1mindex 403e5dd..e232897 100644[m
+[1m--- a/helpdesk_app/settings.py[m
+[1m+++ b/helpdesk_app/settings.py[m
+[36m@@ -172,10 +172,12 @@[m [mSESSION_EXPIRE_AT_BROWSER_CLOSE = True[m
+ CSRF_TRUSTED_ORIGINS = [[m
+     'https://helpdesk.tecnicolitoral.com',[m
+     'https://helpdesk.tecnicolitoral.com:8002',[m
+[31m-    'http://helpdesk.tecnicolitoral.com:8002'[m
+[32m+[m[32m    'http://helpdesk.tecnicolitoral.com:8002',[m
+[32m+[m[32m    'http://10.10.10.2:8000',[m
+[32m+[m[32m    'http://localhost:8000'[m
+ ][m
+[31m-CSRF_COOKIE_SECURE = True[m
+[31m-SESSION_COOKIE_SECURE = True[m
+[32m+[m[32mCSRF_COOKIE_SECURE = False[m
+[32m+[m[32mSESSION_COOKIE_SECURE = False[m
+ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')[m
+ [m
+ # Logging[m
+[1mdiff --git a/tickets/admin.py b/tickets/admin.py[m
+[1mdeleted file mode 100644[m
+[1mindex 6d040a0..0000000[m
+[1m--- a/tickets/admin.py[m
+[1m+++ /dev/null[m
+[36m@@ -1,52 +0,0 @@[m
+[31m-from django.contrib import admin[m
+[31m-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado[m
+[31m-[m
+[31m-@admin.register(Empresa)[m
+[31m-class EmpresaAdmin(admin.ModelAdmin):[m
+[31m-    list_display = ('nome', 'cnpj', 'telefone', 'email')[m
+[31m-    search_fields = ('nome', 'cnpj', 'email')[m
+[31m-    ordering = ('nome',)[m
+[31m-[m
+[31m-@admin.register(Funcionario)[m
+[31m-class FuncionarioAdmin(admin.ModelAdmin):[m
+[31m-    list_display = ('usuario', 'get_empresas', 'tipo', 'telefone', 'cargo')[m
+[31m-    list_filter = ('tipo', 'empresas')[m
+[31m-    search_fields = ('usuario__username', 'usuario__first_name', 'usuario__last_name', 'telefone')[m
+[31m-    filter_horizontal = ('empresas',)[m
+[31m-    [m
+[31m-    def get_empresas(self, obj):[m
+[31m-        return ", ".join([empresa.nome for empresa in obj.empresas.all()])[m
+[31m-    get_empresas.short_description = 'Empresas'[m
+[31m-[m
+[31m-@admin.register(Ticket)[m
+[31m-class TicketAdmin(admin.ModelAdmin):[m
+[31m-    list_display = ('id', 'titulo', 'empresa', 'status', 'prioridade', 'criado_por', 'atribuido_a', 'criado_em')[m
+[31m-    list_filter = ('status', 'prioridade', 'empresa', 'criado_em')[m
+[31m-    search_fields = ('titulo', 'descricao', 'criado_por__username', 'atribuido_a__usuario__username')[m
+[31m-    date_hierarchy = 'criado_em'[m
+[31m-[m
+[31m-@admin.register(Comentario)[m
+[31m-class ComentarioAdmin(admin.ModelAdmin):[m
+[31m-    list_display = ('ticket', 'autor', 'criado_em')[m
+[31m-    search_fields = ('ticket__titulo', 'autor__username', 'texto')[m
+[31m-    date_hierarchy = 'criado_em'[m
+[31m-[m
+[31m-@admin.register(HistoricoTicket)[m
+[31m-class HistoricoTicketAdmin(admin.ModelAdmin):[m
+[31m-    list_display = ('ticket', 'tipo_alteracao', 'usuario', 'data_alteracao')[m
+[31m-    list_filter = ('tipo_alteracao', 'data_alteracao')[m
+[31m-    search_fields = ('ticket__titulo', 'usuario__username', 'descricao')[m
+[31m-    date_hierarchy = 'data_alteracao'[m
+[31m-[m
+[31m-@admin.register(CampoPersonalizado)[m
+[31m-class CampoPersonalizadoAdmin(admin.ModelAdmin):[m
+[31m-    list_display = ('nome', 'empresa', 'tipo', 'obrigatorio', 'ordem', 'ativo')[m
+[31m-    list_filter = ('empresa', 'tipo', 'obrigatorio', 'ativo')[m
+[31m-    search_fields = ('nome', 'empresa__nome')[m
+[31m-    list_editable = ('ordem', 'ativo')[m
+[31m-[m
+[31m-@admin.register(ValorCampoPersonalizado)[m
+[31m-class ValorCampoPersonalizadoAdmin(admin.ModelAdmin):[m
+[31m-    list_display = ('ticket', 'campo', 'valor')[m
+[31m-    list_filter = ('campo__empresa', 'campo__nome')[m
+[31m-    search_fields = ('ticket__titulo', 'campo__nome', 'valor')[m

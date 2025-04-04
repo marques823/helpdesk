@@ -263,3 +263,26 @@ class ValorCampoPersonalizado(models.Model):
         verbose_name = 'Valor de Campo Personalizado'
         verbose_name_plural = 'Valores de Campos Personalizados'
         unique_together = ['ticket', 'campo']
+
+class NotaTecnica(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='notas_tecnicas')
+    tecnico = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notas_tecnicas')
+    texto = models.TextField(verbose_name='Anotações Técnicas')
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(default=timezone.now)
+
+    def save(self, *args, **kwargs):
+        # Se for um novo objeto (não tem ID), defina criado_em
+        if not self.id:
+            self.criado_em = timezone.now()
+        # Sempre atualize atualizado_em ao salvar
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Nota técnica de {self.tecnico.username} para o ticket #{self.ticket.id}"
+
+    class Meta:
+        verbose_name = 'Nota Técnica'
+        verbose_name_plural = 'Notas Técnicas'
+        ordering = ['-criado_em']

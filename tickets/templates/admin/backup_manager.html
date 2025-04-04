@@ -1,0 +1,268 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Gerenciador de Backups | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style type="text/css">
+    .backup-container {
+        margin-top: 20px;
+    }
+    .backup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .backup-info {
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        padding: 15px;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+    }
+    .backup-list {
+        margin-top: 20px;
+    }
+    .backup-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    .backup-table th, .backup-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .backup-table th {
+        background-color: #f2f2f2;
+    }
+    .backup-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .backup-actions {
+        white-space: nowrap;
+    }
+    .backup-actions form {
+        display: inline-block;
+    }
+    .disk-usage {
+        margin-top: 30px;
+    }
+    .progress {
+        width: 100%;
+        height: 20px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+    .progress-bar {
+        height: 100%;
+        color: white;
+        text-align: center;
+        background-color: #007bff;
+    }
+    .progress-bar-warning {
+        background-color: #ffc107;
+    }
+    .progress-bar-danger {
+        background-color: #dc3545;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 500px;
+        border-radius: 4px;
+    }
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .close:hover, .close:focus {
+        color: black;
+        text-decoration: none;
+    }
+    .modal-footer {
+        margin-top: 15px;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; Gerenciador de Backups
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Gerenciador de Backups do Banco de Dados</h1>
+    
+    <div class="backup-container">
+        <div class="backup-header">
+            <div>
+                <h2>Backups Disponíveis</h2>
+            </div>
+            <div>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_backup">
+                    <button type="submit" class="button">Criar Novo Backup</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="backup-info">
+            <h3>Informações do Banco de Dados</h3>
+            <p><strong>Engine:</strong> {{ db_engine }}</p>
+            <p><strong>Nome do Banco:</strong> {{ db_name }}</p>
+        </div>
+        
+        <div class="disk-usage">
+            <h3>Uso de Disco</h3>
+            <p>
+                <strong>Espaço Total:</strong> {{ disk_usage.total }} |
+                <strong>Usado:</strong> {{ disk_usage.used }} |
+                <strong>Disponível:</strong> {{ disk_usage.available }}
+            </p>
+            
+            {% if disk_usage.percent_used != 'N/A' %}
+                {% with percent=disk_usage.percent_used|cut:"%" %}
+                <div class="progress">
+                    <div class="progress-bar {% if percent|floatformat:"0" > 90 %}progress-bar-danger{% elif percent|floatformat:"0" > 70 %}progress-bar-warning{% endif %}" 
+                         style="width: {{ disk_usage.percent_used }}">
+                        {{ disk_usage.percent_used }}
+                    </div>
+                </div>
+                {% endwith %}
+            {% endif %}
+        </div>
+        
+        <div class="backup-list">
+            {% if backups %}
+                <table class="backup-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome do Arquivo</th>
+                            <th>Tamanho</th>
+                            <th>Data de Criação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for backup in backups %}
+                        <tr>
+                            <td>{{ backup.id }}</td>
+                            <td>{{ backup.filename }}</td>
+                            <td>{{ backup.size_mb }} MB</td>
+                            <td>{{ backup.modified_time_str }}</td>
+                            <td class="backup-actions">
+                                <a href="{% url 'tickets:admin_backup_download' backup.id %}" class="button" target="_blank">Download</a>
+                                
+                                <button type="button" class="button" onclick="openRestoreModal({{ backup.id }}, '{{ backup.filename }}')">Restaurar</button>
+                                
+                                <button type="button" class="button" onclick="openDeleteModal({{ backup.id }}, '{{ backup.filename }}')">Excluir</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="help">Nenhum backup disponível. Clique em "Criar Novo Backup" para criar um backup do banco de dados.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Modal de Restauração -->
+    <div id="restoreModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('restoreModal')">&times;</span>
+            <h3>Confirmar Restauração</h3>
+            <p>Tem certeza que deseja restaurar o banco de dados a partir do backup <strong id="restoreBackupName"></strong>?</p>
+            <p class="help">ATENÇÃO: Esta ação irá substituir todos os dados atuais do banco de dados!</p>
+            
+            <form method="post" id="restoreForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="restore_backup">
+                <input type="hidden" name="backup_id" id="restoreBackupId" value="">
+                
+                <div class="modal-footer">
+                    <button type="button" class="button" onclick="closeModal('restoreModal')">Cancelar</button>
+                    <button type="submit" class="button">Confirmar Restauração</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal de Exclusão -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('deleteModal')">&times;</span>
+            <h3>Confirmar Exclusão</h3>
+            <p>Tem certeza que deseja excluir o backup <strong id="deleteBackupName"></strong>?</p>
+            <p class="help">Esta ação não pode ser desfeita!</p>
+            
+            <form method="post" id="deleteForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_backup">
+                <input type="hidden" name="backup_id" id="deleteBackupId" value="">
+                
+                <div class="modal-footer">
+                    <button type="button" class="button" onclick="closeModal('deleteModal')">Cancelar</button>
+                    <button type="submit" class="button">Confirmar Exclusão</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+    // Funções para controlar os modais
+    function openRestoreModal(backupId, backupName) {
+        document.getElementById('restoreBackupId').value = backupId;
+        document.getElementById('restoreBackupName').textContent = backupName;
+        document.getElementById('restoreModal').style.display = 'block';
+    }
+    
+    function openDeleteModal(backupId, backupName) {
+        document.getElementById('deleteBackupId').value = backupId;
+        document.getElementById('deleteBackupName').textContent = backupName;
+        document.getElementById('deleteModal').style.display = 'block';
+    }
+    
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+    
+    // Fecha o modal ao clicar fora dele
+    window.onclick = function(event) {
+        if (event.target.className === 'modal') {
+            event.target.style.display = 'none';
+        }
+    };
+</script>
+{% endblock %} 

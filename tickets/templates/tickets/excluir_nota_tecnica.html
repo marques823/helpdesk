@@ -1,0 +1,72 @@
+{% extends 'tickets/base.html' %}
+{% load static %}
+
+{% block title %}Excluir Nota Técnica #{{ nota.id }} - Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Ticket #{{ ticket.id }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}">Notas Técnicas</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Excluir Nota #{{ nota.id }}</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Confirmação de Exclusão</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h4 class="alert-heading">Atenção!</h4>
+                        <p>Você está prestes a excluir permanentemente a nota técnica #{{ nota.id }} do ticket #{{ ticket.id }}.</p>
+                        <p>Esta ação não pode ser desfeita.</p>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">Detalhes da Nota Técnica</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Criada por:</strong> {{ nota.tecnico.usuario.get_full_name|default:nota.tecnico.usuario.username }}</p>
+                            <p><strong>Criada em:</strong> {{ nota.criado_em|date:"d/m/Y H:i" }}</p>
+                            
+                            {% if nota.equipamento %}
+                                <p><strong>Equipamento:</strong> {{ nota.equipamento }}</p>
+                            {% endif %}
+                            
+                            <p><strong>Descrição:</strong></p>
+                            <div class="p-3 bg-light rounded">
+                                {{ nota.descricao|linebreaks }}
+                            </div>
+                            
+                            {% if nota.solucao_aplicada %}
+                                <p><strong>Solução Aplicada:</strong></p>
+                                <div class="p-3 bg-light rounded">
+                                    {{ nota.solucao_aplicada|linebreaks }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="text-right">
+                            <a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

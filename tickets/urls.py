@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, admin_views
 
 app_name = 'tickets'
 
@@ -20,4 +20,14 @@ urlpatterns = [
     path('empresas/<int:empresa_id>/campos/', views.gerenciar_campos_personalizados, name='gerenciar_campos_personalizados'),
     path('campos/<int:campo_id>/editar/', views.editar_campo_personalizado, name='editar_campo_personalizado'),
     path('campos/<int:campo_id>/excluir/', views.excluir_campo_personalizado, name='excluir_campo_personalizado'),
+    
+    path('admin/backups/', admin_views.backup_manager, name='admin_backup_manager'),
+    path('admin/backups/download/<int:backup_id>/', admin_views.download_backup, name='admin_backup_download'),
+    
+    # URLs para relatórios
+    path('relatorios/', views.relatorios_menu, name='relatorios_menu'),
+    path('relatorios/tickets/', views.relatorio_tickets, name='relatorio_tickets'),
+    path('relatorios/empresas/', views.relatorio_empresas, name='relatorio_empresas'),
+    path('relatorios/tecnicos/', views.relatorio_tecnicos, name='relatorio_tecnicos'),
+    path('relatorios/export/<str:tipo>/', views.exportar_relatorio, name='exportar_relatorio'),
 ] 
