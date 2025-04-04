@@ -172,10 +172,13 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_TRUSTED_ORIGINS = [
     'https://helpdesk.tecnicolitoral.com',
     'https://helpdesk.tecnicolitoral.com:8002',
-    'http://helpdesk.tecnicolitoral.com:8002'
+    'http://helpdesk.tecnicolitoral.com:8002',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://10.10.10.2:8000'
 ]
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Logging

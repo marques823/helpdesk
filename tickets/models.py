@@ -222,7 +222,15 @@ class CampoPersonalizado(models.Model):
     ativo = models.BooleanField(default=True)
     editavel = models.BooleanField(default=True, help_text='Se marcado, este campo poderá ser editado após a criação do ticket')
     criado_em = models.DateTimeField(default=timezone.now)
-    atualizado_em = models.DateTimeField(auto_now=True)
+    atualizado_em = models.DateTimeField(default=timezone.now)
+
+    def save(self, *args, **kwargs):
+        # Se for um novo objeto (não tem ID), defina criado_em
+        if not self.id:
+            self.criado_em = timezone.now()
+        # Sempre atualize atualizado_em ao salvar
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nome} ({self.get_tipo_display()}) - {self.empresa.nome}"
@@ -238,7 +246,15 @@ class ValorCampoPersonalizado(models.Model):
     campo = models.ForeignKey(CampoPersonalizado, on_delete=models.CASCADE)
     valor = models.TextField()
     criado_em = models.DateTimeField(default=timezone.now)
-    atualizado_em = models.DateTimeField(auto_now=True)
+    atualizado_em = models.DateTimeField(default=timezone.now)
+
+    def save(self, *args, **kwargs):
+        # Se for um novo objeto (não tem ID), defina criado_em
+        if not self.id:
+            self.criado_em = timezone.now()
+        # Sempre atualize atualizado_em ao salvar
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.campo.nome}: {self.valor} ({self.ticket.titulo})"
