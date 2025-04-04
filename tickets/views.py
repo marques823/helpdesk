@@ -63,6 +63,25 @@ def dashboard(request):
             # Prepara opções de filtro
             empresas = Empresa.objects.filter(id__in=empresas_ids)
         
+        # Aplica busca por termo
+        termo_pesquisa = request.GET.get('q', '')
+        if termo_pesquisa:
+            # Pesquisa nos valores de campos personalizados
+            valores_ids = ValorCampoPersonalizado.objects.filter(
+                valor__icontains=termo_pesquisa
+            ).values_list('ticket_id', flat=True)
+            
+            tickets = tickets.filter(
+                models.Q(titulo__icontains=termo_pesquisa) |
+                models.Q(descricao__icontains=termo_pesquisa) |
+                models.Q(empresa__nome__icontains=termo_pesquisa) |
+                models.Q(criado_por__username__icontains=termo_pesquisa) |
+                models.Q(criado_por__first_name__icontains=termo_pesquisa) |
+                models.Q(criado_por__last_name__icontains=termo_pesquisa) |
+                models.Q(id__icontains=termo_pesquisa) |
+                models.Q(id__in=valores_ids)  # Inclui tickets com campos personalizados que correspondem à pesquisa
+            )
+        
         # Aplica filtros
         status_filter = request.GET.get('status')
         if status_filter:
@@ -108,6 +127,7 @@ def dashboard(request):
             'status_choices': Ticket.STATUS_CHOICES,
             'prioridade_choices': Ticket.PRIORIDADE_CHOICES,
             'funcionario': funcionarios.first() if funcionarios.exists() else None,
+            'termo_pesquisa': termo_pesquisa,
         }
         
         return render(request, 'tickets/dashboard.html', context)

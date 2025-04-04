@@ -23,6 +23,50 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <form method="get" class="row g-3">
+                                <div class="col-md-12 mb-3">
+                                    <div class="input-group">
+                                        <input type="text" name="q" class="form-control" placeholder="Pesquisar tickets por título, descrição, empresa, criador ou ID..." value="{{ termo_pesquisa }}">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-search"></i> Pesquisar
+                                        </button>
+                                        {% if termo_pesquisa %}
+                                            <a href="{% url 'tickets:dashboard' %}{% if status_filter %}?status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" class="btn btn-outline-secondary">
+                                                <i class="fas fa-times"></i> Limpar pesquisa
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end mt-2">
+                                        <button class="btn btn-link btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdvancedSearch" aria-expanded="false" aria-controls="collapseAdvancedSearch">
+                                            <i class="fas fa-cog"></i> Opções avançadas de pesquisa
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="collapse mt-3" id="collapseAdvancedSearch">
+                                        <div class="card card-body bg-light">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">Dicas de pesquisa:</h6>
+                                                    <ul class="small">
+                                                        <li>A pesquisa funciona em títulos, descrições, empresas, criadores, IDs e campos personalizados</li>
+                                                        <li>Para pesquisar por um número de ticket específico, digite apenas o número</li>
+                                                        <li>Para encontrar tickets com uma palavra específica, inclua essa palavra na pesquisa</li>
+                                                        <li>Você pode combinar a pesquisa com os filtros abaixo para refinar os resultados</li>
+                                                    </ul>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-3">Exemplos:</h6>
+                                                    <ul class="small">
+                                                        <li><code>impressora</code> - Encontra tickets sobre impressoras</li>
+                                                        <li><code>wifi rede</code> - Encontra tickets com ambos os termos</li>
+                                                        <li><code>urgente senha</code> - Encontra tickets urgentes sobre senhas</li>
+                                                        <li><code>João</code> - Encontra tickets criados por João ou mencionando-o</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div class="col-md-3">
                                     <label for="status" class="form-label">Status</label>
                                     <select name="status" id="status" class="form-select">
@@ -72,7 +116,7 @@
                                         <i class="fas fa-filter"></i> Filtrar
                                     </button>
                                     <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
-                                        <i class="fas fa-times"></i> Limpar Filtros
+                                        <i class="fas fa-times"></i> Limpar Todos os Filtros e Pesquisa
                                     </a>
                                 </div>
                             </form>
@@ -81,6 +125,15 @@
 
                     <div class="row">
                         <div class="col-md-12">
+                            {% if termo_pesquisa %}
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-search"></i> Resultados da pesquisa por: <strong>"{{ termo_pesquisa }}"</strong> 
+                                    <span class="badge bg-primary">{{ tickets.paginator.count }} resultado(s)</span>
+                                    <a href="{% url 'tickets:dashboard' %}{% if status_filter %}?status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" class="btn btn-sm btn-outline-secondary float-end">
+                                        <i class="fas fa-times"></i> Limpar pesquisa
+                                    </a>
+                                </div>
+                            {% endif %}
                             <div class="table-responsive">
                                 <table class="table table-striped">
                                     <thead>
@@ -133,7 +186,7 @@
                                 <ul class="pagination justify-content-center">
                                     {% if tickets.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Previous">
+                                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Previous">
                                             <span aria-hidden="true">&laquo;</span>
                                         </a>
                                     </li>
@@ -143,13 +196,13 @@
                                         {% if tickets.number == i %}
                                         <li class="page-item active"><span class="page-link">{{ i }}</span></li>
                                         {% else %}
-                                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}">{{ i }}</a></li>
+                                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}">{{ i }}</a></li>
                                         {% endif %}
                                     {% endfor %}
                                     
                                     {% if tickets.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Next">
+                                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Next">
                                             <span aria-hidden="true">&raquo;</span>
                                         </a>
                                     </li>
