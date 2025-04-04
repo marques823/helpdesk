@@ -27,6 +27,11 @@
                                 <i class="bi bi-plus-circle"></i> Novo Ticket
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'relatorios' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'tickets:relatorios_menu' %}">
+                                <i class="bi bi-file-earmark-bar-graph"></i> Relatórios
+                            </a>
+                        </li>
                         {% if user.is_superuser %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">

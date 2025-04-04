@@ -1,0 +1,16 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block sidebar %}
+{{ block.super }}
+<div class="module" id="backup-manager-module">
+    <h2>{% trans "Ferramentas de Administração" %}</h2>
+    <ul>
+        <li>
+            <a href="{% url 'tickets:admin_backup_manager' %}">
+                {% trans "Gerenciador de Backups" %}
+            </a>
+        </li>
+    </ul>
+</div>
+{% endblock %} 

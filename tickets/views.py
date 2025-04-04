@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.http import Http404
+from django.http import Http404, HttpResponse, JsonResponse
 from django.contrib.auth import logout
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
@@ -14,6 +14,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 import json
 from django.db.models import Q
+from datetime import datetime
+from django.db.models.functions import F, ExpressionWrapper, DurationField, Avg
+from django.urls import reverse
+from django.template.loader import render_to_string
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -856,3 +860,368 @@ def excluir_campo_personalizado(request, campo_id):
         logger.error(f"Erro ao excluir campo personalizado: {str(e)}")
         messages.error(request, 'Erro ao excluir campo personalizado.')
         return redirect('tickets:lista_empresas')
+
+# Views para Relatórios
+
+@login_required
+def relatorios_menu(request):
+    """
+    Menu principal de relatórios
+    """
+    return render(request, 'tickets/relatorios_menu.html')
+
+@login_required
+def relatorio_tickets(request):
+    """
+    Relatório detalhado de tickets com filtros
+    """
+    # Obtém o funcionário logado
+    funcionario = get_object_or_404(Funcionario, usuario=request.user)
+    
+    # Lista de empresas que o funcionário tem acesso
+    empresas = funcionario.empresas.all()
+    
+    # Lista de técnicos (funcionários de suporte) 
+    tecnicos = Funcionario.objects.filter(
+        tipo__in=['admin', 'suporte'],
+        empresas__in=empresas
+    ).distinct()
+    
+    # Aplicar filtros
+    filtro_empresa = request.GET.get('empresa')
+    filtro_status = request.GET.get('status')
+    filtro_prioridade = request.GET.get('prioridade')
+    filtro_tecnico = request.GET.get('tecnico')
+    filtro_data_inicial = request.GET.get('data_inicial')
+    filtro_data_final = request.GET.get('data_final')
+    filtro_search = request.GET.get('search')
+    
+    # Base query
+    tickets_query = Ticket.objects.filter(empresa__in=empresas)
+    
+    # Aplicar filtros se fornecidos
+    if filtro_empresa:
+        if funcionario.tem_acesso_empresa(get_object_or_404(Empresa, id=filtro_empresa)):
+            tickets_query = tickets_query.filter(empresa_id=filtro_empresa)
+    
+    if filtro_status:
+        tickets_query = tickets_query.filter(status=filtro_status)
+    
+    if filtro_prioridade:
+        tickets_query = tickets_query.filter(prioridade=filtro_prioridade)
+    
+    if filtro_tecnico:
+        tickets_query = tickets_query.filter(atribuido_a_id=filtro_tecnico)
+    
+    if filtro_data_inicial:
+        data_inicial = datetime.strptime(filtro_data_inicial, '%Y-%m-%d').date()
+        tickets_query = tickets_query.filter(criado_em__date__gte=data_inicial)
+    
+    if filtro_data_final:
+        data_final = datetime.strptime(filtro_data_final, '%Y-%m-%d').date()
+        tickets_query = tickets_query.filter(criado_em__date__lte=data_final)
+    
+    if filtro_search:
+        tickets_query = tickets_query.filter(
+            Q(titulo__icontains=filtro_search) | 
+            Q(descricao__icontains=filtro_search)
+        )
+    
+    # Ordenação
+    tickets_query = tickets_query.order_by('-criado_em')
+    
+    # Paginação
+    paginator = Paginator(tickets_query, 25)  # 25 tickets por página
+    page = request.GET.get('page')
+    
+    try:
+        tickets = paginator.page(page)
+    except PageNotAnInteger:
+        tickets = paginator.page(1)
+    except EmptyPage:
+        tickets = paginator.page(paginator.num_pages)
+    
+    # Cálculo das estatísticas
+    total_tickets = tickets_query.count()
+    abertos = tickets_query.filter(status='aberto').count()
+    em_andamento = tickets_query.filter(status='em_andamento').count()
+    pendentes = tickets_query.filter(status='pendente').count()
+    resolvidos = tickets_query.filter(status='resolvido').count()
+    fechados = tickets_query.filter(status='fechado').count()
+    
+    # Estatísticas por prioridade
+    baixa_prioridade = tickets_query.filter(prioridade='baixa').count()
+    media_prioridade = tickets_query.filter(prioridade='media').count()
+    alta_prioridade = tickets_query.filter(prioridade='alta').count()
+    urgente_prioridade = tickets_query.filter(prioridade='urgente').count()
+    
+    # Cálculo de porcentagens
+    porcentagem_abertos = round((abertos / total_tickets * 100) if total_tickets > 0 else 0, 1)
+    porcentagem_em_andamento = round((em_andamento / total_tickets * 100) if total_tickets > 0 else 0, 1)
+    porcentagem_resolvidos = round((resolvidos / total_tickets * 100) if total_tickets > 0 else 0, 1)
+    
+    # Tempo médio de resolução (em dias)
+    tempo_medio = tickets_query.filter(
+        status__in=['resolvido', 'fechado'],
+        historico__tipo_alteracao='status',
+        historico__dados_novos__contains={'status': 'resolvido'}
+    ).annotate(
+        tempo_resolucao=ExpressionWrapper(
+            F('historico__data_alteracao') - F('criado_em'),
+            output_field=DurationField()
+        )
+    ).aggregate(media=Avg('tempo_resolucao'))
+    
+    tempo_medio_resolucao = '0'
+    if tempo_medio['media']:
+        tempo_medio_resolucao = round(tempo_medio['media'].total_seconds() / (3600 * 24), 1)  # Conversão para dias
+    
+    context = {
+        'tickets': tickets,
+        'empresas': empresas,
+        'tecnicos': tecnicos,
+        'status_choices': Ticket.STATUS_CHOICES,
+        'prioridade_choices': Ticket.PRIORIDADE_CHOICES,
+        'total_tickets': total_tickets,
+        'abertos': abertos,
+        'em_andamento': em_andamento,
+        'pendentes': pendentes,
+        'resolvidos': resolvidos,
+        'fechados': fechados,
+        'baixa_prioridade': baixa_prioridade,
+        'media_prioridade': media_prioridade,
+        'alta_prioridade': alta_prioridade,
+        'urgente_prioridade': urgente_prioridade,
+        'porcentagem_abertos': porcentagem_abertos,
+        'porcentagem_em_andamento': porcentagem_em_andamento,
+        'porcentagem_resolvidos': porcentagem_resolvidos,
+        'tempo_medio_resolucao': tempo_medio_resolucao,
+    }
+    
+    return render(request, 'tickets/relatorio_tickets.html', context)
+
+@login_required
+def relatorio_empresas(request):
+    """
+    Relatório por empresa
+    """
+    # Implementar relatório por empresa
+    return render(request, 'tickets/relatorio_empresas.html')
+
+@login_required
+def relatorio_tecnicos(request):
+    """
+    Relatório de desempenho dos técnicos
+    """
+    # Implementar relatório de técnicos
+    return render(request, 'tickets/relatorio_tecnicos.html')
+
+@login_required
+def exportar_relatorio(request, tipo):
+    """
+    Exporta um relatório para PDF, Excel ou CSV
+    """
+    from io import BytesIO
+    from django.http import HttpResponse
+    import csv
+    import xlsxwriter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+    from reportlab.lib.styles import getSampleStyleSheet
+    
+    formato = request.GET.get('format', 'csv')
+    
+    # Selecionar o tipo de relatório a ser exportado
+    if tipo == 'tickets':
+        # Obter filtros
+        filtro_empresa = request.GET.get('empresa')
+        filtro_status = request.GET.get('status')
+        filtro_prioridade = request.GET.get('prioridade')
+        filtro_tecnico = request.GET.get('tecnico')
+        filtro_data_inicial = request.GET.get('data_inicial')
+        filtro_data_final = request.GET.get('data_final')
+        filtro_search = request.GET.get('search')
+        
+        # Obter funcionário logado
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        
+        # Lista de empresas que o funcionário tem acesso
+        empresas = funcionario.empresas.all()
+        
+        # Base query
+        tickets_query = Ticket.objects.filter(empresa__in=empresas)
+        
+        # Aplicar filtros se fornecidos
+        if filtro_empresa:
+            if funcionario.tem_acesso_empresa(get_object_or_404(Empresa, id=filtro_empresa)):
+                tickets_query = tickets_query.filter(empresa_id=filtro_empresa)
+        
+        if filtro_status:
+            tickets_query = tickets_query.filter(status=filtro_status)
+        
+        if filtro_prioridade:
+            tickets_query = tickets_query.filter(prioridade=filtro_prioridade)
+        
+        if filtro_tecnico:
+            tickets_query = tickets_query.filter(atribuido_a_id=filtro_tecnico)
+        
+        if filtro_data_inicial:
+            data_inicial = datetime.strptime(filtro_data_inicial, '%Y-%m-%d').date()
+            tickets_query = tickets_query.filter(criado_em__date__gte=data_inicial)
+        
+        if filtro_data_final:
+            data_final = datetime.strptime(filtro_data_final, '%Y-%m-%d').date()
+            tickets_query = tickets_query.filter(criado_em__date__lte=data_final)
+        
+        if filtro_search:
+            tickets_query = tickets_query.filter(
+                Q(titulo__icontains=filtro_search) | 
+                Q(descricao__icontains=filtro_search)
+            )
+        
+        # Ordenação
+        tickets_query = tickets_query.order_by('-criado_em')
+        
+        # Preparar dados para o relatório
+        dados = []
+        cabecalho = ['ID', 'Título', 'Empresa', 'Status', 'Prioridade', 'Atribuído Para', 'Criado Em', 'Atualizado Em']
+        dados.append(cabecalho)
+        
+        # Função para obter o nome formatado de status e prioridade
+        def get_status_nome(status):
+            return dict(Ticket.STATUS_CHOICES).get(status, status)
+        
+        def get_prioridade_nome(prioridade):
+            return dict(Ticket.PRIORIDADE_CHOICES).get(prioridade, prioridade)
+        
+        # Adicionar dados de tickets
+        for ticket in tickets_query:
+            atribuido_para = ''
+            if ticket.atribuido_a:
+                atribuido_para = f"{ticket.atribuido_a.usuario.first_name} {ticket.atribuido_a.usuario.last_name}"
+            
+            linha = [
+                ticket.id,
+                ticket.titulo,
+                ticket.empresa.nome,
+                get_status_nome(ticket.status),
+                get_prioridade_nome(ticket.prioridade),
+                atribuido_para,
+                ticket.criado_em.strftime('%d/%m/%Y %H:%M'),
+                ticket.atualizado_em.strftime('%d/%m/%Y %H:%M')
+            ]
+            dados.append(linha)
+        
+        # Exportar baseado no formato solicitado
+        if formato == 'csv':
+            # Exportar para CSV
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="relatorio_tickets.csv"'
+            
+            writer = csv.writer(response)
+            for linha in dados:
+                writer.writerow(linha)
+            
+            return response
+        
+        elif formato == 'excel':
+            # Exportar para Excel
+            output = BytesIO()
+            workbook = xlsxwriter.Workbook(output)
+            worksheet = workbook.add_worksheet()
+            
+            # Formatar cabeçalho
+            header_format = workbook.add_format({
+                'bold': True,
+                'bg_color': '#343a40',
+                'color': 'white',
+                'align': 'center',
+                'valign': 'vcenter',
+                'border': 1
+            })
+            
+            # Formatar células de dados
+            cell_format = workbook.add_format({
+                'border': 1
+            })
+            
+            # Escrever dados
+            for i, linha in enumerate(dados):
+                for j, valor in enumerate(linha):
+                    if i == 0:  # Cabeçalho
+                        worksheet.write(i, j, valor, header_format)
+                    else:  # Dados
+                        worksheet.write(i, j, valor, cell_format)
+            
+            # Ajustar largura das colunas
+            worksheet.set_column(0, 0, 5)   # ID
+            worksheet.set_column(1, 1, 40)  # Título
+            worksheet.set_column(2, 2, 20)  # Empresa
+            worksheet.set_column(3, 4, 15)  # Status, Prioridade
+            worksheet.set_column(5, 5, 25)  # Atribuído Para
+            worksheet.set_column(6, 7, 20)  # Datas
+            
+            workbook.close()
+            
+            # Preparar a resposta
+            output.seek(0)
+            response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            response['Content-Disposition'] = 'attachment; filename="relatorio_tickets.xlsx"'
+            
+            return response
+        
+        elif formato == 'pdf':
+            # Exportar para PDF
+            response = HttpResponse(content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="relatorio_tickets.pdf"'
+            
+            # Criar documento PDF
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter)
+            elements = []
+            
+            # Definir estilos
+            styles = getSampleStyleSheet()
+            title_style = styles['Heading1']
+            
+            # Adicionar título
+            elements.append(Paragraph("Relatório de Tickets", title_style))
+            elements.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
+            elements.append(Paragraph(" ", styles['Normal']))  # Espaço
+            
+            # Criar tabela
+            tabela = Table(dados)
+            
+            # Estilo da tabela
+            estilo_tabela = TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # ID centralizado
+                ('ALIGN', (3, 1), (4, -1), 'CENTER'),  # Status e Prioridade centralizados
+                ('ALIGN', (6, 1), (7, -1), 'CENTER'),  # Datas centralizadas
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ])
+            
+            tabela.setStyle(estilo_tabela)
+            elements.append(tabela)
+            
+            # Construir PDF
+            doc.build(elements)
+            
+            # Retornar PDF
+            pdf = buffer.getvalue()
+            buffer.close()
+            response.write(pdf)
+            
+            return response
+    
+    # Tipo de relatório não implementado
+    return HttpResponse("Tipo de relatório não suportado")
