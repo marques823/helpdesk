@@ -298,36 +298,43 @@
 <script>
     // Gráfico de distribuição por prioridade
     document.addEventListener('DOMContentLoaded', function() {
+        // Obter o contexto do canvas
         var ctx = document.getElementById('prioridadeChart').getContext('2d');
         
-        // Definir os dados do gráfico
-        var baixaPrioridade = {% if baixa_prioridade %}{{ baixa_prioridade }}{% else %}0{% endif %};
-        var mediaPrioridade = {% if media_prioridade %}{{ media_prioridade }}{% else %}0{% endif %};
-        var altaPrioridade = {% if alta_prioridade %}{{ alta_prioridade }}{% else %}0{% endif %};
-        var urgentePrioridade = {% if urgente_prioridade %}{{ urgente_prioridade }}{% else %}0{% endif %};
+        // Dados do gráfico
+        var dadosGrafico = {
+            labels: ['Baixa', 'Média', 'Alta', 'Urgente'],
+            datasets: [{
+                data: [
+                    {{ baixa_prioridade|default:"0" }},
+                    {{ media_prioridade|default:"0" }},
+                    {{ alta_prioridade|default:"0" }},
+                    {{ urgente_prioridade|default:"0" }}
+                ],
+                backgroundColor: [
+                    '#17a2b8',   // info
+                    '#007bff',   // primary
+                    '#ffc107',   // warning
+                    '#dc3545'    // danger
+                ]
+            }]
+        };
         
-        var myChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['Baixa', 'Média', 'Alta', 'Urgente'],
-                datasets: [{
-                    data: [baixaPrioridade, mediaPrioridade, altaPrioridade, urgentePrioridade],
-                    backgroundColor: [
-                        '#17a2b8',   // info
-                        '#007bff',   // primary
-                        '#ffc107',   // warning
-                        '#dc3545'    // danger
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
+        // Opções do gráfico
+        var opcoesGrafico = {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
                 }
             }
+        };
+        
+        // Criação do gráfico
+        var myChart = new Chart(ctx, {
+            type: 'pie',
+            data: dadosGrafico,
+            options: opcoesGrafico
         });
     });
     
