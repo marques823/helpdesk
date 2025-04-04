@@ -5,9 +5,9 @@
     <div class="row justify-content-center">
         <div class="col-md-10">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <h5 class="card-title mb-0">Histórico do Ticket #{{ ticket.id }}</h5>
-                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">
+                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-secondary">
                         <i class="fas fa-arrow-left"></i> Voltar ao Ticket
                     </a>
                 </div>
@@ -18,16 +18,18 @@
                                 <div class="timeline-item">
                                     <div class="timeline-marker"></div>
                                     <div class="timeline-content">
-                                        <div class="timeline-header">
-                                            <span class="badge bg-{% if registro.tipo_alteracao == 'criacao' %}success
-                                                                   {% elif registro.tipo_alteracao == 'edicao' %}primary
-                                                                   {% elif registro.tipo_alteracao == 'atribuicao' %}info
-                                                                   {% elif registro.tipo_alteracao == 'status' %}warning
-                                                                   {% elif registro.tipo_alteracao == 'prioridade' %}danger
-                                                                   {% else %}secondary{% endif %}">
-                                                {{ registro.get_tipo_alteracao_display }}
-                                            </span>
-                                            <small class="text-muted ms-2">
+                                        <div class="timeline-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                            <div>
+                                                <span class="badge bg-{% if registro.tipo_alteracao == 'criacao' %}success
+                                                                    {% elif registro.tipo_alteracao == 'edicao' %}primary
+                                                                    {% elif registro.tipo_alteracao == 'atribuicao' %}info
+                                                                    {% elif registro.tipo_alteracao == 'status' %}warning
+                                                                    {% elif registro.tipo_alteracao == 'prioridade' %}danger
+                                                                    {% else %}secondary{% endif %}">
+                                                    {{ registro.get_tipo_alteracao_display }}
+                                                </span>
+                                            </div>
+                                            <small class="text-muted">
                                                 {{ registro.data_alteracao|date:"d/m/Y H:i" }}
                                             </small>
                                         </div>
@@ -39,7 +41,7 @@
                                             {% if user.is_superuser and registro.dados_anteriores %}
                                                 <div class="mt-2">
                                                     <h6>Dados Anteriores:</h6>
-                                                    <pre class="bg-light p-2 rounded">{{ registro.dados_anteriores|pprint }}</pre>
+                                                    <pre class="bg-light p-2 rounded small overflow-auto">{{ registro.dados_anteriores|pprint }}</pre>
                                                 </div>
                                             {% endif %}
                                             
@@ -74,6 +76,7 @@
     </div>
 </div>
 
+{% block styles %}
 <style>
 .timeline {
     position: relative;
@@ -113,6 +116,33 @@
 pre {
     white-space: pre-wrap;
     word-wrap: break-word;
+    max-height: 200px;
+}
+
+@media (max-width: 767.98px) {
+    .timeline-item {
+        padding-left: 25px;
+    }
+    
+    .timeline-marker {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .timeline-content {
+        padding: 10px;
+    }
+    
+    .timeline-body {
+        font-size: 0.8rem;
+    }
+    
+    pre {
+        font-size: 0.7rem;
+        padding: 0.5rem !important;
+    }
 }
 </style>
+{% endblock %}
+
 {% endblock %} 

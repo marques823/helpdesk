@@ -7,46 +7,48 @@
     <div class="row">
         <div class="col-md-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <h2 class="card-title mb-0 me-3">Ticket #{{ ticket.id }}</h2>
-                        <div class="btn-group">
-                            {% if ticket_anterior %}
-                                <a href="{% url 'tickets:detalhe_ticket' ticket_anterior.id %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-chevron-left"></i> Anterior
-                                </a>
-                            {% endif %}
-                            {% if ticket_proximo %}
-                                <a href="{% url 'tickets:detalhe_ticket' ticket_proximo.id %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-outline-secondary">
-                                    Próximo <i class="fas fa-chevron-right"></i>
-                                </a>
-                            {% endif %}
+                <div class="card-header">
+                    <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                        <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+                            <h2 class="card-title mb-0">Ticket #{{ ticket.id }}</h2>
+                            <div class="btn-group">
+                                {% if ticket_anterior %}
+                                    <a href="{% url 'tickets:detalhe_ticket' ticket_anterior.id %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-chevron-left"></i> <span class="d-none d-sm-inline">Anterior</span>
+                                    </a>
+                                {% endif %}
+                                {% if ticket_proximo %}
+                                    <a href="{% url 'tickets:detalhe_ticket' ticket_proximo.id %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-sm btn-outline-secondary">
+                                        <span class="d-none d-sm-inline">Próximo</span> <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                    <div class="btn-group">
-                        {% if pode_editar %}
-                            <a href="{% url 'tickets:editar_ticket' ticket.id %}" class="btn btn-warning">
-                                <i class="fas fa-edit"></i> Editar
+                        <div class="d-flex flex-wrap gap-1">
+                            {% if pode_editar %}
+                                <a href="{% url 'tickets:editar_ticket' ticket.id %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Editar</span>
+                                </a>
+                            {% endif %}
+                            {% if pode_atribuir %}
+                                <a href="{% url 'tickets:atribuir_ticket' ticket.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-user-plus"></i> <span class="d-none d-sm-inline">Atribuir</span>
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'tickets:historico_ticket' ticket.id %}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-history"></i> <span class="d-none d-sm-inline">Histórico</span>
                             </a>
-                        {% endif %}
-                        {% if pode_atribuir %}
-                            <a href="{% url 'tickets:atribuir_ticket' ticket.id %}" class="btn btn-info">
-                                <i class="fas fa-user-plus"></i> Atribuir
+                            <a href="{% url 'tickets:dashboard' %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Voltar</span>
                             </a>
-                        {% endif %}
-                        <a href="{% url 'tickets:historico_ticket' ticket.id %}" class="btn btn-secondary">
-                            <i class="fas fa-history"></i> Histórico
-                        </a>
-                        <a href="{% url 'tickets:dashboard' %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Voltar
-                        </a>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-8">
+                        <div class="col-lg-8 order-2 order-lg-1">
                             <h4>{{ ticket.titulo }}</h4>
-                            <p class="text-muted">Criado em {{ ticket.criado_em|date:"d/m/Y H:i" }} por {{ ticket.criado_por.get_full_name|default:ticket.criado_por.username }}</p>
+                            <p class="text-muted small">Criado em {{ ticket.criado_em|date:"d/m/Y H:i" }} por {{ ticket.criado_por.get_full_name|default:ticket.criado_por.username }}</p>
                             <div class="mb-4">
                                 {{ ticket.descricao|linebreaks }}
                             </div>
@@ -57,9 +59,9 @@
                                         <h5 class="card-title mb-0">Informações Adicionais</h5>
                                     </div>
                                     <div class="card-body">
-                                        <div class="row">
+                                        <div class="row g-2">
                                             {% for valor in campos_personalizados %}
-                                                <div class="col-md-6 mb-3">
+                                                <div class="col-md-6 mb-2">
                                                     <strong>{{ valor.campo.nome }}:</strong>
                                                     {% if valor.campo.tipo == 'checkbox' %}
                                                         {% if valor.valor == 'true' %}
@@ -83,12 +85,12 @@
                                 </div>
                                 <div class="card-body">
                                     {% for comentario in comentarios %}
-                                        <div class="mb-3">
-                                            <div class="d-flex justify-content-between">
+                                        <div class="mb-3 border-bottom pb-3">
+                                            <div class="d-flex justify-content-between flex-wrap">
                                                 <strong>{{ comentario.autor.get_full_name|default:comentario.autor.username }}</strong>
                                                 <small class="text-muted">{{ comentario.criado_em|date:"d/m/Y H:i" }}</small>
                                             </div>
-                                            <p>{{ comentario.texto|linebreaks }}</p>
+                                            <p class="mt-1 mb-0">{{ comentario.texto|linebreaks }}</p>
                                         </div>
                                     {% empty %}
                                         <p class="text-muted">Nenhum comentário ainda.</p>
@@ -109,8 +111,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card mb-4">
+                        <div class="col-lg-4 order-1 order-lg-2 mb-3 mb-lg-0">
+                            <div class="card sticky-top" style="top: 1rem; z-index: 100;">
                                 <div class="card-header">
                                     <h5 class="card-title mb-0">Detalhes</h5>
                                 </div>
@@ -129,7 +131,7 @@
                                                     {% endfor %}
                                                 </select>
                                             </div>
-                                            <button type="submit" class="btn btn-primary">
+                                            <button type="submit" class="btn btn-primary btn-sm w-100">
                                                 <i class="fas fa-sync"></i> Atualizar Status
                                             </button>
                                         </form>
@@ -147,18 +149,34 @@
                                                     {% endfor %}
                                                 </select>
                                             </div>
-                                            <button type="submit" class="btn btn-primary">
+                                            <button type="submit" class="btn btn-primary btn-sm w-100">
                                                 <i class="fas fa-sync"></i> Atualizar Prioridade
                                             </button>
                                         </form>
                                     {% else %}
-                                        <p><strong>Status:</strong> <span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></p>
-                                        <p><strong>Prioridade:</strong> <span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span></p>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <strong>Status:</strong> 
+                                            <span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <strong>Prioridade:</strong> 
+                                            <span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span>
+                                        </div>
                                     {% endif %}
                                     
-                                    <p><strong>Empresa:</strong> {{ ticket.empresa.nome }}</p>
-                                    <p><strong>Atribuído a:</strong> {% if ticket.atribuido_a %}{{ ticket.atribuido_a.usuario.get_full_name|default:ticket.atribuido_a.usuario.username }}{% else %}Ninguém{% endif %}</p>
-                                    <p><strong>Última atualização:</strong> {{ ticket.atualizado_em|date:"d/m/Y H:i" }}</p>
+                                    <hr>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <strong>Empresa:</strong>
+                                        <span>{{ ticket.empresa.nome }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <strong>Atribuído a:</strong>
+                                        <span>{% if ticket.atribuido_a %}{{ ticket.atribuido_a.usuario.get_full_name|default:ticket.atribuido_a.usuario.username }}{% else %}Ninguém{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <strong>Atualizado em:</strong>
+                                        <span>{{ ticket.atualizado_em|date:"d/m/Y H:i" }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -168,4 +186,21 @@
         </div>
     </div>
 </div>
+
+{% block styles %}
+<style>
+    @media (max-width: 767.98px) {
+        .card-header .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        .sticky-top {
+            position: relative;
+            top: 0 !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% endblock %} 
