@@ -218,6 +218,7 @@ class CampoPersonalizado(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     obrigatorio = models.BooleanField(default=False)
     opcoes = models.TextField(blank=True, null=True, help_text='Opções para campo do tipo seleção (uma por linha)')
+    ordem = models.IntegerField(default=0)
     criado_em = models.DateTimeField(default=timezone.now)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -228,6 +229,7 @@ class CampoPersonalizado(models.Model):
         verbose_name = 'Campo Personalizado'
         verbose_name_plural = 'Campos Personalizados'
         unique_together = ['empresa', 'nome']
+        ordering = ['ordem', 'nome']
 
 class ValorCampoPersonalizado(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='valores_campos_personalizados')
