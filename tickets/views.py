@@ -6,11 +6,14 @@ from django.http import Http404
 from django.contrib.auth import logout
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
-from django.db import connection
+from django.db import connection, models
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario
-from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado
+from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import models
+import json
+from django.db.models import Q
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -26,231 +29,682 @@ def home(request):
 
 @login_required
 def dashboard(request):
-    logger.info(f"Iniciando carregamento do dashboard para usuário: {request.user.username}")
     try:
-        # 1. Determina o tipo de usuário e suas permissões
-        is_admin_user = request.user.is_superuser
-        is_support_user = request.user.is_staff and not is_admin_user
-        
-        logger.info(f"Tipo de usuário - Admin: {is_admin_user}, Suporte: {is_support_user}")
-
-        # 2. Obtém a empresa do usuário (se não for admin)
-        empresa = None
-        if not is_admin_user:
-            try:
-                funcionario = Funcionario.objects.select_related('empresa').get(usuario=request.user)
-                empresa = funcionario.empresa
-                logger.info(f"Empresa do usuário encontrada: {empresa.nome if empresa else 'Nenhuma'}")
-            except Funcionario.DoesNotExist:
-                logger.error(f"Funcionário não encontrado para o usuário {request.user.username}")
-                messages.error(request, 'Erro: Usuário não possui um funcionário associado. Por favor, contate o administrador.')
-                return redirect('home')
-            except Exception as e:
-                logger.error(f"Erro ao buscar funcionário: {str(e)}", exc_info=True)
-                messages.error(request, 'Erro ao buscar informações do funcionário. Por favor, contate o administrador.')
-                return redirect('home')
-
-        # 3. Define a query base
-        try:
-            if is_admin_user:
-                logger.info("Buscando todos os tickets (admin)")
+        # Verifica se o usuário tem funcionários associados
+        funcionarios = request.user.funcionarios.all()
+        if not funcionarios.exists():
+            if request.user.is_superuser:
+                # Superusuário não precisa ter funcionário associado
                 tickets = Ticket.objects.all()
-            elif is_support_user:
-                logger.info(f"Buscando tickets da empresa {empresa.nome}")
-                tickets = Ticket.objects.filter(empresa=empresa)
+                empresas = Empresa.objects.all()
             else:
-                logger.info("Buscando tickets do usuário (cliente)")
-                tickets = Ticket.objects.filter(
-                    empresa=empresa,
-                    criado_por=request.user
-                )
-
-            # 4. Otimiza a query
-            tickets = tickets.select_related('criado_por', 'empresa').order_by('-criado_em')
+                messages.error(request, "Usuário não possui funcionários associados. Por favor, contate o administrador.")
+                return redirect('tickets:home')
+        else:
+            # Pega todas as empresas do funcionário
+            empresas_ids = [empresa.id for funcionario in funcionarios for empresa in funcionario.empresas.all()]
             
-            # 5. Calcula estatísticas
-            total = tickets.count()
-            abertos = tickets.filter(status='aberto').count()
-            fechados = tickets.filter(status='fechado').count()
+            # Filtra tickets baseado no tipo de usuário
+            if request.user.is_superuser:
+                # Superusuário vê todos os tickets
+                tickets = Ticket.objects.all()
+                empresas = Empresa.objects.all()
+            else:
+                # Para outros usuários, filtra por empresa e tipo
+                tickets = Ticket.objects.filter(empresa_id__in=empresas_ids)
+                
+                # Se for cliente, filtra tickets criados por ele ou atribuídos a ele
+                if any(funcionario.is_cliente() for funcionario in funcionarios):
+                    tickets = tickets.filter(
+                        models.Q(criado_por=request.user) |
+                        models.Q(atribuido_a__in=funcionarios)
+                    )
             
-            logger.info(f"Estatísticas - Total: {total}, Abertos: {abertos}, Fechados: {fechados}")
-
-            context = {
-                'total_tickets': total,
-                'tickets_abertos': abertos,
-                'tickets_fechados': fechados,
-            }
-
-            # 6. Paginação
-            paginator = Paginator(tickets, 10)
-            page = request.GET.get('page', 1)
-            try:
-                context['tickets'] = paginator.page(page)
-                logger.info(f"Página {page} carregada com sucesso")
-            except PageNotAnInteger:
-                context['tickets'] = paginator.page(1)
-                logger.info("Redirecionado para primeira página")
-            except EmptyPage:
-                context['tickets'] = paginator.page(paginator.num_pages)
-                logger.info("Redirecionado para última página")
-
-            return render(request, 'tickets/dashboard.html', context)
-
-        except Exception as e:
-            logger.error(f"Erro ao processar tickets: {str(e)}", exc_info=True)
-            messages.error(request, f'Erro ao processar tickets: {str(e)}')
-            return redirect('home')
-
+            # Prepara opções de filtro
+            empresas = Empresa.objects.filter(id__in=empresas_ids)
+        
+        # Aplica filtros
+        status_filter = request.GET.get('status')
+        if status_filter:
+            tickets = tickets.filter(status=status_filter)
+        
+        prioridade_filter = request.GET.get('prioridade')
+        if prioridade_filter:
+            tickets = tickets.filter(prioridade=prioridade_filter)
+        
+        empresa_filter = request.GET.get('empresa')
+        if empresa_filter:
+            tickets = tickets.filter(empresa_id=empresa_filter)
+        
+        # Aplica ordenação
+        order_by = request.GET.get('order_by', '-criado_em')
+        tickets = tickets.order_by(order_by)
+        
+        # Calcula estatísticas
+        total_tickets = tickets.count()
+        tickets_abertos = tickets.filter(status='aberto').count()
+        tickets_fechados = tickets.filter(status='fechado').count()
+        
+        # Paginação
+        paginator = Paginator(tickets, 10)
+        page = request.GET.get('page')
+        try:
+            tickets = paginator.page(page)
+        except PageNotAnInteger:
+            tickets = paginator.page(1)
+        except EmptyPage:
+            tickets = paginator.page(paginator.num_pages)
+        
+        context = {
+            'tickets': tickets,
+            'total_tickets': total_tickets,
+            'tickets_abertos': tickets_abertos,
+            'tickets_fechados': tickets_fechados,
+            'empresas': empresas,
+            'status_filter': status_filter,
+            'prioridade_filter': prioridade_filter,
+            'empresa_filter': empresa_filter,
+            'order_by': order_by,
+            'status_choices': Ticket.STATUS_CHOICES,
+            'prioridade_choices': Ticket.PRIORIDADE_CHOICES,
+            'funcionario': funcionarios.first() if funcionarios.exists() else None,
+        }
+        
+        return render(request, 'tickets/dashboard.html', context)
+        
     except Exception as e:
-        logger.error(f"Erro geral no dashboard: {str(e)}", exc_info=True)
-        messages.error(request, f'Erro ao carregar o dashboard: {str(e)}')
-        return redirect('home')
+        logger.error(f"Erro no dashboard: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar o dashboard. Por favor, tente novamente.")
+        return redirect('tickets:home')
+
+def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteriores=None, dados_novos=None):
+    """Função auxiliar para registrar alterações no histórico do ticket"""
+    try:
+        HistoricoTicket.objects.create(
+            ticket=ticket,
+            tipo_alteracao=tipo_alteracao,
+            usuario=usuario,
+            descricao=descricao,
+            dados_anteriores=dados_anteriores,
+            dados_novos=dados_novos
+        )
+    except Exception as e:
+        logger.error(f"Erro ao registrar histórico: {str(e)}")
+
+@login_required
+def historico_ticket(request, ticket_id):
+    try:
+        ticket = get_object_or_404(Ticket, id=ticket_id)
+        
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = request.user.funcionarios.first()
+            if not funcionario or not funcionario.pode_ver_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para ver o histórico deste ticket.')
+                return redirect('tickets:dashboard')
+        
+        return render(request, 'tickets/historico_ticket.html', {
+            'ticket': ticket
+        })
+    except Exception as e:
+        logger.error(f"Erro ao carregar histórico do ticket: {str(e)}")
+        messages.error(request, 'Erro ao carregar histórico do ticket.')
+        return redirect('tickets:dashboard')
 
 @login_required
 def criar_ticket(request):
-    if request.method == 'POST':
-        form = TicketForm(request.POST)
-        if form.is_valid():
-            ticket = form.save(commit=False)
-            ticket.criado_por = request.user
-            ticket.empresa = request.user.funcionario.empresa
-            ticket.save()
-            messages.success(request, 'Ticket criado com sucesso!')
-            return redirect('detalhe_ticket', pk=ticket.pk)
-    else:
-        form = TicketForm()
-        # Remove o campo empresa do formulário para clientes
+    try:
+        # Verifica se o usuário tem permissão para criar tickets
+        funcionario = request.user.funcionarios.first()
+        if not funcionario and not request.user.is_superuser:
+            messages.error(request, 'Você não tem permissão para criar tickets.')
+            return redirect('tickets:dashboard')
+
+        # Obtém as empresas associadas ao usuário
+        if request.user.is_superuser:
+            empresas = Empresa.objects.all()
+        else:
+            empresas = funcionario.empresas.all()
+            if not empresas.exists():
+                messages.error(request, 'Você não está associado a nenhuma empresa.')
+                return redirect('tickets:dashboard')
+
+        # Obtém os campos personalizados da empresa selecionada
+        empresa_id = request.POST.get('empresa') if request.method == 'POST' else request.GET.get('empresa')
+        campos_personalizados = None
+        if empresa_id:
+            campos_personalizados = CampoPersonalizado.objects.filter(
+                empresa_id=empresa_id,
+                ativo=True
+            ).order_by('ordem')
+
+        if request.method == 'POST':
+            form = TicketForm(request.POST, user=request.user)
+            if form.is_valid():
+                ticket = form.save(commit=False)
+                ticket.criado_por = request.user
+                ticket.save()
+
+                # Salva os valores dos campos personalizados
+                if campos_personalizados:
+                    for campo in campos_personalizados:
+                        valor = request.POST.get(f'campo_{campo.id}')
+                        if valor:
+                            ValorCampoPersonalizado.objects.create(
+                                ticket=ticket,
+                                campo=campo,
+                                valor=valor
+                            )
+
+                messages.success(request, 'Ticket criado com sucesso!')
+                return redirect('tickets:detalhe_ticket', ticket.id)
+        else:
+            form = TicketForm(user=request.user)
+
+        context = {
+            'form': form,
+            'campos_personalizados': campos_personalizados,
+            'empresas': empresas,
+            'empresa_id': empresa_id
+        }
+        return render(request, 'tickets/novo_ticket.html', context)
+
+    except Exception as e:
+        logger.error(f"Erro ao criar ticket: {str(e)}")
+        messages.error(request, 'Ocorreu um erro ao criar o ticket. Por favor, tente novamente.')
+        return redirect('tickets:dashboard')
+
+@login_required
+def detalhe_ticket(request, ticket_id):
+    try:
+        logger.info(f"Tentando acessar ticket {ticket_id} para usuário {request.user.username}")
+        ticket = get_object_or_404(Ticket, id=ticket_id)
+        
+        # Verifica se o usuário tem permissão para ver o ticket
         if not request.user.is_superuser:
-            form.fields.pop('empresa', None)
-            form.fields.pop('atribuido_para', None)
-    return render(request, 'tickets/criar_ticket.html', {'form': form})
+            funcionario = request.user.funcionarios.first()
+            if not funcionario:
+                logger.warning(f"Usuário {request.user.username} não tem funcionário associado")
+                messages.error(request, 'Você não tem permissão para visualizar este ticket.')
+                return redirect('tickets:dashboard')
+            
+            # Verifica se o funcionário tem acesso à empresa do ticket
+            if not funcionario.empresas.filter(id=ticket.empresa.id).exists():
+                logger.warning(f"Usuário {request.user.username} não tem acesso à empresa {ticket.empresa.id}")
+                messages.error(request, 'Você não tem acesso a esta empresa.')
+                return redirect('tickets:dashboard')
+            
+            # Verifica se o funcionário tem permissão para ver o ticket
+            if not funcionario.pode_ver_ticket(ticket):
+                logger.warning(f"Usuário {request.user.username} não tem permissão para ver o ticket {ticket.id}")
+                messages.error(request, 'Você não tem permissão para visualizar este ticket.')
+                return redirect('tickets:dashboard')
+        
+        # Processa o formulário de comentário se for POST
+        if request.method == 'POST':
+            action = request.POST.get('action')
+            
+            if action == 'comentario':
+                funcionario = request.user.funcionarios.first()
+                if not funcionario or not funcionario.pode_comentar_ticket_especifico(ticket):
+                    logger.warning(f"Usuário {request.user.username} não tem permissão para comentar no ticket {ticket.id}")
+                    messages.error(request, 'Você não tem permissão para adicionar comentários.')
+                    return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
+                
+                texto = request.POST.get('texto')
+                if texto:
+                    comentario = Comentario.objects.create(
+                        ticket=ticket,
+                        autor=request.user,
+                        texto=texto
+                    )
+                    
+                    # Registra o comentário no histórico
+                    registrar_historico(
+                        ticket=ticket,
+                        tipo_alteracao='comentario',
+                        usuario=request.user,
+                        descricao=f'Comentário adicionado por {request.user.get_full_name()}',
+                        dados_novos={'comentario': texto}
+                    )
+                    
+                    messages.success(request, 'Comentário adicionado com sucesso!')
+                else:
+                    messages.error(request, 'O comentário não pode estar vazio.')
+            
+            elif action == 'status':
+                if not request.user.is_superuser:
+                    funcionario = request.user.funcionarios.first()
+                    if not funcionario or not funcionario.pode_editar_ticket(ticket):
+                        logger.warning(f"Usuário {request.user.username} não tem permissão para alterar status do ticket {ticket.id}")
+                        messages.error(request, 'Você não tem permissão para alterar o status deste ticket.')
+                        return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
+                
+                novo_status = request.POST.get('novo_status')
+                if novo_status in [choice[0] for choice in Ticket.STATUS_CHOICES]:
+                    # Salva o status anterior para o histórico
+                    status_anterior = ticket.status
+                    
+                    # Atualiza o status
+                    ticket.status = novo_status
+                    ticket.save()
+                    
+                    # Registra a alteração no histórico
+                    registrar_historico(
+                        ticket=ticket,
+                        tipo_alteracao='status',
+                        usuario=request.user,
+                        descricao=f'Status alterado por {request.user.get_full_name()}',
+                        dados_anteriores={'status': status_anterior},
+                        dados_novos={'status': novo_status}
+                    )
+                    
+                    messages.success(request, 'Status atualizado com sucesso!')
+                else:
+                    messages.error(request, 'Status inválido.')
+            
+            elif action == 'prioridade':
+                if not request.user.is_superuser:
+                    funcionario = request.user.funcionarios.first()
+                    if not funcionario or not funcionario.pode_editar_ticket(ticket):
+                        logger.warning(f"Usuário {request.user.username} não tem permissão para alterar prioridade do ticket {ticket.id}")
+                        messages.error(request, 'Você não tem permissão para alterar a prioridade deste ticket.')
+                        return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
+                
+                nova_prioridade = request.POST.get('nova_prioridade')
+                if nova_prioridade in [choice[0] for choice in Ticket.PRIORIDADE_CHOICES]:
+                    # Salva a prioridade anterior para o histórico
+                    prioridade_anterior = ticket.prioridade
+                    
+                    # Atualiza a prioridade
+                    ticket.prioridade = nova_prioridade
+                    ticket.save()
+                    
+                    # Registra a alteração no histórico
+                    registrar_historico(
+                        ticket=ticket,
+                        tipo_alteracao='prioridade',
+                        usuario=request.user,
+                        descricao=f'Prioridade alterada por {request.user.get_full_name()}',
+                        dados_anteriores={'prioridade': prioridade_anterior},
+                        dados_novos={'prioridade': nova_prioridade}
+                    )
+                    
+                    messages.success(request, 'Prioridade atualizada com sucesso!')
+                else:
+                    messages.error(request, 'Prioridade inválida.')
+            
+            return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
+        
+        # Obtém os filtros da URL
+        status = request.GET.get('status', '')
+        prioridade = request.GET.get('prioridade', '')
+        empresa = request.GET.get('empresa', '')
+        order_by = request.GET.get('order_by', '-criado_em')
+        
+        # Obtém os tickets filtrados
+        if request.user.is_superuser:
+            tickets = Ticket.objects.all()
+        else:
+            funcionario = request.user.funcionarios.first()
+            tickets = Ticket.objects.filter(
+                Q(empresa__in=funcionario.empresas.all()) |
+                Q(atribuido_a=funcionario)
+            )
+        
+        # Aplica os filtros específicos
+        if status:
+            tickets = tickets.filter(status=status)
+        if prioridade:
+            tickets = tickets.filter(prioridade=prioridade)
+        if empresa:
+            tickets = tickets.filter(empresa_id=empresa)
+        
+        # Aplica a ordenação
+        tickets = tickets.order_by(order_by)
+        
+        # Obtém o ticket anterior e próximo
+        ticket_anterior = None
+        ticket_proximo = None
+        tickets_list = list(tickets)
+        for i, t in enumerate(tickets_list):
+            if t.id == ticket.id:
+                if i > 0:
+                    ticket_anterior = tickets_list[i-1]
+                if i < len(tickets_list) - 1:
+                    ticket_proximo = tickets_list[i+1]
+                break
+        
+        # Obtém os comentários do ticket
+        comentarios = Comentario.objects.filter(ticket=ticket).order_by('criado_em')
+        
+        # Obtém os valores dos campos personalizados
+        valores_campos = ValorCampoPersonalizado.objects.filter(ticket=ticket)
+        
+        # Obtém o funcionário do usuário
+        funcionario = request.user.funcionarios.first()
+        
+        # Verifica as permissões do funcionário
+        pode_editar = funcionario and funcionario.pode_editar_ticket(ticket) if funcionario else False
+        pode_atribuir = funcionario and funcionario.pode_atribuir_ticket(ticket) if funcionario else False
+        
+        context = {
+            'ticket': ticket,
+            'comentarios': comentarios,
+            'ticket_anterior': ticket_anterior,
+            'ticket_proximo': ticket_proximo,
+            'status': status,
+            'prioridade': prioridade,
+            'empresa': empresa,
+            'order_by': order_by,
+            'campos_personalizados': valores_campos,
+            'funcionario': funcionario,
+            'pode_editar': pode_editar,
+            'pode_atribuir': pode_atribuir
+        }
+        
+        logger.info(f"Ticket {ticket_id} carregado com sucesso para usuário {request.user.username}")
+        return render(request, 'tickets/detalhe_ticket.html', context)
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar detalhes do ticket {ticket_id}: {str(e)}", exc_info=True)
+        messages.error(request, 'Ocorreu um erro ao carregar os detalhes do ticket.')
+        return redirect('tickets:dashboard')
 
 @login_required
-def detalhe_ticket(request, pk):
-    ticket = get_object_or_404(Ticket, pk=pk)
-    
-    # Verifica permissão
-    if not request.user.is_superuser and ticket.empresa != request.user.funcionario.empresa:
-        raise Http404
-    
-    comentarios = ticket.comentarios.all().order_by('-criado_em')
-    
-    if request.method == 'POST':
-        form = ComentarioForm(request.POST)
-        if form.is_valid():
-            comentario = form.save(commit=False)
-            comentario.ticket = ticket
-            comentario.autor = request.user
-            comentario.save()
-            messages.success(request, 'Comentário adicionado com sucesso!')
-            return redirect('detalhe_ticket', pk=pk)
-    else:
-        form = ComentarioForm()
-    
-    return render(request, 'tickets/detalhe_ticket.html', {
-        'ticket': ticket,
-        'comentarios': comentarios,
-        'form': form
-    })
+def editar_ticket(request, ticket_id):
+    try:
+        ticket = get_object_or_404(Ticket, id=ticket_id)
+        
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = request.user.funcionarios.first()
+            if not funcionario or not funcionario.pode_editar_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para editar este ticket.')
+                return redirect('tickets:dashboard')
+            
+            # Verifica se o funcionário tem acesso à empresa do ticket
+            if not funcionario.empresas.filter(id=ticket.empresa.id).exists():
+                messages.error(request, 'Você não tem acesso a esta empresa.')
+                return redirect('tickets:dashboard')
+        
+        # Obtém as empresas e funcionários disponíveis
+        if request.user.is_superuser:
+            empresas = Empresa.objects.all()
+            funcionarios = Funcionario.objects.all()
+        else:
+            funcionario = request.user.funcionarios.first()
+            empresas = funcionario.empresas.all()
+            funcionarios = Funcionario.objects.filter(empresas__in=empresas).distinct()
+        
+        if request.method == 'POST':
+            form = TicketForm(request.POST, instance=ticket, user=request.user)
+            if form.is_valid():
+                # Salva os dados anteriores para o histórico
+                dados_anteriores = {
+                    'titulo': ticket.titulo,
+                    'descricao': ticket.descricao,
+                    'status': ticket.status,
+                    'prioridade': ticket.prioridade,
+                    'empresa': ticket.empresa.nome,
+                    'atribuido_a': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
+                }
+                
+                form.save()
+                
+                # Registra a edição no histórico
+                registrar_historico(
+                    ticket=ticket,
+                    tipo_alteracao='edicao',
+                    usuario=request.user,
+                    descricao=f'Ticket editado por {request.user.get_full_name()}',
+                    dados_anteriores=dados_anteriores,
+                    dados_novos={
+                        'titulo': ticket.titulo,
+                        'descricao': ticket.descricao,
+                        'status': ticket.status,
+                        'prioridade': ticket.prioridade,
+                        'empresa': ticket.empresa.nome,
+                        'atribuido_a': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
+                    }
+                )
+                
+                messages.success(request, 'Ticket atualizado com sucesso!')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
+        else:
+            form = TicketForm(instance=ticket, user=request.user)
+        
+        # Atualiza as opções do formulário
+        form.fields['empresa'].queryset = empresas
+        form.fields['atribuido_a'].queryset = funcionarios
+        
+        return render(request, 'tickets/editar_ticket.html', {
+            'form': form,
+            'ticket': ticket
+        })
+    except Exception as e:
+        logger.error(f"Erro ao editar ticket: {str(e)}")
+        messages.error(request, 'Erro ao editar ticket.')
+        return redirect('tickets:dashboard')
 
 @login_required
-def editar_ticket(request, pk):
-    ticket = get_object_or_404(Ticket, pk=pk)
-    
-    # Verifica permissão
-    if not request.user.is_superuser and ticket.empresa != request.user.funcionario.empresa:
-        raise Http404
-    
-    if request.method == 'POST':
-        form = TicketForm(request.POST, instance=ticket)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Ticket atualizado com sucesso!')
-            return redirect('detalhe_ticket', pk=pk)
-    else:
-        form = TicketForm(instance=ticket)
-    return render(request, 'tickets/editar_ticket.html', {'form': form, 'ticket': ticket})
-
-@login_required
-@user_passes_test(is_admin)
 def lista_empresas(request):
-    empresas = Empresa.objects.all().order_by('nome')
-    return render(request, 'tickets/lista_empresas.html', {'empresas': empresas})
+    try:
+        # Verifica se o usuário tem funcionários associados
+        funcionarios = request.user.funcionarios.all()
+        if not funcionarios.exists():
+            messages.error(request, "Usuário não possui funcionários associados. Por favor, contate o administrador.")
+            return redirect('login')
+        
+        # Pega todas as empresas do funcionário
+        empresas_ids = [empresa.id for funcionario in funcionarios for empresa in funcionario.empresas.all()]
+        
+        # Filtra empresas baseado no tipo de usuário
+        if request.user.is_superuser:
+            # Superusuário vê todas as empresas
+            empresas = Empresa.objects.all().order_by('nome')
+        else:
+            # Para outros usuários, filtra apenas as empresas às quais têm acesso
+            empresas = Empresa.objects.filter(id__in=empresas_ids).order_by('nome')
+        
+        return render(request, 'tickets/lista_empresas.html', {'empresas': empresas})
+    except Exception as e:
+        logger.error(f"Erro ao listar empresas: {str(e)}")
+        messages.error(request, 'Erro ao listar empresas.')
+        return redirect('tickets:dashboard')
 
 @login_required
-@user_passes_test(is_admin)
 def criar_empresa(request):
-    if request.method == 'POST':
-        form = EmpresaForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Empresa criada com sucesso!')
-            return redirect('lista_empresas')
-    else:
-        form = EmpresaForm()
-    return render(request, 'tickets/criar_empresa.html', {'form': form})
+    try:
+        # Verifica se o usuário tem permissão para criar empresas
+        if not request.user.is_superuser:
+            messages.error(request, "Você não tem permissão para criar empresas.")
+            return redirect('tickets:lista_empresas')
+        
+        if request.method == 'POST':
+            form = EmpresaForm(request.POST)
+            if form.is_valid():
+                empresa = form.save()
+                messages.success(request, 'Empresa criada com sucesso!')
+                return redirect('tickets:lista_empresas')
+        else:
+            form = EmpresaForm()
+        
+        return render(request, 'tickets/criar_empresa.html', {'form': form})
+    except Exception as e:
+        logger.error(f"Erro ao criar empresa: {str(e)}")
+        messages.error(request, 'Erro ao criar empresa.')
+        return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
 def editar_empresa(request, pk):
-    empresa = get_object_or_404(Empresa, pk=pk)
-    if request.method == 'POST':
-        form = EmpresaForm(request.POST, instance=empresa)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Empresa atualizada com sucesso!')
-            return redirect('lista_empresas')
-    else:
-        form = EmpresaForm(instance=empresa)
-    return render(request, 'tickets/editar_empresa.html', {'form': form, 'empresa': empresa})
+    try:
+        empresa = get_object_or_404(Empresa, pk=pk)
+        
+        # Verifica se o usuário tem acesso à empresa
+        if not request.user.is_superuser:
+            funcionarios = request.user.funcionarios.all()
+            empresas_ids = [empresa.id for funcionario in funcionarios for empresa in funcionario.empresas.all()]
+            if empresa.id not in empresas_ids:
+                messages.error(request, "Você não tem acesso a esta empresa.")
+                return redirect('tickets:lista_empresas')
+        
+        if request.method == 'POST':
+            form = EmpresaForm(request.POST, instance=empresa)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Empresa atualizada com sucesso!')
+                return redirect('tickets:lista_empresas')
+        else:
+            form = EmpresaForm(instance=empresa)
+        
+        return render(request, 'tickets/editar_empresa.html', {'form': form, 'empresa': empresa})
+    except Exception as e:
+        logger.error(f"Erro ao editar empresa: {str(e)}")
+        messages.error(request, 'Erro ao editar empresa.')
+        return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
 def lista_funcionarios(request):
-    funcionarios = Funcionario.objects.select_related('empresa', 'usuario').all().order_by('empresa__nome', 'usuario__first_name')
-    return render(request, 'tickets/lista_funcionarios.html', {'funcionarios': funcionarios})
+    try:
+        # Verifica se o usuário tem funcionários associados
+        funcionarios = request.user.funcionarios.all()
+        if not funcionarios.exists():
+            messages.error(request, "Usuário não possui funcionários associados. Por favor, contate o administrador.")
+            return redirect('login')
+        
+        # Pega todas as empresas do funcionário
+        empresas_ids = [empresa.id for funcionario in funcionarios for empresa in funcionario.empresas.all()]
+        
+        # Filtra funcionários baseado no tipo de usuário
+        if request.user.is_superuser:
+            # Superusuário vê todos os funcionários
+            funcionarios = Funcionario.objects.select_related('usuario').all().order_by('usuario__first_name')
+        else:
+            # Para outros usuários, filtra apenas os funcionários das empresas às quais têm acesso
+            funcionarios = Funcionario.objects.filter(
+                empresas__id__in=empresas_ids
+            ).select_related('usuario').distinct().order_by('usuario__first_name')
+        
+        return render(request, 'tickets/lista_funcionarios.html', {'funcionarios': funcionarios})
+    except Exception as e:
+        logger.error(f"Erro ao listar funcionários: {str(e)}")
+        messages.error(request, 'Erro ao listar funcionários.')
+        return redirect('tickets:dashboard')
 
 @login_required
-@user_passes_test(is_admin)
 def criar_funcionario(request):
-    if request.method == 'POST':
-        user_form = UserForm(request.POST)
-        funcionario_form = FuncionarioForm(request.POST)
-        if user_form.is_valid() and funcionario_form.is_valid():
-            user = user_form.save()
-            funcionario = funcionario_form.save(commit=False)
-            funcionario.usuario = user
-            funcionario.save()
-            messages.success(request, 'Funcionário criado com sucesso!')
-            return redirect('lista_funcionarios')
-    else:
-        user_form = UserForm()
-        funcionario_form = FuncionarioForm()
-    return render(request, 'tickets/criar_funcionario.html', {
-        'user_form': user_form,
-        'funcionario_form': funcionario_form
-    })
+    try:
+        # Verifica se o usuário tem permissão para criar funcionários
+        if not request.user.is_superuser:
+            messages.error(request, "Você não tem permissão para criar funcionários.")
+            return redirect('tickets:lista_funcionarios')
+        
+        if request.method == 'POST':
+            user_form = UserForm(request.POST)
+            funcionario_form = FuncionarioForm(request.POST, user=request.user)
+            if user_form.is_valid() and funcionario_form.is_valid():
+                user = user_form.save()
+                funcionario = funcionario_form.save(commit=False)
+                funcionario.usuario = user
+                funcionario.save()
+                messages.success(request, 'Funcionário criado com sucesso!')
+                return redirect('tickets:lista_funcionarios')
+        else:
+            user_form = UserForm()
+            funcionario_form = FuncionarioForm(user=request.user)
+        
+        return render(request, 'tickets/criar_funcionario.html', {
+            'user_form': user_form,
+            'funcionario_form': funcionario_form
+        })
+    except Exception as e:
+        logger.error(f"Erro ao criar funcionário: {str(e)}")
+        messages.error(request, 'Erro ao criar funcionário.')
+        return redirect('tickets:lista_funcionarios')
 
 @login_required
-@user_passes_test(is_admin)
 def editar_funcionario(request, pk):
-    funcionario = get_object_or_404(Funcionario, pk=pk)
-    if request.method == 'POST':
-        user_form = UserForm(request.POST, instance=funcionario.usuario)
-        funcionario_form = FuncionarioForm(request.POST, instance=funcionario)
-        if user_form.is_valid() and funcionario_form.is_valid():
-            user_form.save()
-            funcionario_form.save()
-            messages.success(request, 'Funcionário atualizado com sucesso!')
-            return redirect('lista_funcionarios')
-    else:
-        user_form = UserForm(instance=funcionario.usuario)
-        funcionario_form = FuncionarioForm(instance=funcionario)
-    return render(request, 'tickets/editar_funcionario.html', {
-        'user_form': user_form,
-        'funcionario_form': funcionario_form,
-        'funcionario': funcionario
-    })
+    try:
+        funcionario = get_object_or_404(Funcionario, pk=pk)
+        
+        # Verifica se o usuário tem acesso ao funcionário
+        if not request.user.is_superuser:
+            funcionarios = request.user.funcionarios.all()
+            empresas_ids = [empresa.id for funcionario in funcionarios for empresa in funcionario.empresas.all()]
+            if not funcionario.empresas.filter(id__in=empresas_ids).exists():
+                messages.error(request, "Você não tem acesso a este funcionário.")
+                return redirect('tickets:lista_funcionarios')
+        
+        if request.method == 'POST':
+            user_form = UserForm(request.POST, instance=funcionario.usuario)
+            funcionario_form = FuncionarioForm(request.POST, instance=funcionario, user=request.user)
+            if user_form.is_valid() and funcionario_form.is_valid():
+                user_form.save()
+                funcionario_form.save()
+                messages.success(request, 'Funcionário atualizado com sucesso!')
+                return redirect('tickets:lista_funcionarios')
+        else:
+            user_form = UserForm(instance=funcionario.usuario)
+            funcionario_form = FuncionarioForm(instance=funcionario, user=request.user)
+        
+        return render(request, 'tickets/editar_funcionario.html', {
+            'user_form': user_form,
+            'funcionario_form': funcionario_form,
+            'funcionario': funcionario
+        })
+    except Exception as e:
+        logger.error(f"Erro ao editar funcionário: {str(e)}")
+        messages.error(request, 'Erro ao editar funcionário.')
+        return redirect('tickets:lista_funcionarios')
+
+@login_required
+def atribuir_ticket(request, ticket_id):
+    try:
+        ticket = get_object_or_404(Ticket, id=ticket_id)
+        
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = request.user.funcionarios.first()
+            if not funcionario or not funcionario.pode_atribuir_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para atribuir este ticket.')
+                return redirect('tickets:dashboard')
+        
+        if request.method == 'POST':
+            form = AtribuirTicketForm(request.POST, instance=ticket)
+            if form.is_valid():
+                # Salva o funcionário anterior para o histórico
+                funcionario_anterior = ticket.atribuido_a
+                
+                form.save()
+                
+                # Registra a atribuição no histórico
+                registrar_historico(
+                    ticket=ticket,
+                    tipo_alteracao='atribuicao',
+                    usuario=request.user,
+                    descricao=f'Ticket atribuído por {request.user.get_full_name()}',
+                    dados_anteriores={
+                        'atribuido_a': funcionario_anterior.usuario.username if funcionario_anterior else None
+                    },
+                    dados_novos={
+                        'atribuido_a': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
+                    }
+                )
+                
+                messages.success(request, 'Ticket atribuído com sucesso!')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
+        else:
+            form = AtribuirTicketForm(instance=ticket)
+        
+        return render(request, 'tickets/atribuir_ticket.html', {
+            'form': form,
+            'ticket': ticket
+        })
+    except Exception as e:
+        logger.error(f"Erro ao atribuir ticket: {str(e)}")
+        messages.error(request, 'Erro ao atribuir ticket.')
+        return redirect('tickets:dashboard')
 
 @never_cache
 def logout_view(request):
@@ -264,3 +718,70 @@ def logout_view(request):
         logger.error(f"Erro durante o logout: {str(e)}", exc_info=True)
         messages.error(request, f'Erro ao fazer logout: {str(e)}')
         return redirect('home')
+
+@login_required
+@user_passes_test(is_admin)
+def gerenciar_campos_personalizados(request, empresa_id):
+    try:
+        empresa = get_object_or_404(Empresa, id=empresa_id)
+        
+        if request.method == 'POST':
+            form = CampoPersonalizadoForm(request.POST)
+            if form.is_valid():
+                campo = form.save(commit=False)
+                campo.empresa = empresa
+                campo.save()
+                messages.success(request, 'Campo personalizado criado com sucesso!')
+                return redirect('tickets:gerenciar_campos_personalizados', empresa_id=empresa.id)
+        else:
+            form = CampoPersonalizadoForm()
+        
+        campos = CampoPersonalizado.objects.filter(empresa=empresa).order_by('ordem', 'nome')
+        
+        return render(request, 'tickets/gerenciar_campos_personalizados.html', {
+            'empresa': empresa,
+            'form': form,
+            'campos': campos
+        })
+    except Exception as e:
+        logger.error(f"Erro ao gerenciar campos personalizados: {str(e)}")
+        messages.error(request, 'Erro ao gerenciar campos personalizados.')
+        return redirect('tickets:lista_empresas')
+
+@login_required
+@user_passes_test(is_admin)
+def editar_campo_personalizado(request, campo_id):
+    try:
+        campo = get_object_or_404(CampoPersonalizado, id=campo_id)
+        
+        if request.method == 'POST':
+            form = CampoPersonalizadoForm(request.POST, instance=campo)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Campo personalizado atualizado com sucesso!')
+                return redirect('tickets:gerenciar_campos_personalizados', empresa_id=campo.empresa.id)
+        else:
+            form = CampoPersonalizadoForm(instance=campo)
+        
+        return render(request, 'tickets/editar_campo_personalizado.html', {
+            'form': form,
+            'campo': campo
+        })
+    except Exception as e:
+        logger.error(f"Erro ao editar campo personalizado: {str(e)}")
+        messages.error(request, 'Erro ao editar campo personalizado.')
+        return redirect('tickets:lista_empresas')
+
+@login_required
+@user_passes_test(is_admin)
+def excluir_campo_personalizado(request, campo_id):
+    try:
+        campo = get_object_or_404(CampoPersonalizado, id=campo_id)
+        empresa_id = campo.empresa.id
+        campo.delete()
+        messages.success(request, 'Campo personalizado excluído com sucesso!')
+        return redirect('tickets:gerenciar_campos_personalizados', empresa_id=empresa_id)
+    except Exception as e:
+        logger.error(f"Erro ao excluir campo personalizado: {str(e)}")
+        messages.error(request, 'Erro ao excluir campo personalizado.')
+        return redirect('tickets:lista_empresas')

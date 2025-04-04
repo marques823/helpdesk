@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Histórico do Ticket #{{ ticket.id }}</h5>
+                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar ao Ticket
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if ticket.historico.all %}
+                        <div class="timeline">
+                            {% for registro in ticket.historico.all %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-header">
+                                            <span class="badge bg-{% if registro.tipo_alteracao == 'criacao' %}success
+                                                                   {% elif registro.tipo_alteracao == 'edicao' %}primary
+                                                                   {% elif registro.tipo_alteracao == 'atribuicao' %}info
+                                                                   {% elif registro.tipo_alteracao == 'status' %}warning
+                                                                   {% elif registro.tipo_alteracao == 'prioridade' %}danger
+                                                                   {% else %}secondary{% endif %}">
+                                                {{ registro.get_tipo_alteracao_display }}
+                                            </span>
+                                            <small class="text-muted ms-2">
+                                                {{ registro.data_alteracao|date:"d/m/Y H:i" }}
+                                            </small>
+                                        </div>
+                                        <div class="timeline-body">
+                                            <p class="mb-1">
+                                                <strong>Usuário:</strong> {{ registro.usuario.get_full_name|default:registro.usuario.username }}
+                                            </p>
+                                            
+                                            {% if user.is_superuser and registro.dados_anteriores %}
+                                                <div class="mt-2">
+                                                    <h6>Dados Anteriores:</h6>
+                                                    <pre class="bg-light p-2 rounded">{{ registro.dados_anteriores|pprint }}</pre>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            {% if registro.dados_novos %}
+                                                <div class="mt-2">
+                                                    {% if registro.tipo_alteracao == 'atribuicao' %}
+                                                        <p class="mb-0">{{ registro.dados_novos.atribuido_a }}</p>
+                                                    {% elif registro.tipo_alteracao == 'edicao' %}
+                                                        <p class="mb-0">{{ registro.dados_novos.descricao }}</p>
+                                                    {% elif registro.tipo_alteracao == 'status' %}
+                                                        <p class="mb-0">{{ registro.dados_novos.status }}</p>
+                                                    {% elif registro.tipo_alteracao == 'prioridade' %}
+                                                        <p class="mb-0">{{ registro.dados_novos.prioridade }}</p>
+                                                    {% elif registro.tipo_alteracao == 'comentario' %}
+                                                        <p class="mb-0">{{ registro.dados_novos.comentario }}</p>
+                                                    {% else %}
+                                                        <p class="mb-0">{{ registro.descricao }}</p>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-center">Nenhum registro de histórico encontrado.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #007bff;
+}
+
+.timeline-content {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+}
+
+.timeline-header {
+    margin-bottom: 10px;
+}
+
+.timeline-body {
+    font-size: 0.9rem;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+</style>
+{% endblock %} 

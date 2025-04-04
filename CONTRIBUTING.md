@@ -162,6 +162,8 @@ Exemplo: v1.2.3
   coverage run --source='.' manage.py test
   coverage report
   ```
+- rodar o servidor
+  python manage.py runserver 0.0.0.0:8000
 
 ### 9. Documentação
 
@@ -175,4 +177,14 @@ Exemplo: v1.2.3
 2. Fazer merge para main
 3. Criar tag
 4. Fazer deploy seguindo o processo estabelecido
-5. Verificar logs e monitorar 
+5. Verificar logs e monitorar
+
+# 1. Fazer as alterações necessárias
+# 2. Adicionar as alterações
+git add .
+
+# 3. Fazer commit das correções
+git commit -m "fix: corrige problema na exibição de tickets"
+
+# 4. Enviar para o GitHub
+git push 
