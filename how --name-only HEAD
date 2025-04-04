@@ -1,0 +1,8 @@
+[33mcommit bf74becd7192dc64723c48fb1f9af62b8f46c61d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/responsivo-mobile[m[33m, [m[1;31morigin/feature/responsivo-mobile[m[33m)[m
+Author: Tiago <tiago@email.tecnicolitoral.com>
+Date:   Thu Apr 3 23:50:42 2025 -0300
+
+    Melhorar visualização em dispositivos móveis
+
+M	templates/base.html
+M	tickets/templates/tickets/dashboard.html
