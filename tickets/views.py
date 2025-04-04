@@ -215,10 +215,14 @@ def adicionar_nota_tecnica(request, ticket_id):
             # Registrar no histórico
             HistoricoTicket.objects.create(
                 ticket=ticket,
-                tipo_alteracao='comentario',
+                tipo_alteracao='nota_tecnica',
                 usuario=request.user,
                 descricao=f'Nota técnica adicionada por {funcionario.usuario.get_full_name() or funcionario.usuario.username}',
-                dados_novos={'nota_id': nota.id}
+                dados_novos={
+                    'nota_id': nota.id,
+                    'acao': 'adicao',
+                    'equipamento': nota.equipamento if nota.equipamento else 'Não especificado'
+                }
             )
             
             messages.success(request, 'Nota técnica adicionada com sucesso!')
@@ -259,10 +263,14 @@ def editar_nota_tecnica(request, nota_id):
             # Registrar no histórico
             HistoricoTicket.objects.create(
                 ticket=ticket,
-                tipo_alteracao='edicao',
+                tipo_alteracao='nota_tecnica',
                 usuario=request.user,
                 descricao=f'Nota técnica #{nota.id} editada por {request.user.get_full_name() or request.user.username}',
-                dados_novos={'nota_id': nota.id}
+                dados_novos={
+                    'nota_id': nota.id,
+                    'acao': 'edicao',
+                    'equipamento': nota.equipamento if nota.equipamento else 'Não especificado'
+                }
             )
             
             messages.success(request, 'Nota técnica atualizada com sucesso!')
@@ -303,9 +311,13 @@ def excluir_nota_tecnica(request, nota_id):
         # Registrar no histórico
         HistoricoTicket.objects.create(
             ticket=ticket,
-            tipo_alteracao='edicao',
+            tipo_alteracao='nota_tecnica',
             usuario=request.user,
             descricao=f'Nota técnica #{nota_id} excluída por {request.user.get_full_name() or request.user.username}',
+            dados_novos={
+                'nota_id': nota_id,
+                'acao': 'exclusao'
+            }
         )
         
         messages.success(request, 'Nota técnica excluída com sucesso!')

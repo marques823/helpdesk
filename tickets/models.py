@@ -186,6 +186,7 @@ class HistoricoTicket(models.Model):
         ('status', 'Alteração de Status'),
         ('prioridade', 'Alteração de Prioridade'),
         ('comentario', 'Comentário'),
+        ('nota_tecnica', 'Nota Técnica'),
     ]
     
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='historico')
