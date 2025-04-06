@@ -19,7 +19,7 @@
                             </button>
                             {% if funcionario %}
                             <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Novo Ticket</span>
+                                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Novo Chamado</span>
                             </a>
                             {% endif %}
                             <a href="{% url 'tickets:relatorios_menu' %}" class="btn btn-info btn-sm">
@@ -116,6 +116,17 @@
                                             </select>
                                         </div>
                                         <div class="col-md-3 col-6">
+                                            <label for="categoria" class="form-label">Categoria</label>
+                                            <select name="categoria" id="categoria" class="form-select form-select-sm">
+                                                <option value="">Todas</option>
+                                                {% for categoria in categorias %}
+                                                    <option value="{{ categoria.id }}" {% if categoria_filter == categoria.id|stringformat:"i" %}selected{% endif %}>
+                                                        {{ categoria.nome }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-6">
                                             <label for="order_by" class="form-label">Ordenar por</label>
                                             <select name="order_by" id="order_by" class="form-select form-select-sm">
                                                 <option value="-criado_em" {% if order_by == '-criado_em' %}selected{% endif %}>Data (recente)</option>
@@ -140,7 +151,7 @@
                     </div>
 
                     <!-- Indicadores dos filtros ativos -->
-                    {% if status_filter or prioridade_filter or empresa_filter or order_by != '-criado_em' %}
+                    {% if status_filter or prioridade_filter or empresa_filter or categoria_filter or order_by != '-criado_em' %}
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -160,6 +171,12 @@
                                 {% if empresa_filter %}
                                 <span class="badge bg-secondary">
                                     Empresa: {{ empresa_filter|get_empresa_nome }}
+                                </span>
+                                {% endif %}
+                                
+                                {% if categoria_filter %}
+                                <span class="badge bg-secondary">
+                                    Categoria: {{ categoria_filter|get_categoria_nome }}
                                 </span>
                                 {% endif %}
                                 
@@ -195,6 +212,7 @@
                                             <th>Status</th>
                                             <th>Prioridade</th>
                                             <th class="d-none d-md-table-cell">Empresa</th>
+                                            <th class="d-none d-md-table-cell">Categoria</th>
                                             <th class="d-none d-md-table-cell">Criado por</th>
                                             <th class="d-none d-lg-table-cell">Atribuído a</th>
                                             <th class="d-none d-lg-table-cell">Data de Criação</th>
@@ -209,6 +227,7 @@
                                                 <td><span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></td>
                                                 <td><span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span></td>
                                                 <td class="d-none d-md-table-cell">{{ ticket.empresa.nome }}</td>
+                                                <td class="d-none d-md-table-cell">{% if ticket.categoria %}<span class="badge bg-{{ ticket.categoria.cor }}"><i class="fas {{ ticket.categoria.icone }} me-1"></i> {{ ticket.categoria.nome }}</span>{% else %}-{% endif %}</td>
                                                 <td class="d-none d-md-table-cell">{{ ticket.criado_por.username }}</td>
                                                 <td class="d-none d-lg-table-cell">{% if ticket.atribuido_a %}{{ ticket.atribuido_a.usuario.username }}{% else %}-{% endif %}</td>
                                                 <td class="d-none d-lg-table-cell">{{ ticket.criado_em|date:"d/m/Y H:i" }}</td>
@@ -236,7 +255,7 @@
                                 <ul class="pagination pagination-sm flex-wrap justify-content-center">
                                     {% if tickets.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Previous">
+                                        <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Previous">
                                             <span aria-hidden="true">&laquo;</span>
                                         </a>
                                     </li>
@@ -246,13 +265,13 @@
                                         {% if tickets.number == i %}
                                         <li class="page-item active"><span class="page-link">{{ i }}</span></li>
                                         {% else %}
-                                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}">{{ i }}</a></li>
+                                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}">{{ i }}</a></li>
                                         {% endif %}
                                     {% endfor %}
                                     
                                     {% if tickets.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Next">
+                                        <a class="page-link" href="?page={{ tickets.next_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" aria-label="Next">
                                             <span aria-hidden="true">&raquo;</span>
                                         </a>
                                     </li>
@@ -300,6 +319,7 @@
                     !document.getElementById('status').value && 
                     !document.getElementById('prioridade').value && 
                     !document.getElementById('empresa').value &&
+                    !document.getElementById('categoria').value &&
                     document.getElementById('order_by').value === '-criado_em') {
                     return;
                 }

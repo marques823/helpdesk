@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="card-title mb-0">Selecione uma categoria</h2>
+                <a href="{% url 'tickets:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Selecione uma categoria para o novo chamado na empresa <strong>{{ empresa.nome }}</strong>.
+            </div>
+            
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
+                {% for categoria in categorias %}
+                <div class="col">
+                    <a href="{% url 'tickets:criar_ticket' %}?empresa={{ empresa.id }}&categoria={{ categoria.id }}" class="text-decoration-none">
+                        <div class="card h-100 categoria-card">
+                            <div class="card-body text-center py-4">
+                                <div class="categoria-icon bg-{{ categoria.cor }} mb-3">
+                                    <i class="fas {{ categoria.icone }} fa-2x"></i>
+                                </div>
+                                <h5 class="card-title">{{ categoria.nome }}</h5>
+                                {% if categoria.descricao %}
+                                <p class="card-text text-muted small">{{ categoria.descricao }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .categoria-card {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+    .categoria-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        border-color: var(--bs-primary);
+    }
+    .categoria-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        color: white;
+    }
+</style>
+{% endblock %} 

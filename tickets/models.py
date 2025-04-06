@@ -18,6 +18,35 @@ class Empresa(models.Model):
         verbose_name = 'Empresa'
         verbose_name_plural = 'Empresas'
 
+class CategoriaChamado(models.Model):
+    """
+    Modelo para categorias de chamados, permitindo agrupar tickets por tipo de problema.
+    """
+    nome = models.CharField(max_length=100)
+    descricao = models.TextField(blank=True, null=True)
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='categorias')
+    cor = models.CharField(max_length=20, default='primary', help_text='Nome da cor Bootstrap (primary, success, danger, etc)')
+    icone = models.CharField(max_length=50, default='fa-ticket-alt', help_text='Nome do ícone FontAwesome')
+    ordem = models.IntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(default=timezone.now)
+    
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.criado_em = timezone.now()
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
+        
+    def __str__(self):
+        return f"{self.nome} - {self.empresa.nome}"
+        
+    class Meta:
+        verbose_name = 'Categoria de Chamado'
+        verbose_name_plural = 'Categorias de Chamados'
+        unique_together = ['nome', 'empresa']
+        ordering = ['ordem', 'nome']
+
 class Funcionario(models.Model):
     TIPO_CHOICES = [
         ('admin', 'Administrador'),
@@ -152,6 +181,7 @@ class Ticket(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='aberto')
     prioridade = models.CharField(max_length=20, choices=PRIORIDADE_CHOICES, default='media')
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='tickets')
+    categoria = models.ForeignKey(CategoriaChamado, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets')
     criado_por = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets_criados')
     atribuido_a = models.ForeignKey(Funcionario, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets_atribuidos')
     criado_em = models.DateTimeField(auto_now_add=True)

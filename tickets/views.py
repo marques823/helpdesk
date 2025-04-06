@@ -10,7 +10,7 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado
 from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, CampoPerfilCompartilhamentoForm, CompartilharTicketForm
 from django.core.exceptions import ObjectDoesNotExist
 import json
@@ -53,83 +53,92 @@ def home(request):
 @login_required
 def dashboard(request):
     try:
-        # Verifica se o usuário tem funcionários associados
-        funcionarios = request.user.funcionarios.all()
-        if not funcionarios.exists():
-            if request.user.is_superuser:
-                # Superusuário não precisa ter funcionário associado
-                tickets = Ticket.objects.all()
-                empresas = Empresa.objects.all()
-            else:
-                messages.error(request, "Usuário não possui funcionários associados. Por favor, contate o administrador.")
-                return redirect('tickets:home')
-        else:
-            # Pega todas as empresas do funcionário
-            empresas_ids = [empresa.id for funcionario in funcionarios for empresa in funcionario.empresas.all()]
-            
-            # Filtra tickets baseado no tipo de usuário
-            if request.user.is_superuser:
-                # Superusuário vê todos os tickets
-                tickets = Ticket.objects.all()
-                empresas = Empresa.objects.all()
-            else:
-                # Para outros usuários, filtra por empresa e tipo
-                tickets = Ticket.objects.filter(empresa_id__in=empresas_ids)
-                
-                # Se for cliente, filtra tickets criados por ele ou atribuídos a ele
-                if any(funcionario.is_cliente() for funcionario in funcionarios):
-                    tickets = tickets.filter(
-                        models.Q(criado_por=request.user) |
-                        models.Q(atribuido_a__in=funcionarios)
-                    )
-            
-            # Prepara opções de filtro
-            empresas = Empresa.objects.filter(id__in=empresas_ids)
-        
-        # Aplica busca por termo
+        # Verifica se o usuário é um funcionário ou admin
+        funcionario = None
+        if not request.user.is_superuser:
+            funcionario = Funcionario.objects.filter(usuario=request.user).first()
+            if not funcionario:
+                logout(request)
+                messages.error(request, 'Sua conta não está associada a nenhum funcionário.')
+                return redirect('login')
+
+        # Obtém os filtros da query string
         termo_pesquisa = request.GET.get('q', '')
+        status_filter = request.GET.get('status', '')
+        prioridade_filter = request.GET.get('prioridade', '')
+        empresa_filter = request.GET.get('empresa', '')
+        categoria_filter = request.GET.get('categoria', '')
+        order_by = request.GET.get('order_by', '-criado_em')
+
+        # Aplica os filtros de acordo com as permissões do usuário
+        if request.user.is_superuser:
+            tickets = Ticket.objects.all()
+            empresas = Empresa.objects.all()
+        else:
+            # Obtém as empresas associadas ao funcionário
+            empresas = funcionario.empresas.all()
+            
+            if funcionario.is_admin() or funcionario.is_suporte():
+                # Admins e suporte veem tickets das empresas deles
+                tickets = Ticket.objects.filter(empresa__in=empresas)
+            else:
+                # Clientes veem apenas seus próprios tickets
+                tickets = Ticket.objects.filter(
+                    Q(criado_por=request.user) | 
+                    Q(atribuido_a=funcionario) |
+                    Q(atribuicoes__funcionario=funcionario)
+                ).filter(empresa__in=empresas).distinct()
+        
+        # Prepara as categorias para filtro baseado nas empresas disponíveis
+        if empresa_filter:
+            categorias = CategoriaChamado.objects.filter(
+                empresa_id=empresa_filter,
+                ativo=True
+            ).order_by('ordem', 'nome')
+        else:
+            categorias = CategoriaChamado.objects.filter(
+                empresa__in=empresas,
+                ativo=True
+            ).order_by('ordem', 'nome')
+
+        # Aplica os filtros de pesquisa
         if termo_pesquisa:
-            # Pesquisa nos valores de campos personalizados
-            valores_ids = ValorCampoPersonalizado.objects.filter(
-                valor__icontains=termo_pesquisa
-            ).values_list('ticket_id', flat=True)
+            # Tenta converter para número para busca por ID
+            try:
+                ticket_id = int(termo_pesquisa)
+                id_query = Q(id=ticket_id)
+            except (ValueError, TypeError):
+                id_query = Q()
             
             tickets = tickets.filter(
-                models.Q(titulo__icontains=termo_pesquisa) |
-                models.Q(descricao__icontains=termo_pesquisa) |
-                models.Q(empresa__nome__icontains=termo_pesquisa) |
-                models.Q(criado_por__username__icontains=termo_pesquisa) |
-                models.Q(criado_por__first_name__icontains=termo_pesquisa) |
-                models.Q(criado_por__last_name__icontains=termo_pesquisa) |
-                models.Q(id__icontains=termo_pesquisa) |
-                models.Q(id__in=valores_ids)  # Inclui tickets com campos personalizados que correspondem à pesquisa
-            )
+                id_query |
+                Q(titulo__icontains=termo_pesquisa) |
+                Q(descricao__icontains=termo_pesquisa) |
+                Q(empresa__nome__icontains=termo_pesquisa) |
+                Q(criado_por__username__icontains=termo_pesquisa) |
+                Q(valores_campos_personalizados__valor__icontains=termo_pesquisa)
+            ).distinct()
         
-        # Aplica filtros
-        status_filter = request.GET.get('status')
+        # Aplica filtros de status, prioridade e empresa
         if status_filter:
             tickets = tickets.filter(status=status_filter)
         
-        prioridade_filter = request.GET.get('prioridade')
         if prioridade_filter:
             tickets = tickets.filter(prioridade=prioridade_filter)
         
-        empresa_filter = request.GET.get('empresa')
         if empresa_filter:
             tickets = tickets.filter(empresa_id=empresa_filter)
+            
+        if categoria_filter:
+            tickets = tickets.filter(categoria_id=categoria_filter)
         
-        # Aplica ordenação
-        order_by = request.GET.get('order_by', '-criado_em')
+        # Ordenação
         tickets = tickets.order_by(order_by)
         
-        # Calcula estatísticas
-        total_tickets = tickets.count()
-        tickets_abertos = tickets.filter(status='aberto').count()
-        tickets_fechados = tickets.filter(status='fechado').count()
-        
         # Paginação
-        paginator = Paginator(tickets, 10)
+        paginator = Paginator(tickets, 20)  # 20 tickets por página
         page = request.GET.get('page')
+        
         try:
             tickets = paginator.page(page)
         except PageNotAnInteger:
@@ -137,28 +146,30 @@ def dashboard(request):
         except EmptyPage:
             tickets = paginator.page(paginator.num_pages)
         
+        # Prepara os contextos para os templates
+        status_choices = Ticket.STATUS_CHOICES
+        prioridade_choices = Ticket.PRIORIDADE_CHOICES
+        
         context = {
             'tickets': tickets,
-            'total_tickets': total_tickets,
-            'tickets_abertos': tickets_abertos,
-            'tickets_fechados': tickets_fechados,
-            'empresas': empresas,
+            'termo_pesquisa': termo_pesquisa,
             'status_filter': status_filter,
             'prioridade_filter': prioridade_filter,
             'empresa_filter': empresa_filter,
+            'categoria_filter': categoria_filter,
             'order_by': order_by,
-            'status_choices': Ticket.STATUS_CHOICES,
-            'prioridade_choices': Ticket.PRIORIDADE_CHOICES,
-            'funcionario': funcionarios.first() if funcionarios.exists() else None,
-            'termo_pesquisa': termo_pesquisa,
+            'status_choices': status_choices,
+            'prioridade_choices': prioridade_choices,
+            'empresas': empresas,
+            'categorias': categorias,
+            'funcionario': funcionario
         }
         
         return render(request, 'tickets/dashboard.html', context)
-        
     except Exception as e:
-        logger.error(f"Erro no dashboard: {str(e)}")
+        logger.error(f"Erro ao acessar dashboard: {str(e)}")
         messages.error(request, "Ocorreu um erro ao carregar o dashboard. Por favor, tente novamente.")
-        return redirect('tickets:home')
+        return redirect('login')
 
 def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteriores=None, dados_novos=None):
     """Função auxiliar para registrar alterações no histórico do ticket"""
@@ -397,31 +408,48 @@ def criar_ticket(request):
         else:
             # Obtém a empresa selecionada do formulário POST ou da query string
             empresa_id = request.POST.get('empresa') if request.method == 'POST' else request.GET.get('empresa')
+        
+        # Verifica se há uma categoria específica selecionada
+        categoria_id = request.POST.get('categoria') if request.method == 'POST' else request.GET.get('categoria')
+        if categoria_id:
+            initial_data['categoria'] = categoria_id
 
         # Obtém os campos personalizados da empresa selecionada
         campos_personalizados = None
         if empresa_id:
             try:
-                # Verifica se o usuário tem acesso à empresa
                 empresa = Empresa.objects.get(id=empresa_id)
-                if not request.user.is_superuser and not funcionario.empresas.filter(id=empresa_id).exists():
-                    messages.error(request, 'Você não tem acesso a esta empresa.')
-                    return redirect('tickets:dashboard')
-                
-                # Se o usuário está tentando acessar uma empresa que não é dele, redirecione
-                if funcionario and funcionario.empresas.count() == 1 and str(funcionario.empresas.first().id) != empresa_id:
-                    return redirect('tickets:criar_ticket')
-                
-                # Busca os campos personalizados ativos para a empresa, ordenados por ordem e nome
                 campos_personalizados = CampoPersonalizado.objects.filter(
-                    empresa_id=empresa_id,
+                    empresa=empresa,
+                    ativo=True
+                ).order_by('ordem')
+            except Empresa.DoesNotExist:
+                empresa_id = None
+        
+        # Se estamos na etapa de seleção de categoria
+        categorias = None
+        if empresa_id and not categoria_id and request.method != 'POST':
+            try:
+                empresa = Empresa.objects.get(id=empresa_id)
+                categorias = CategoriaChamado.objects.filter(
+                    empresa=empresa,
                     ativo=True
                 ).order_by('ordem', 'nome')
                 
-            except (Empresa.DoesNotExist, ValueError):
-                # Se a empresa não existe ou o ID não é válido, limpe o valor
-                empresa_id = None
-                campos_personalizados = None
+                # Se temos apenas uma categoria ou nenhuma, continue para o formulário
+                if categorias.count() <= 1:
+                    if categorias.count() == 1:
+                        initial_data['categoria'] = categorias.first().id
+                        categoria_id = str(categorias.first().id)
+                    categorias = None
+                else:
+                    # Mostra a tela de seleção de categoria
+                    return render(request, 'tickets/selecionar_categoria.html', {
+                        'empresa': empresa,
+                        'categorias': categorias
+                    })
+            except Empresa.DoesNotExist:
+                pass
 
         if request.method == 'POST':
             form = TicketForm(request.POST, user=request.user, initial=initial_data)
@@ -449,7 +477,7 @@ def criar_ticket(request):
                                     valor=valor
                                 )
 
-                messages.success(request, 'Ticket criado com sucesso!')
+                messages.success(request, 'Chamado criado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket.id)
         else:
             form = TicketForm(user=request.user, initial=initial_data)
@@ -458,13 +486,13 @@ def criar_ticket(request):
             'form': form,
             'campos_personalizados': campos_personalizados,
             'empresas': empresas,
-            'empresa_id': empresa_id
+            'empresa_id': empresa_id,
+            'categoria_id': categoria_id
         }
         return render(request, 'tickets/novo_ticket.html', context)
-
     except Exception as e:
         logger.error(f"Erro ao criar ticket: {str(e)}")
-        messages.error(request, 'Ocorreu um erro ao criar o ticket. Por favor, tente novamente.')
+        messages.error(request, f"Erro ao criar ticket: {str(e)}")
         return redirect('tickets:dashboard')
 
 @login_required
@@ -662,7 +690,7 @@ def detalhe_ticket(request, ticket_id):
             'is_admin': is_admin
         }
         
-        logger.info(f"Ticket {ticket_id} carregado com sucesso para usuário {request.user.username}")
+        logger.info(f"Chamado {ticket_id} carregado com sucesso para usuário {request.user.username}")
         return render(request, 'tickets/detalhe_ticket.html', context)
         
     except Exception as e:
@@ -760,12 +788,12 @@ def editar_ticket(request, ticket_id):
                     ticket=ticket_salvo,
                     tipo_alteracao='edicao',
                     usuario=request.user,
-                    descricao=f'Ticket editado por {request.user.get_full_name()}',
+                    descricao=f'Chamado editado por {request.user.get_full_name()}',
                     dados_anteriores=dados_anteriores,
                     dados_novos=dados_novos
                 )
                 
-                messages.success(request, 'Ticket atualizado com sucesso!')
+                messages.success(request, 'Chamado atualizado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
         else:
             form = TicketForm(instance=ticket, user=request.user)
@@ -968,7 +996,7 @@ def atribuir_ticket(request, ticket_id):
                 return redirect('tickets:dashboard')
         
         if request.method == 'POST':
-            form = AtribuirTicketForm(request.POST, instance=ticket)
+            form = AtribuirTicketForm(request.POST, instance=ticket, user=request.user)
             if form.is_valid():
                 # Salva o funcionário anterior para o histórico
                 funcionario_anterior = ticket.atribuido_a
@@ -980,7 +1008,7 @@ def atribuir_ticket(request, ticket_id):
                     ticket=ticket,
                     tipo_alteracao='atribuicao',
                     usuario=request.user,
-                    descricao=f'Ticket atribuído por {request.user.get_full_name()}',
+                    descricao=f'Chamado atribuído por {request.user.get_full_name()}',
                     dados_anteriores={
                         'atribuido_a': funcionario_anterior.usuario.username if funcionario_anterior else None
                     },
@@ -997,10 +1025,10 @@ def atribuir_ticket(request, ticket_id):
                         defaults={'principal': True}
                     )
                 
-                messages.success(request, 'Ticket atribuído com sucesso!')
+                messages.success(request, 'Chamado atribuído com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
         else:
-            form = AtribuirTicketForm(instance=ticket)
+            form = AtribuirTicketForm(instance=ticket, user=request.user)
         
         return render(request, 'tickets/atribuir_ticket.html', {
             'form': form,
@@ -1027,7 +1055,7 @@ def multi_atribuir_ticket(request, ticket_id):
         atribuicoes_atuais = AtribuicaoTicket.objects.filter(ticket=ticket).select_related('funcionario')
         
         if request.method == 'POST':
-            form = MultiAtribuirTicketForm(request.POST, ticket=ticket, empresa=ticket.empresa)
+            form = MultiAtribuirTicketForm(request.POST, ticket=ticket, empresa=ticket.empresa, user=request.user)
             if form.is_valid():
                 # Obter os funcionários selecionados antes de salvar
                 funcionarios_anteriores = [
@@ -1060,16 +1088,28 @@ def multi_atribuir_ticket(request, ticket_id):
                     }
                 )
                 
-                messages.success(request, 'Ticket atribuído com sucesso!')
+                messages.success(request, 'Chamado atribuído com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
         else:
-            form = MultiAtribuirTicketForm(ticket=ticket, empresa=ticket.empresa)
+            form = MultiAtribuirTicketForm(ticket=ticket, empresa=ticket.empresa, user=request.user)
         
         # Obter a lista de funcionários disponíveis para a empresa do ticket
-        funcionarios_disponiveis = Funcionario.objects.filter(
-            empresas=ticket.empresa,
-            tipo__in=['admin', 'suporte']
-        ).select_related('usuario').distinct()
+        # considerando as permissões do usuário atual
+        if not request.user.is_superuser:
+            funcionario_atual = request.user.funcionarios.first()
+            if funcionario_atual:
+                funcionarios_disponiveis = Funcionario.objects.filter(
+                    empresas=ticket.empresa,
+                    tipo__in=['admin', 'suporte'],
+                    empresas__in=funcionario_atual.empresas.all()
+                ).select_related('usuario').distinct()
+            else:
+                funcionarios_disponiveis = Funcionario.objects.none()
+        else:
+            funcionarios_disponiveis = Funcionario.objects.filter(
+                empresas=ticket.empresa,
+                tipo__in=['admin', 'suporte']
+            ).select_related('usuario').distinct()
         
         return render(request, 'tickets/multi_atribuir_ticket.html', {
             'form': form,
@@ -1749,7 +1789,7 @@ def compartilhar_ticket_pdf(request, ticket_id):
             perfil = form.cleaned_data['perfil']
             
             # Gerar PDF
-            return gerar_pdf_ticket(request, ticket, perfil)
+            return gerar_pdf_ticket(request, ticket.id, perfil.id)
     else:
         form = CompartilharTicketForm(ticket=ticket, user=request.user)
     
@@ -1758,41 +1798,88 @@ def compartilhar_ticket_pdf(request, ticket_id):
         'ticket': ticket
     })
 
-def gerar_pdf_ticket(request, ticket, perfil):
-    """Gera um PDF com as informações do ticket de acordo com o perfil de compartilhamento."""
-    # Obter dados do ticket
-    comentarios = Comentario.objects.filter(ticket=ticket).order_by('criado_em')
-    notas_tecnicas = NotaTecnica.objects.filter(ticket=ticket).order_by('criado_em')
-    campos_personalizados = ValorCampoPersonalizado.objects.filter(ticket=ticket)
-    historico = HistoricoTicket.objects.filter(ticket=ticket).order_by('data_alteracao')
+@login_required
+def gerar_pdf_ticket(request, ticket_id, perfil_id=None):
+    """Gera um PDF com as informações do chamado de acordo com o perfil de compartilhamento."""
+    try:
+        ticket = Ticket.objects.get(id=ticket_id)
+        if not pode_visualizar_ticket(request.user, ticket):
+            messages.error(request, 'Você não tem permissão para visualizar este chamado.')
+            return redirect('tickets:dashboard')
+        
+        empresa = ticket.empresa
+        
+        # Se perfil_id foi fornecido, busca o perfil
+        if perfil_id:
+            try:
+                perfil = PerfilCompartilhamento.objects.get(id=perfil_id, empresa=empresa)
+            except PerfilCompartilhamento.DoesNotExist:
+                messages.error(request, 'Perfil de compartilhamento não encontrado.')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+        else:
+            # Perfil padrão (mostra tudo)
+            perfil = None
+        
+        # Obter dados do chamado
+        context = {
+            'ticket': ticket,
+            'empresa': empresa,
+        }
+        
+        # Comentários
+        if not perfil or perfil.incluir_comentarios:
+            context['comentarios'] = ticket.comentarios.all().order_by('-criado_em')
+        
+        # Notas Técnicas
+        if not perfil or perfil.incluir_notas_tecnicas:
+            context['notas_tecnicas'] = ticket.notas_tecnicas.all().order_by('-criado_em')
+        
+        # Campos personalizados
+        campos_personalizados = ValorCampoPersonalizado.objects.filter(ticket=ticket)
+        context['campos_personalizados'] = campos_personalizados
+        
+        # Se tem perfil, filtra os campos conforme o perfil
+        if perfil:
+            context['campos_perfil'] = perfil.campos.all()
+        else:
+            # Lista todos os campos padrão + personalizados
+            campos_padrao = [
+                {'tipo_campo': 'titulo', 'nome_campo': 'Título'},
+                {'tipo_campo': 'descricao', 'nome_campo': 'Descrição'},
+                {'tipo_campo': 'status', 'nome_campo': 'Status'},
+                {'tipo_campo': 'prioridade', 'nome_campo': 'Prioridade'},
+                {'tipo_campo': 'categoria', 'nome_campo': 'Categoria'},
+                {'tipo_campo': 'cliente', 'nome_campo': 'Cliente'},
+                {'tipo_campo': 'atribuido_a', 'nome_campo': 'Atribuído a'},
+                {'tipo_campo': 'criado_em', 'nome_campo': 'Criado em'},
+                {'tipo_campo': 'atualizado_em', 'nome_campo': 'Atualizado em'},
+            ]
+            for campo in empresa.campospersonalizados.all():
+                campos_padrao.append({
+                    'tipo_campo': 'personalizado',
+                    'nome_campo': campo.nome,
+                    'campo_personalizado': campo
+                })
+            context['campos_perfil'] = campos_padrao
+        
+        # Histórico
+        if not perfil or perfil.incluir_historico:
+            context['historico'] = ticket.historico.all().order_by('-data_alteracao')
+        
+        # Renderiza o HTML
+        html = render_to_string('tickets/chamado_pdf_template.html', context)
+        
+        # Gera o PDF
+        pdf = HTML(string=html).write_pdf()
+        
+        # Retorna o PDF como resposta HTTP
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="chamado_{ticket.id}.pdf"'
+        return response
     
-    # Obter campos a serem exibidos de acordo com o perfil
-    campos_perfil = CampoPerfilCompartilhamento.objects.filter(perfil=perfil).order_by('ordem')
-    
-    # Preparar contexto para o template
-    context = {
-        'ticket': ticket,
-        'perfil': perfil,
-        'campos_perfil': campos_perfil,
-        'empresa': ticket.empresa,
-        'comentarios': comentarios if perfil.incluir_comentarios else None,
-        'notas_tecnicas': notas_tecnicas if perfil.incluir_notas_tecnicas else None,
-        'campos_personalizados': campos_personalizados if perfil.incluir_campos_personalizados else None,
-        'historico': historico if perfil.incluir_historico else None,
-    }
-    
-    # Renderizar template HTML
-    html_string = render_to_string('tickets/ticket_pdf_template.html', context)
-    
-    # Configurar resposta HTTP com PDF
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="ticket_{ticket.id}.pdf"'
-    
-    # Criar arquivo PDF com WeasyPrint
-    pdf = weasyprint.HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
-    response.write(pdf)
-    
-    return response
+    except Exception as e:
+        messages.error(request, f'Erro ao gerar PDF: {str(e)}')
+        return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
 
 @login_required
 def get_campos_personalizados(request):
@@ -1802,3 +1889,27 @@ def get_campos_personalizados(request):
         campos = CampoPersonalizado.objects.filter(empresa_id=empresa_id).values('id', 'nome')
         return JsonResponse(list(campos), safe=False)
     return JsonResponse([], safe=False)
+
+@login_required
+def get_categorias_por_empresa(request):
+    """API para obter categorias por empresa"""
+    empresa_id = request.GET.get('empresa_id')
+    categorias = []
+    
+    if empresa_id:
+        try:
+            # Verifica permissão
+            if not request.user.is_superuser:
+                funcionario = request.user.funcionarios.first()
+                if not funcionario or not funcionario.empresas.filter(id=empresa_id).exists():
+                    return JsonResponse({"error": "Você não tem acesso a esta empresa"}, status=403)
+            
+            categorias = list(CategoriaChamado.objects.filter(
+                empresa_id=empresa_id,
+                ativo=True
+            ).order_by('ordem', 'nome').values('id', 'nome', 'descricao', 'cor', 'icone'))
+            
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    
+    return JsonResponse({"categorias": categorias})

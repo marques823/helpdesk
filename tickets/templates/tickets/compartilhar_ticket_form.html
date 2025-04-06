@@ -1,77 +1,59 @@
 {% extends 'base.html' %}
-{% load ticket_tags %}
+{% load crispy_forms_tags %}
 
-{% block title %}Compartilhar Ticket em PDF{% endblock %}
+{% block title %}Compartilhar Chamado em PDF{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row">
-        <div class="col-md-10 offset-md-1">
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Compartilhar Ticket em PDF</h4>
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Compartilhar Chamado em PDF</h4>
+                    <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h5>Ticket #{{ ticket.id }} - {{ ticket.titulo }}</h5>
-                            <p class="text-muted mb-1">Empresa: {{ ticket.empresa.nome }}</p>
-                            <p class="text-muted mb-1">Status: <span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></p>
-                            <p class="text-muted mb-3">Criado em: {{ ticket.criado_em|date:"d/m/Y H:i" }}</p>
-                            
-                            <p>Selecione um perfil de compartilhamento para determinar quais informações serão incluídas no PDF.</p>
-                            
-                            {% if messages %}
-                                {% for message in messages %}
-                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                        {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                            
-                            <form method="post">
-                                {% csrf_token %}
-                                
-                                <div class="mb-3">
-                                    <label for="{{ form.perfil.id_for_label }}" class="form-label">{{ form.perfil.label }}</label>
-                                    {{ form.perfil }}
-                                    {% if form.perfil.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {% for error in form.perfil.errors %}
-                                                {{ error }}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                    <div class="form-text mt-2">
-                                        O perfil determina quais informações do ticket serão incluídas no PDF.
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-4">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-file-pdf me-1"></i> Gerar PDF
-                                    </button>
-                                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary ms-2">
-                                        <i class="fas fa-arrow-left me-1"></i> Voltar ao Ticket
-                                    </a>
-                                </div>
-                            </form>
+                    <h5>Chamado #{{ ticket.id }} - {{ ticket.titulo }}</h5>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between">
+                            <span><strong>Empresa:</strong> {{ ticket.empresa.nome }}</span>
+                            <span><strong>Status:</strong> {{ ticket.get_status_display }}</span>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card">
-                                <div class="card-header bg-info text-white">
-                                    <h5 class="mb-0">Informações</h5>
-                                </div>
-                                <div class="card-body">
-                                    <p><i class="fas fa-info-circle me-2"></i> O PDF gerado conterá as informações do ticket de acordo com o perfil de compartilhamento selecionado.</p>
-                                    <p><i class="fas fa-download me-2"></i> Após clicar em "Gerar PDF", o arquivo será baixado automaticamente.</p>
-                                    <p><i class="fas fa-cog me-2"></i> Você pode gerenciar os perfis de compartilhamento em <a href="{% url 'tickets:perfis_compartilhamento_list' %}">Perfis de Compartilhamento</a>.</p>
-                                </div>
-                            </div>
+                        <div class="d-flex justify-content-between">
+                            <span><strong>Criado por:</strong> {{ ticket.criado_por.username }}</span>
+                            <span><strong>Prioridade:</strong> {{ ticket.get_prioridade_display }}</span>
                         </div>
                     </div>
+
+                    <div class="alert alert-info">
+                        <p class="mb-0">
+                            <i class="fas fa-info-circle"></i> Selecione abaixo um perfil de compartilhamento para definir quais informações serão incluídas no PDF.
+                        </p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-pdf"></i> Gerar PDF
+                            </button>
+                        </div>
+                    </form>
                 </div>
+                <div class="card-footer">
+                    <small class="text-muted">
+                        <i class="fas fa-lock"></i> Os PDFs gerados não incluirão informações sensíveis ou internas, apenas o conteúdo definido no perfil de compartilhamento.
+                    </small>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-link">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar ao Chamado
+                </a>
             </div>
         </div>
     </div>

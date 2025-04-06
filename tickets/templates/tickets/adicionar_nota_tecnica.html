@@ -1,7 +1,7 @@
 {% extends 'tickets/base.html' %}
 {% load static %}
 
-{% block title %}Adicionar Nota Técnica - Ticket #{{ ticket.id }}{% endblock %}
+{% block title %}Adicionar Nota Técnica - Chamado #{{ ticket.id }}{% endblock %}
 
 {% block content %}
 <div class="container my-4">
@@ -10,7 +10,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{% url 'tickets:dashboard' %}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Ticket #{{ ticket.id }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Chamado #{{ ticket.id }}</a></li>
                     <li class="breadcrumb-item"><a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}">Notas Técnicas</a></li>
                     <li class="breadcrumb-item active" aria-current="page">Adicionar Nota</li>
                 </ol>
@@ -21,7 +21,7 @@
     <div class="row mb-4">
         <div class="col-md-12">
             <h2>Adicionar Nota Técnica</h2>
-            <h5 class="text-muted">Ticket #{{ ticket.id }} - {{ ticket.titulo }}</h5>
+            <h5 class="text-muted">Chamado #{{ ticket.id }} - {{ ticket.titulo }}</h5>
         </div>
     </div>
 

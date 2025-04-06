@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento
+from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado
 from django.utils import timezone
 from django.urls import path
 from . import admin_views
@@ -40,8 +40,8 @@ class FuncionarioAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ('id', 'titulo', 'empresa', 'status', 'prioridade', 'criado_por', 'atribuido_a', 'criado_em')
-    list_filter = ('status', 'prioridade', 'empresa', 'criado_em')
+    list_display = ('id', 'titulo', 'empresa', 'categoria', 'status', 'prioridade', 'criado_por', 'atribuido_a', 'criado_em')
+    list_filter = ('status', 'prioridade', 'empresa', 'categoria', 'criado_em')
     search_fields = ('titulo', 'descricao', 'criado_por__username', 'atribuido_a__usuario__username')
     date_hierarchy = 'criado_em'
 
@@ -177,5 +177,22 @@ class CampoPerfilCompartilhamentoAdmin(admin.ModelAdmin):
             'fields': ('campo_personalizado',),
             'classes': ('collapse',),
             'description': 'Apenas para campos do tipo "Campo Personalizado"'
+        }),
+    )
+
+@admin.register(CategoriaChamado)
+class CategoriaChamadoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'empresa', 'cor', 'ordem', 'ativo')
+    list_filter = ('empresa', 'ativo')
+    search_fields = ('nome', 'descricao')
+    ordering = ('empresa', 'ordem', 'nome')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    fieldsets = (
+        (None, {
+            'fields': ('nome', 'descricao', 'empresa', 'cor', 'icone', 'ordem', 'ativo')
+        }),
+        ('Informações de Sistema', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
         }),
     )

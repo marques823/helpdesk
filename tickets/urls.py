@@ -53,4 +53,7 @@ urlpatterns = [
     
     # URL para obter campos personalizados via AJAX
     path('get-campos-personalizados/', views.get_campos_personalizados, name='get_campos_personalizados'),
+    
+    # URL para obter categorias por empresa via AJAX
+    path('get-categorias-por-empresa/', views.get_categorias_por_empresa, name='get_categorias_por_empresa'),
 ] 

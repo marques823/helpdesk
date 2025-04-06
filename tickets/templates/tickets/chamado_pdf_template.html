@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Ticket #{{ ticket.id }} - {{ ticket.titulo }}</title>
+    <title>Chamado #{{ ticket.id }} - {{ ticket.titulo }}</title>
     <style>
         @page {
             size: A4;
@@ -46,22 +46,22 @@
             font-weight: bold;
             margin-bottom: 5px;
         }
-        .ticket-info {
+        .chamado-info {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
         }
-        .ticket-info th, .ticket-info td {
+        .chamado-info th, .chamado-info td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: left;
         }
-        .ticket-info th {
+        .chamado-info th {
             background-color: #f2f2f2;
             font-weight: bold;
             width: 30%;
         }
-        .ticket-description {
+        .chamado-description {
             margin-bottom: 20px;
             padding: 10px;
             background-color: #f9f9f9;
@@ -146,9 +146,9 @@
         <div>CNPJ: {{ empresa.cnpj }}</div>
     </div>
     
-    <h1>Ticket #{{ ticket.id }} - {{ ticket.titulo }}</h1>
+    <h1>Chamado #{{ ticket.id }} - {{ ticket.titulo }}</h1>
     
-    <table class="ticket-info">
+    <table class="chamado-info">
         <tr>
             <th>Status</th>
             <td>
@@ -217,7 +217,7 @@
     </table>
     
     <h2>Descrição</h2>
-    <div class="ticket-description">
+    <div class="chamado-description">
         {{ ticket.descricao|linebreaks }}
     </div>
     

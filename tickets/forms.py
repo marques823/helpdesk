@@ -42,10 +42,11 @@ class UserForm(UserCreationForm):
 class TicketForm(forms.ModelForm):
     class Meta:
         model = Ticket
-        fields = ['empresa', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
+        fields = ['empresa', 'categoria', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
         widgets = {
             'descricao': forms.Textarea(attrs={'rows': 4}),
             'empresa': forms.Select(attrs={'class': 'form-control', 'id': 'id_empresa'}),
+            'categoria': forms.Select(attrs={'class': 'form-control', 'id': 'id_categoria'}),
             'atribuido_a': forms.Select(attrs={'class': 'form-control'}),
         }
 
@@ -54,7 +55,7 @@ class TicketForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Define a ordem dos campos
-        self.fields_order = ['empresa', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
+        self.fields_order = ['empresa', 'categoria', 'titulo', 'descricao', 'status', 'prioridade', 'atribuido_a']
         
         # Reorganiza os campos na ordem desejada
         original_fields = self.fields
@@ -95,6 +96,20 @@ class TicketForm(forms.ModelForm):
             else:
                 # Se nenhuma empresa for selecionada, não mostra funcionários
                 self.fields['atribuido_a'].queryset = Funcionario.objects.none()
+        
+        # Inicialmente, não mostra categorias até que uma empresa seja selecionada
+        empresa_id = self.initial.get('empresa') or self.data.get('empresa')
+        if empresa_id:
+            # Se uma empresa for selecionada, mostra apenas categorias daquela empresa
+            from .models import CategoriaChamado
+            self.fields['categoria'].queryset = CategoriaChamado.objects.filter(
+                empresa_id=empresa_id,
+                ativo=True
+            ).order_by('ordem', 'nome')
+        else:
+            # Se nenhuma empresa for selecionada, não mostra categorias
+            from .models import CategoriaChamado
+            self.fields['categoria'].queryset = CategoriaChamado.objects.none()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -133,6 +148,34 @@ class AtribuirTicketForm(forms.ModelForm):
         widgets = {
             'atribuido_a': forms.Select(attrs={'class': 'form-control'}),
         }
+        
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar funcionários baseado no ticket e nas permissões do usuário
+        if self.instance and self.instance.pk:
+            empresa = self.instance.empresa
+            
+            if self.user and not self.user.is_superuser:
+                # Para usuários não-admin, mostrar apenas funcionários das empresas a que têm acesso
+                funcionario = self.user.funcionarios.first()
+                if funcionario:
+                    self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
+                        empresas=empresa,
+                        tipo__in=['admin', 'suporte'],
+                        empresas__in=funcionario.empresas.all()
+                    ).distinct()
+                else:
+                    self.fields['atribuido_a'].queryset = Funcionario.objects.none()
+            else:
+                # Para admin, mostrar todos os funcionários da empresa do ticket
+                self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
+                    empresas=empresa,
+                    tipo__in=['admin', 'suporte']
+                ).distinct()
+        else:
+            self.fields['atribuido_a'].queryset = Funcionario.objects.none()
 
 class MultiAtribuirTicketForm(forms.Form):
     funcionarios = forms.ModelMultipleChoiceField(
@@ -151,14 +194,28 @@ class MultiAtribuirTicketForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.ticket = kwargs.pop('ticket', None)
         self.empresa = kwargs.pop('empresa', None)
+        self.user = kwargs.pop('user', None) 
         super().__init__(*args, **kwargs)
         
-        # Filtrar funcionários por empresa
+        # Filtrar funcionários por empresa e permissões do usuário
         if self.empresa:
-            funcionarios = Funcionario.objects.filter(
-                empresas=self.empresa,
-                tipo__in=['admin', 'suporte']
-            ).distinct()
+            if self.user and not self.user.is_superuser:
+                # Para usuários não-admin, mostrar apenas funcionários das empresas a que têm acesso
+                funcionario = self.user.funcionarios.first()
+                if funcionario:
+                    funcionarios = Funcionario.objects.filter(
+                        empresas=self.empresa,
+                        tipo__in=['admin', 'suporte'],
+                        empresas__in=funcionario.empresas.all()
+                    ).distinct()
+                else:
+                    funcionarios = Funcionario.objects.none()
+            else:
+                # Para admin, mostrar todos os funcionários da empresa
+                funcionarios = Funcionario.objects.filter(
+                    empresas=self.empresa,
+                    tipo__in=['admin', 'suporte']
+                ).distinct()
             
             self.fields['funcionarios'].queryset = funcionarios
             self.fields['funcionario_principal'].queryset = funcionarios

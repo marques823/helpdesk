@@ -2,7 +2,7 @@
 {% load static %}
 {% load ticket_tags %}
 
-{% block title %}Notas Técnicas - Ticket #{{ ticket.id }}{% endblock %}
+{% block title %}Notas Técnicas - Chamado #{{ ticket.id }}{% endblock %}
 
 {% block content %}
 <div class="container my-4">
@@ -11,7 +11,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{% url 'tickets:dashboard' %}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Ticket #{{ ticket.id }}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Chamado #{{ ticket.id }}</a></li>
                     <li class="breadcrumb-item active" aria-current="page">Notas Técnicas</li>
                 </ol>
             </nav>
@@ -20,7 +20,7 @@
 
     <div class="row mb-4">
         <div class="col-md-8">
-            <h2>Notas Técnicas - Ticket #{{ ticket.id }}</h2>
+            <h2>Notas Técnicas - Chamado #{{ ticket.id }}</h2>
             <h5 class="text-muted">{{ ticket.titulo }}</h5>
         </div>
         <div class="col-md-4 text-right">
@@ -32,7 +32,7 @@
 
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Resumo do Ticket</h5>
+            <h5 class="mb-0">Resumo do Chamado</h5>
         </div>
         <div class="card-body">
             <div class="row">
@@ -104,7 +104,7 @@
         </div>
     {% else %}
         <div class="alert alert-info">
-            <p>Nenhuma nota técnica registrada para este ticket.</p>
+            <p>Nenhuma nota técnica registrada para este chamado.</p>
             <a href="{% url 'tickets:adicionar_nota_tecnica' ticket_id=ticket.id %}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Adicionar Nota Técnica
             </a>

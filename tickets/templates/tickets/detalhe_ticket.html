@@ -10,9 +10,9 @@
                 <div class="card-header">
                     <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
                         <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
-                            <h2 class="card-title mb-0">Ticket #{{ ticket.id }}</h2>
-                            <div class="btn-group">
-                                {% if ticket_anterior %}
+                            <h2 class="card-title mb-0">Chamado #{{ ticket.id }}</h2>
+                        <div class="btn-group">
+                            {% if ticket_anterior %}
                                     <a href="{% url 'tickets:detalhe_ticket' ticket_anterior.id %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-sm btn-outline-secondary">
                                         <i class="fas fa-chevron-left"></i> <span class="d-none d-sm-inline">Anterior</span>
                                     </a>
@@ -172,6 +172,14 @@
                                         <strong>Empresa:</strong>
                                         <span>{{ ticket.empresa.nome }}</span>
                                     </div>
+                                    {% if ticket.categoria %}
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <strong>Categoria:</strong>
+                                        <span class="badge bg-{{ ticket.categoria.cor }}">
+                                            <i class="fas {{ ticket.categoria.icone }} me-1"></i> {{ ticket.categoria.nome }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
                                     <div class="mb-2">
                                         <strong>Atribuído a:</strong>
                                         <div class="mt-1">

@@ -68,8 +68,20 @@ def get_prioridade_label(prioridade_value):
 
 @register.filter
 def get_empresa_nome(empresa_id):
-    from tickets.models import Empresa
+    """Obter o nome da empresa pelo ID"""
     try:
-        return Empresa.objects.get(id=empresa_id).nome
+        from tickets.models import Empresa
+        empresa = Empresa.objects.get(id=empresa_id)
+        return empresa.nome
     except (Empresa.DoesNotExist, ValueError):
-        return empresa_id 
+        return "Desconhecida"
+
+@register.filter
+def get_categoria_nome(categoria_id):
+    """Obter o nome da categoria pelo ID"""
+    try:
+        from tickets.models import CategoriaChamado
+        categoria = CategoriaChamado.objects.get(id=categoria_id)
+        return categoria.nome
+    except (CategoriaChamado.DoesNotExist, ValueError):
+        return "Desconhecida" 
