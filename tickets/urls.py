@@ -9,6 +9,7 @@ urlpatterns = [
     path('ticket/<int:ticket_id>/', views.detalhe_ticket, name='detalhe_ticket'),
     path('ticket/<int:ticket_id>/editar/', views.editar_ticket, name='editar_ticket'),
     path('ticket/<int:ticket_id>/atribuir/', views.atribuir_ticket, name='atribuir_ticket'),
+    path('ticket/<int:ticket_id>/multi-atribuir/', views.multi_atribuir_ticket, name='multi_atribuir_ticket'),
     path('ticket/<int:ticket_id>/historico/', views.historico_ticket, name='historico_ticket'),
     path('ticket/<int:ticket_id>/notas/', views.listar_notas_tecnicas, name='listar_notas_tecnicas'),
     path('ticket/<int:ticket_id>/notas/adicionar/', views.adicionar_nota_tecnica, name='adicionar_nota_tecnica'),

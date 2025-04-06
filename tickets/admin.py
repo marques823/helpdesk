@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica
+from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket
 from django.utils import timezone
 from django.urls import path
 from . import admin_views
@@ -116,6 +116,19 @@ class NotaTecnicaAdmin(admin.ModelAdmin):
         }),
     )
     
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se for uma nova instância
+            obj.criado_em = timezone.now()
+        obj.atualizado_em = timezone.now()
+        super().save_model(request, obj, form, change)
+
+@admin.register(AtribuicaoTicket)
+class AtribuicaoTicketAdmin(admin.ModelAdmin):
+    list_display = ('ticket', 'funcionario', 'principal', 'criado_em')
+    list_filter = ('principal', 'criado_em')
+    search_fields = ('ticket__titulo', 'funcionario__usuario__username')
+    readonly_fields = ('criado_em', 'atualizado_em')
+
     def save_model(self, request, obj, form, change):
         if not change:  # Se for uma nova instância
             obj.criado_em = timezone.now()

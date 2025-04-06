@@ -23,6 +23,7 @@
                                                 <span class="badge bg-{% if registro.tipo_alteracao == 'criacao' %}success
                                                                     {% elif registro.tipo_alteracao == 'edicao' %}primary
                                                                     {% elif registro.tipo_alteracao == 'atribuicao' %}info
+                                                                    {% elif registro.tipo_alteracao == 'atribuicao_multipla' %}info
                                                                     {% elif registro.tipo_alteracao == 'status' %}warning
                                                                     {% elif registro.tipo_alteracao == 'prioridade' %}danger
                                                                     {% else %}secondary{% endif %}">
@@ -45,22 +46,57 @@
                                                 </div>
                                             {% endif %}
                                             
-                                            {% if registro.dados_novos %}
+                                            {% if registro.tipo_alteracao == 'atribuicao' %}
                                                 <div class="mt-2">
-                                                    {% if registro.tipo_alteracao == 'atribuicao' %}
-                                                        <p class="mb-0">{{ registro.dados_novos.atribuido_a }}</p>
-                                                    {% elif registro.tipo_alteracao == 'edicao' %}
-                                                        <p class="mb-0">{{ registro.dados_novos.descricao }}</p>
-                                                    {% elif registro.tipo_alteracao == 'status' %}
-                                                        <p class="mb-0">{{ registro.dados_novos.status }}</p>
-                                                    {% elif registro.tipo_alteracao == 'prioridade' %}
-                                                        <p class="mb-0">{{ registro.dados_novos.prioridade }}</p>
-                                                    {% elif registro.tipo_alteracao == 'comentario' %}
-                                                        <p class="mb-0">{{ registro.dados_novos.comentario }}</p>
-                                                    {% else %}
-                                                        <p class="mb-0">{{ registro.descricao }}</p>
+                                                    <strong>De:</strong> {% if registro.valor_anterior %}{{ registro.valor_anterior }}{% else %}Não atribuído{% endif %}<br>
+                                                    <strong>Para:</strong> {% if registro.valor_novo %}{{ registro.valor_novo }}{% else %}Não atribuído{% endif %}
+                                                </div>
+                                            {% elif registro.tipo_alteracao == 'atribuicao_multipla' %}
+                                                <div class="mt-2">
+                                                    <strong>Atribuições atualizadas:</strong><br>
+                                                    {% if registro.valor_anterior %}
+                                                        <div class="mb-2">
+                                                            <strong>Anteriormente:</strong><br>
+                                                            {{ registro.valor_anterior|linebreaks }}
+                                                        </div>
+                                                    {% endif %}
+                                                    {% if registro.valor_novo %}
+                                                        <div>
+                                                            <strong>Agora:</strong><br>
+                                                            {{ registro.valor_novo|linebreaks }}
+                                                        </div>
                                                     {% endif %}
                                                 </div>
+                                            {% elif registro.tipo_alteracao == 'status' %}
+                                                <div class="mt-2">
+                                                    <strong>De:</strong> {{ registro.valor_anterior }}<br>
+                                                    <strong>Para:</strong> {{ registro.valor_novo }}
+                                                </div>
+                                            {% elif registro.tipo_alteracao == 'prioridade' %}
+                                                <div class="mt-2">
+                                                    <strong>De:</strong> {{ registro.valor_anterior }}<br>
+                                                    <strong>Para:</strong> {{ registro.valor_novo }}
+                                                </div>
+                                            {% elif registro.tipo_alteracao == 'comentario' %}
+                                                <div class="mt-2">
+                                                    <strong>Comentário:</strong><br>
+                                                    {{ registro.valor_novo|linebreaks }}
+                                                </div>
+                                            {% elif registro.tipo_alteracao == 'edicao' %}
+                                                <div class="mt-2">
+                                                    <strong>Informações atualizadas</strong><br>
+                                                    {{ registro.valor_novo|linebreaks }}
+                                                </div>
+                                            {% elif registro.tipo_alteracao == 'campo_personalizado' %}
+                                                <div class="mt-2">
+                                                    {{ registro.valor_novo|linebreaks }}
+                                                </div>
+                                            {% else %}
+                                                {% if registro.valor_novo %}
+                                                    <div class="mt-2">
+                                                        {{ registro.valor_novo|linebreaks }}
+                                                    </div>
+                                                {% endif %}
                                             {% endif %}
                                         </div>
                                     </div>

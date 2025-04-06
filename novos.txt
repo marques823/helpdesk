@@ -1,99 +1,137 @@
-1. Correções e Melhorias na Gestão de Empresas e Usuários
-Permitir a atribuição de várias empresas para um único usuário, assim como já existe a atribuição de vários funcionários para uma única empresa.
+Grupo 1: Melhorias na interface e experiência do usuário
+Branch: feature/ui-improvements
+Esconder ID e ações na lista  de tickets
+Deixar botões de status do mesmo tamanho
+Esconder filtros na página  de relatório de tickets
+Aumentar o botão "Novo  Ticket" no celular
+Na tela de visualização  de tickets no celular, deixar ferramentas técnicas por  último
+Grupo  2: Funcionalidades avançadas de tickets
+Branch: feature/multi-user-assignment
+Permitir a atribuição de um  ticket para mais de um usuário da  mesma empresa
+Branch: feature/ticket-sharing
+Implementar compartilhamento de ticket em PDF com perfis de campos selecionáveis
+Grupo 3: Personalização e administração
+Branch: feature/company-dashboard
+Criar um painel separado para  cada nova empresa
+Branch: feature/branding-update
+Alterar nome e marca da empresa para  Técnico Litoral Central de Suporte
+Criar arquivo  de configuração separado
+Grupo  4: Segurança e  modernização
+Branch: feature/single-session
+Limitar usuários a 1 login por máquina
+Branch: feature/modern-ui
+Implementar um sistema de aparência mais moderna com React ou TailwindCSS
+Branch: feature/docker-support
+Criar suporte para instalação Docker
+Branch: feature/category-first-flow
+No dashboard, exibir  apenas categorias cadastradas, após escolha da categoria exibir os status e depois os tickets correspondentes
+Vamos começar com a primeira  implementação. Para cada  feature, seguiremos este  processo:
+Criar um novo branch a partir  do main
+Implementar a funcionalidade
+Testar
+Fazer merge  de volta para o main
 
-Restrições de acesso:
 
+
+feito - Correções e Melhorias na Gestão de Empresas e Usuários
+Permitir a atribuição de várias empresas para um único usuário, assim como já existe a atribuição de vários funcionários para uma única empresa. - feito
+
+feito - Restrições de acesso:
 Usuários (incluindo administradores) que pertencem a uma empresa só podem visualizar e editar informações de suas respectivas empresas.
 
-Se um administrador criar uma empresa, ele pode gerenciá-la.
+feito - Se um administrador criar uma empresa, ele pode gerenciá-la
 
-Durante a criação de tickets ou qualquer funcionalidade, garantir que:
-
+feito - Durante a criação de tickets ou qualquer funcionalidade, garantir que:
 Um funcionário da empresa X (com permissão de suporte, cliente ou admin) não possa criar tickets para a empresa Y.
-
 Um funcionário da empresa X não possa atribuir serviços para usuários da empresa Y, a menos que o administrador tenha concedido a ele acesso a ambas (X e Y).
 
-2. Ajustes na Criação de Tickets
+feito - Ajustes na Criação de Tickets
 Preenchimento automático da empresa:
-
 Se o usuário estiver atribuído a apenas uma empresa, o campo da empresa deve ser preenchido automaticamente.
 
-Correção da exibição de campos:
-
+feito - Correção da exibição de campos:
 Os campos "Empresa" e "Atribuir" devem ser exibidos antes de salvar o ticket, não depois.
 
-Exibição correta das empresas:
-
+feito - Exibição correta das empresas:
 O campo "Empresa" deve listar apenas as empresas atribuídas ao usuário.
 
-Atribuição correta de funcionários:
-
+feito - Atribuição correta de funcionários:
 O campo "Atribuir" deve exibir apenas funcionários da empresa selecionada no campo anterior.
 
-3. Melhorias na Exibição e Organização dos Tickets
+feito - Melhorias na Exibição e Organização dos Tickets
 Melhoria no Dashboard:
-
 O campo "Assunto" que atualmente exibe "Sem assunto" deve exibir o título do ticket.
 
-Exibição do nome do usuário logado:
-
+feito - Exibição do nome do usuário logado:
 Exibir apenas o primeiro nome do usuário na interface.
 
-Permissões na visualização de tickets:
-
+feito - Permissões na visualização de tickets:
 Os tickets devem ser exibidos apenas para quem foi atribuído.
 
-Permitir a atribuição de um ticket para mais de um usuário dentro da mesma empresa.
+falta - Permitir a atribuição de um ticket para mais de um usuário da mesma empresa.
 
-Organização da tela de tickets:
-
+feito - Organização da tela de tickets:
 opção de ordenar Tickets, incluir filtro para exibição (Em aberto / Em andamento / Resolvido. etc.).
 
-Implementar navegação rápida entre tickets na tela de exibição.
+feito - Implementar navegação rápida entre tickets na tela de exibição.
 
-Exibir comentários nos tickets, permitindo melhor acompanhamento das interações.
+feito - Exibir comentários nos tickets, permitindo melhor acompanhamento das interações.
 
-4. Implementação de Campos Personalizados para Empresas
-Criar uma funcionalidade na página de administração (apenas para superusuários) para permitir a criação de campos personalizados por empresa.
+feito - Implementação de Campos Personalizados para Empresas
 
+feito - Criar uma funcionalidade na página de administração (apenas para superusuários) para permitir a criação de campos personalizados por empresa.
 Esses campos personalizados devem ser utilizados durante a criação de novos tickets para empresas que possuam necessidades específicas.
 
-5. Melhorias na Gestão e Manutenção do Sistema
+feito - Melhorias na Gestão e Manutenção do Sistema
 Possibilidade de alterar o status de um ticket diretamente da tela de visualização, facilitando o trabalho de técnicos em campo.
 
-Implementar backup do banco de dados, garantindo a segurança das informações.
+em testes - Implementar backup do banco de dados, garantindo a segurança das informações.
 
-Implementação de relatórios:
-
+feito - Implementação de relatórios:
 Criar relatórios filtráveis.
+Incluir a possibilidade de imprimir ou salvar em PDF EXCEL E CSV.
 
-Incluir a possibilidade de imprimir ou salvar em PDF.
+falta - Criar um painel separado para cada nova empresa:
 
-Criar um painel separado para cada nova empresa:
+Ordem Recomendada de Implementação:
 
-Esse recurso é essencial para futuras vendas do serviço para condomínios e empresas que precisam gerir chamados de manutenção.
+1 Gerenciamento de múltiplas empresas para 
+usuários
 
-6. Ordem Recomendada de Implementação
-Gerenciamento de múltiplas empresas para usuários
+2 Restrições de acesso e visibilidade de empresas e tickets
 
-Restrições de acesso e visibilidade de empresas e tickets
+3 Correções na criação de tickets (preenchimento automático, exibição de campos, atribuição correta de usuários e empresas)
 
-Correções na criação de tickets (preenchimento automático, exibição de campos, atribuição correta de usuários e empresas)
+4 Melhorias no dashboard e na exibição de tickets
 
-Melhorias no dashboard e na exibição de tickets
+5 Exibição do primeiro nome do usuário logado
 
-Exibição do primeiro nome do usuário logado
+6 Organização e filtros na tela de tickets
 
-Organização e filtros na tela de tickets
+7 Exibição e gerenciamento de comentários em tickets
 
-Exibição e gerenciamento de comentários em tickets
+8 Criação de campos personalizados para empresas (admin only)
 
-Criação de campos personalizados para empresas (admin only)
+9 Implementação de alteração de status diretamente na visualização do ticket
 
-Implementação de alteração de status diretamente na visualização do ticket
+10 Implementação de backup do banco de dados
 
-Implementação de backup do banco de dados
+11 Criação de relatórios filtráveis e exportáveis
 
-Criação de relatórios filtráveis e exportáveis
+12 Desenvolvimento do painel separado por empresa para futuras comercializações
 
-Desenvolvimento do painel separado por empresa para futuras comercializações
+
+novas inclusões e correções. 
+- experimentar um sistema de aparencia mais moderna com react ou tailwindCSS etc.
+- Na lista de tickets esconder id e ações. 
+- Deixar todos botões status do mesmo tamanho.
+- Na tela de visualização de tickets no celular deixar as ferramentas técnicas por último.
+- Esconder os filtros na pagina relatório de tickets. 
+- No celular o botão "Novo Ticket" está muito pequeno e escondido. 
+- Implementar compartilhamento de ticket em pdf podendo escolher campos que serao enviados atraves de perfis.
+- Limitar usuários a 1 Login por máquina.
+- Alterar nome e marca da empresa para Técnico Litoral Central de Suporte.
+- Criar arquivo de configuração separado.
+- criar suporte para instalação docker.
+- no dashboard exibir apenas categorias cadastradas, após a escolha da categoria exibir os status e depois exibir os tickets correspondentes.
+

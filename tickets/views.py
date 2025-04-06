@@ -10,8 +10,8 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica
-from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket
+from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm
 from django.core.exceptions import ObjectDoesNotExist
 import json
 from datetime import datetime
@@ -963,6 +963,14 @@ def atribuir_ticket(request, ticket_id):
                     }
                 )
                 
+                # Cria ou atualiza a atribuição para manter a compatibilidade
+                if ticket.atribuido_a:
+                    AtribuicaoTicket.objects.update_or_create(
+                        ticket=ticket,
+                        funcionario=ticket.atribuido_a,
+                        defaults={'principal': True}
+                    )
+                
                 messages.success(request, 'Ticket atribuído com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
         else:
@@ -975,6 +983,77 @@ def atribuir_ticket(request, ticket_id):
     except Exception as e:
         logger.error(f"Erro ao atribuir ticket: {str(e)}")
         messages.error(request, 'Erro ao atribuir ticket.')
+        return redirect('tickets:dashboard')
+
+@login_required
+def multi_atribuir_ticket(request, ticket_id):
+    try:
+        ticket = get_object_or_404(Ticket, id=ticket_id)
+        
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = request.user.funcionarios.first()
+            if not funcionario or not funcionario.pode_atribuir_ticket(ticket):
+                messages.error(request, 'Você não tem permissão para atribuir este ticket.')
+                return redirect('tickets:dashboard')
+        
+        # Obter as atribuições atuais para exibir no formulário
+        atribuicoes_atuais = AtribuicaoTicket.objects.filter(ticket=ticket).select_related('funcionario')
+        
+        if request.method == 'POST':
+            form = MultiAtribuirTicketForm(request.POST, ticket=ticket, empresa=ticket.empresa)
+            if form.is_valid():
+                # Obter os funcionários selecionados antes de salvar
+                funcionarios_anteriores = [
+                    atribuicao.funcionario.usuario.username 
+                    for atribuicao in ticket.atribuicoes.all()
+                ]
+                
+                # Salvar as novas atribuições
+                form.save()
+                
+                # Obter os funcionários novos após salvar
+                funcionarios_novos = [
+                    atribuicao.funcionario.usuario.username 
+                    for atribuicao in ticket.atribuicoes.all()
+                ]
+                
+                # Registra a atribuição no histórico
+                registrar_historico(
+                    ticket=ticket,
+                    tipo_alteracao='atribuicao',
+                    usuario=request.user,
+                    descricao=f'Múltiplas atribuições atualizadas por {request.user.get_full_name()}',
+                    dados_anteriores={
+                        'atribuidos_a': funcionarios_anteriores,
+                        'atribuido_principal': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
+                    },
+                    dados_novos={
+                        'atribuidos_a': funcionarios_novos,
+                        'atribuido_principal': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
+                    }
+                )
+                
+                messages.success(request, 'Ticket atribuído com sucesso!')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
+        else:
+            form = MultiAtribuirTicketForm(ticket=ticket, empresa=ticket.empresa)
+        
+        # Obter a lista de funcionários disponíveis para a empresa do ticket
+        funcionarios_disponiveis = Funcionario.objects.filter(
+            empresas=ticket.empresa,
+            tipo__in=['admin', 'suporte']
+        ).select_related('usuario').distinct()
+        
+        return render(request, 'tickets/multi_atribuir_ticket.html', {
+            'form': form,
+            'ticket': ticket,
+            'atribuicoes_atuais': atribuicoes_atuais,
+            'funcionarios_disponiveis': funcionarios_disponiveis
+        })
+    except Exception as e:
+        logger.error(f"Erro ao atribuir múltiplos funcionários ao ticket: {str(e)}")
+        messages.error(request, f'Erro ao atribuir múltiplos funcionários: {str(e)}')
         return redirect('tickets:dashboard')
 
 @never_cache

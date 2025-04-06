@@ -62,9 +62,9 @@ class Funcionario(models.Model):
         if self.is_suporte():
             return True
         
-        # Cliente só pode ver seus próprios tickets
+        # Cliente só pode ver seus próprios tickets ou tickets atribuídos a ele
         if self.is_cliente():
-            return ticket.criado_por == self.usuario or ticket.atribuido_a == self
+            return ticket.criado_por == self.usuario or ticket.atribuicoes.filter(funcionario=self).exists() or ticket.atribuido_a == self
         
         return False
     
@@ -164,6 +164,50 @@ class Ticket(models.Model):
     
     def __str__(self):
         return f"#{self.id} - {self.titulo}"
+    
+    def get_atribuicoes(self):
+        """Retorna todos os funcionários atribuídos a este ticket"""
+        return [atribuicao.funcionario for atribuicao in self.atribuicoes.all()]
+
+class AtribuicaoTicket(models.Model):
+    """
+    Modelo para permitir a atribuição de múltiplos funcionários a um ticket.
+    Isso permite que mais de um técnico seja responsável por um ticket.
+    """
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='atribuicoes')
+    funcionario = models.ForeignKey(Funcionario, on_delete=models.CASCADE, related_name='tickets_atribuidos_multi')
+    principal = models.BooleanField(default=False, help_text="Indica se este funcionário é o principal responsável pelo ticket")
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        unique_together = ['ticket', 'funcionario']
+        verbose_name = 'Atribuição de Ticket'
+        verbose_name_plural = 'Atribuições de Tickets'
+        ordering = ['-principal', '-criado_em']
+    
+    def __str__(self):
+        return f"Ticket #{self.ticket.id} atribuído a {self.funcionario.usuario.username}"
+    
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.criado_em = timezone.now()
+        self.atualizado_em = timezone.now()
+        
+        # Se este funcionário for marcado como principal, atualiza também o campo atribuido_a no ticket
+        if self.principal:
+            self.ticket.atribuido_a = self.funcionario
+            self.ticket.save(update_fields=['atribuido_a'])
+            
+            # Garante que nenhum outro funcionário seja principal para este ticket
+            AtribuicaoTicket.objects.filter(
+                ticket=self.ticket, 
+                principal=True
+            ).exclude(
+                id=self.id if self.id else 0
+            ).update(principal=False)
+            
+        super().save(*args, **kwargs)
 
 class Comentario(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='comentarios')
@@ -179,31 +223,28 @@ class Comentario(models.Model):
         ordering = ['-criado_em']
 
 class HistoricoTicket(models.Model):
-    TIPO_ALTERACAO_CHOICES = [
-        ('criacao', 'Criação'),
-        ('edicao', 'Edição'),
-        ('atribuicao', 'Atribuição'),
+    TIPO_ALTERACAO_CHOICES = (
         ('status', 'Alteração de Status'),
         ('prioridade', 'Alteração de Prioridade'),
+        ('atribuicao', 'Alteração de Atribuição'),
+        ('atribuicao_multipla', 'Atribuição Múltipla'),
+        ('edicao', 'Edição de Informações'),
         ('comentario', 'Comentário'),
-        ('nota_tecnica', 'Nota Técnica'),
-    ]
+        ('campo_personalizado', 'Campo Personalizado'),
+    )
     
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='historico')
-    tipo_alteracao = models.CharField(max_length=20, choices=TIPO_ALTERACAO_CHOICES)
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    descricao = models.TextField()
-    dados_anteriores = models.JSONField(null=True, blank=True)
-    dados_novos = models.JSONField(null=True, blank=True)
+    tipo_alteracao = models.CharField(max_length=20, choices=TIPO_ALTERACAO_CHOICES)
+    valor_anterior = models.TextField(blank=True, null=True)
+    valor_novo = models.TextField(blank=True, null=True)
     data_alteracao = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         ordering = ['-data_alteracao']
-        verbose_name = 'Histórico de Ticket'
-        verbose_name_plural = 'Históricos de Tickets'
-    
+        
     def __str__(self):
-        return f"Histórico #{self.id} - {self.get_tipo_alteracao_display()} - Ticket #{self.ticket.id}"
+        return f"Alteração em {self.ticket.titulo} por {self.usuario.username} em {self.data_alteracao}"
 
 class CampoPersonalizado(models.Model):
     TIPO_CHOICES = [

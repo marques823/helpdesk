@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica
+from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket
 
 class EmpresaForm(forms.ModelForm):
     class Meta:
@@ -133,6 +133,77 @@ class AtribuirTicketForm(forms.ModelForm):
         widgets = {
             'atribuido_a': forms.Select(attrs={'class': 'form-control'}),
         }
+
+class MultiAtribuirTicketForm(forms.Form):
+    funcionarios = forms.ModelMultipleChoiceField(
+        queryset=Funcionario.objects.none(),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        required=False
+    )
+    
+    funcionario_principal = forms.ModelChoiceField(
+        queryset=Funcionario.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=False,
+        help_text="Este funcionário será o principal responsável pelo ticket"
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.ticket = kwargs.pop('ticket', None)
+        self.empresa = kwargs.pop('empresa', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar funcionários por empresa
+        if self.empresa:
+            funcionarios = Funcionario.objects.filter(
+                empresas=self.empresa,
+                tipo__in=['admin', 'suporte']
+            ).distinct()
+            
+            self.fields['funcionarios'].queryset = funcionarios
+            self.fields['funcionario_principal'].queryset = funcionarios
+            
+            # Preencher valores iniciais se o ticket existir
+            if self.ticket:
+                self.fields['funcionario_principal'].initial = self.ticket.atribuido_a
+                self.fields['funcionarios'].initial = [
+                    atribuicao.funcionario.id for atribuicao in self.ticket.atribuicoes.all()
+                ]
+    
+    def save(self):
+        if not self.ticket:
+            return None
+            
+        # Obter os funcionários selecionados
+        funcionarios = self.cleaned_data.get('funcionarios', [])
+        funcionario_principal = self.cleaned_data.get('funcionario_principal')
+        
+        # Limpar atribuições existentes
+        self.ticket.atribuicoes.all().delete()
+        
+        # Criar novas atribuições
+        for funcionario in funcionarios:
+            is_principal = funcionario == funcionario_principal
+            AtribuicaoTicket.objects.create(
+                ticket=self.ticket,
+                funcionario=funcionario,
+                principal=is_principal
+            )
+        
+        # Se houver um funcionário principal mas ele não estiver na lista de funcionários
+        if funcionario_principal and funcionario_principal not in funcionarios:
+            AtribuicaoTicket.objects.create(
+                ticket=self.ticket,
+                funcionario=funcionario_principal,
+                principal=True
+            )
+            
+        # Atualizar o campo atribuido_a do ticket
+        if funcionario_principal:
+            self.ticket.atribuido_a = funcionario_principal
+            self.ticket.save(update_fields=['atribuido_a'])
+            
+        return self.ticket
 
 class CampoPersonalizadoForm(forms.ModelForm):
     class Meta:

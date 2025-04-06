@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Atribuição Múltipla</h3>
+                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Detalhes do Ticket</h5>
+                        <p><strong>Título:</strong> {{ ticket.titulo }}</p>
+                        <p><strong>Empresa:</strong> {{ ticket.empresa.nome }}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></p>
+                        <p><strong>Prioridade:</strong> <span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h5>Atribuições Atuais</h5>
+                        {% with atribuicoes=ticket.get_atribuicoes %}
+                            {% if atribuicoes %}
+                                <ul class="list-group mb-3">
+                                    {% for atribuicao in atribuicoes %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center {% if atribuicao.principal %}list-group-item-primary{% endif %}">
+                                            {{ atribuicao.funcionario.usuario.get_full_name|default:atribuicao.funcionario.usuario.username }}
+                                            {% if atribuicao.principal %}
+                                                <span class="badge rounded-pill bg-primary">Principal</span>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted">Nenhum técnico atribuído no momento.</p>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.funcionarios.label }}</label>
+                            <div class="border rounded p-3">
+                                {% for choice in form.funcionarios %}
+                                    <div class="form-check">
+                                        {{ choice.tag }}
+                                        <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                            {{ choice.choice_label }}
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if form.funcionarios.errors %}
+                                <div class="text-danger">
+                                    {{ form.funcionarios.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Selecione todos os técnicos que devem trabalhar neste ticket.</div>
+                        </div>
+                        
+                        {{ form.funcionario_principal|as_crispy_field }}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-users"></i> Atualizar Atribuições
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
