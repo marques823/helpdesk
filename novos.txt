@@ -1,22 +1,25 @@
 Grupo 1: Melhorias na interface e experiência do usuário
 Branch: feature/ui-improvements
-Esconder ID e ações na lista  de tickets
+Esconder ID e ações na lista  de tickets
 Deixar botões de status do mesmo tamanho
-Esconder filtros na página  de relatório de tickets
-Aumentar o botão "Novo  Ticket" no celular
-Na tela de visualização  de tickets no celular, deixar ferramentas técnicas por  último
-Grupo  2: Funcionalidades avançadas de tickets
+Esconder filtros na página  de relatório de tickets
+Aumentar o botão "Novo  Ticket" no celular
+Na tela de visualização  de tickets no celular, deixar ferramentas técnicas por  último
+
+Grupo  2: Funcionalidades avançadas de tickets
 Branch: feature/multi-user-assignment
-Permitir a atribuição de um  ticket para mais de um usuário da  mesma empresa
+Permitir a atribuição de um  ticket para mais de um usuário da  mesma empresa
 Branch: feature/ticket-sharing
 Implementar compartilhamento de ticket em PDF com perfis de campos selecionáveis
+
 Grupo 3: Personalização e administração
 Branch: feature/company-dashboard
-Criar um painel separado para  cada nova empresa
+Criar um painel separado para  cada nova empresa
 Branch: feature/branding-update
-Alterar nome e marca da empresa para  Técnico Litoral Central de Suporte
-Criar arquivo  de configuração separado
-Grupo  4: Segurança e  modernização
+Alterar nome e marca da empresa para  Técnico Litoral Central de Suporte
+Criar arquivo  de configuração separado
+
+Grupo  4: Segurança e  modernização
 Branch: feature/single-session
 Limitar usuários a 1 login por máquina
 Branch: feature/modern-ui
@@ -24,13 +27,13 @@ Implementar um sistema de aparência mais moderna com React ou TailwindCSS
 Branch: feature/docker-support
 Criar suporte para instalação Docker
 Branch: feature/category-first-flow
-No dashboard, exibir  apenas categorias cadastradas, após escolha da categoria exibir os status e depois os tickets correspondentes
-Vamos começar com a primeira  implementação. Para cada  feature, seguiremos este  processo:
-Criar um novo branch a partir  do main
+No dashboard, exibir  apenas categorias cadastradas, após escolha da categoria exibir os status e depois os tickets correspondentes
+
+Vamos começar com a primeira  implementação. Para cada  feature, seguiremos este  processo:
+Criar um novo branch a partir  do main
 Implementar a funcionalidade
 Testar
-Fazer merge  de volta para o main
-
+Fazer merge  de volta para o main
 
 
 feito - Correções e Melhorias na Gestão de Empresas e Usuários
@@ -68,7 +71,7 @@ Exibir apenas o primeiro nome do usuário na interface.
 feito - Permissões na visualização de tickets:
 Os tickets devem ser exibidos apenas para quem foi atribuído.
 
-falta - Permitir a atribuição de um ticket para mais de um usuário da mesma empresa.
+feito - Permitir a atribuição de um ticket para mais de um usuário da mesma empresa.
 
 feito - Organização da tela de tickets:
 opção de ordenar Tickets, incluir filtro para exibição (Em aberto / Em andamento / Resolvido. etc.).
@@ -123,15 +126,15 @@ usuários
 
 novas inclusões e correções. 
 - experimentar um sistema de aparencia mais moderna com react ou tailwindCSS etc.
-- Na lista de tickets esconder id e ações. 
+- Na lista de tickets esconder id e ações. 
 - Deixar todos botões status do mesmo tamanho.
 - Na tela de visualização de tickets no celular deixar as ferramentas técnicas por último.
-- Esconder os filtros na pagina relatório de tickets. 
-- No celular o botão "Novo Ticket" está muito pequeno e escondido. 
+- Esconder os filtros na pagina relatório de tickets. 
+- No celular o botão "Novo Ticket" está muito pequeno e escondido. 
 - Implementar compartilhamento de ticket em pdf podendo escolher campos que serao enviados atraves de perfis.
 - Limitar usuários a 1 Login por máquina.
 - Alterar nome e marca da empresa para Técnico Litoral Central de Suporte.
+- Incluir pagina de contato, preços e sobre.
 - Criar arquivo de configuração separado.
 - criar suporte para instalação docker.
-- no dashboard exibir apenas categorias cadastradas, após a escolha da categoria exibir os status e depois exibir os tickets correspondentes.
-
+- no dashboard exibir apenas categorias cadastradas, após escolha da categoria exibir os status e depois exibir os tickets correspondentes.
