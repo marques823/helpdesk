@@ -35,4 +35,22 @@ urlpatterns = [
     path('relatorios/empresas/', views.relatorio_empresas, name='relatorio_empresas'),
     path('relatorios/tecnicos/', views.relatorio_tecnicos, name='relatorio_tecnicos'),
     path('relatorios/export/<str:tipo>/', views.exportar_relatorio, name='exportar_relatorio'),
+    
+    # URLs para perfis de compartilhamento
+    path('perfis-compartilhamento/', views.perfis_compartilhamento_list, name='perfis_compartilhamento_list'),
+    path('perfil-compartilhamento/novo/', views.perfil_compartilhamento_novo, name='perfil_compartilhamento_novo'),
+    path('perfil-compartilhamento/<int:pk>/editar/', views.perfil_compartilhamento_editar, name='perfil_compartilhamento_editar'),
+    path('perfil-compartilhamento/<int:pk>/excluir/', views.perfil_compartilhamento_excluir, name='perfil_compartilhamento_excluir'),
+    
+    # URLs para campos de perfis de compartilhamento
+    path('perfil-compartilhamento/<int:perfil_id>/campos/', views.campos_perfil_compartilhamento_list, name='campos_perfil_compartilhamento_list'),
+    path('perfil-compartilhamento/<int:perfil_id>/campo/novo/', views.campo_perfil_compartilhamento_novo, name='campo_perfil_compartilhamento_novo'),
+    path('campo-perfil-compartilhamento/<int:pk>/editar/', views.campo_perfil_compartilhamento_editar, name='campo_perfil_compartilhamento_editar'),
+    path('campo-perfil-compartilhamento/<int:pk>/excluir/', views.campo_perfil_compartilhamento_excluir, name='campo_perfil_compartilhamento_excluir'),
+    
+    # URL para compartilhar ticket em PDF
+    path('ticket/<int:ticket_id>/compartilhar-pdf/', views.compartilhar_ticket_pdf, name='compartilhar_ticket_pdf'),
+    
+    # URL para obter campos personalizados via AJAX
+    path('get-campos-personalizados/', views.get_campos_personalizados, name='get_campos_personalizados'),
 ] 

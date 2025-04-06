@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket
+from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento
 
 class EmpresaForm(forms.ModelForm):
     class Meta:
@@ -275,10 +275,10 @@ class NotaTecnicaForm(forms.ModelForm):
         model = NotaTecnica
         fields = ['descricao', 'equipamento', 'solucao_aplicada', 'pendencias']
         widgets = {
-            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Descreva o problema técnico ou observações sobre o equipamento'}),
-            'equipamento': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: Servidor Dell PowerEdge R740, Impressora HP LaserJet Pro'}),
-            'solucao_aplicada': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Descreva a solução aplicada ou as ações executadas'}),
-            'pendencias': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Liste pendências ou itens que precisam de acompanhamento'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'equipamento': forms.TextInput(attrs={'class': 'form-control'}),
+            'solucao_aplicada': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'pendencias': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -295,3 +295,92 @@ class NotaTecnicaForm(forms.ModelForm):
         if commit:
             nota.save()
         return nota 
+
+class PerfilCompartilhamentoForm(forms.ModelForm):
+    class Meta:
+        model = PerfilCompartilhamento
+        fields = ['nome', 'descricao', 'empresa', 'is_padrao', 'incluir_notas_tecnicas', 'incluir_historico', 'incluir_comentarios', 'incluir_campos_personalizados']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'empresa': forms.Select(attrs={'class': 'form-control'}),
+            'is_padrao': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'incluir_notas_tecnicas': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'incluir_historico': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'incluir_comentarios': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'incluir_campos_personalizados': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar empresas com base nas permissões do usuário
+        if self.user and not self.user.is_superuser:
+            # Para usuários que não são superusuários, mostrar apenas empresas às quais eles têm acesso
+            funcionario = Funcionario.objects.filter(usuario=self.user).first()
+            if funcionario:
+                self.fields['empresa'].queryset = funcionario.empresas.all().distinct()
+        
+        # Se estiver editando um perfil existente, não permitir alterar a empresa
+        if self.instance.pk:
+            self.fields['empresa'].disabled = True
+
+class CampoPerfilCompartilhamentoForm(forms.ModelForm):
+    class Meta:
+        model = CampoPerfilCompartilhamento
+        fields = ['perfil', 'tipo_campo', 'nome_campo', 'campo_personalizado', 'ordem']
+        widgets = {
+            'perfil': forms.Select(attrs={'class': 'form-control'}),
+            'tipo_campo': forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo_campo'}),
+            'nome_campo': forms.TextInput(attrs={'class': 'form-control'}),
+            'campo_personalizado': forms.Select(attrs={'class': 'form-control', 'id': 'id_campo_personalizado'}),
+            'ordem': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar perfis com base nas permissões do usuário
+        if self.user and not self.user.is_superuser:
+            # Para usuários que não são superusuários, mostrar apenas perfis de empresas às quais eles têm acesso
+            funcionario = Funcionario.objects.filter(usuario=self.user).first()
+            if funcionario:
+                empresas = funcionario.empresas.all()
+                self.fields['perfil'].queryset = PerfilCompartilhamento.objects.filter(empresa__in=empresas)
+        
+        # Inicialmente, filtrar campos personalizados com base no perfil selecionado (se houver)
+        if self.instance.pk and self.instance.perfil:
+            self.fields['campo_personalizado'].queryset = CampoPersonalizado.objects.filter(empresa=self.instance.perfil.empresa)
+        else:
+            self.fields['campo_personalizado'].queryset = CampoPersonalizado.objects.none()
+
+class CompartilharTicketForm(forms.Form):
+    perfil = forms.ModelChoiceField(
+        queryset=PerfilCompartilhamento.objects.none(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        required=True,
+        empty_label="Selecione um perfil de compartilhamento"
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.ticket = kwargs.pop('ticket', None)
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar perfis com base na empresa do ticket e nas permissões do usuário
+        if self.ticket:
+            if self.user and self.user.is_superuser:
+                # Superusuários podem ver todos os perfis da empresa do ticket
+                self.fields['perfil'].queryset = PerfilCompartilhamento.objects.filter(empresa=self.ticket.empresa)
+            else:
+                # Outros usuários só podem ver perfis se tiverem acesso à empresa do ticket
+                funcionario = Funcionario.objects.filter(usuario=self.user).first()
+                if funcionario and funcionario.empresas.filter(id=self.ticket.empresa.id).exists():
+                    self.fields['perfil'].queryset = PerfilCompartilhamento.objects.filter(empresa=self.ticket.empresa)
+            
+            # Definir perfil padrão, se existir
+            perfil_padrao = PerfilCompartilhamento.objects.filter(empresa=self.ticket.empresa, is_padrao=True).first()
+            if perfil_padrao:
+                self.fields['perfil'].initial = perfil_padrao 

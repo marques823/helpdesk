@@ -200,7 +200,7 @@
                                 </div>
                             </div>
                             
-                            {% if funcionario and funcionario.is_suporte or funcionario.is_admin or user.is_superuser %}
+                            {% if user.is_superuser or is_suporte or is_admin %}
                             <div class="card mb-4">
                                 <div class="card-header">
                                     <h5 class="card-title mb-0">Ferramentas Técnicas</h5>
@@ -217,6 +217,9 @@
                                         </a>
                                         <a href="{% url 'tickets:historico_ticket' ticket_id=ticket.id %}" class="btn btn-secondary">
                                             <i class="fas fa-history"></i> Histórico de Alterações
+                                        </a>
+                                        <a href="{% url 'tickets:compartilhar_ticket_pdf' ticket_id=ticket.id %}" class="btn btn-danger">
+                                            <i class="fas fa-file-pdf"></i> Compartilhar PDF
                                         </a>
                                     </div>
                                 </div>

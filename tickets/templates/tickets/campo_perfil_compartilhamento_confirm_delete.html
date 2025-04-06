@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Campo do Perfil{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Confirmar Exclusão</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Você tem certeza que deseja excluir o campo <strong>"{{ campo.nome_campo }}"</strong> do perfil <strong>"{{ perfil.nome }}"</strong>?</p>
+                    
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i> Atenção</h5>
+                        <p class="mb-0">Esta ação não pode ser desfeita. O campo será removido do perfil de compartilhamento.</p>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex mt-4">
+                            <button type="submit" class="btn btn-danger me-2">
+                                <i class="fas fa-trash me-1"></i> Sim, excluir
+                            </button>
+                            <a href="{% url 'tickets:campos_perfil_compartilhamento_list' perfil.id %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

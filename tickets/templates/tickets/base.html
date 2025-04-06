@@ -32,6 +32,11 @@
                                 <i class="bi bi-file-earmark-bar-graph"></i> Relatórios
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'perfis_compartilhamento' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'tickets:perfis_compartilhamento_list' %}">
+                                <i class="bi bi-file-pdf"></i> Perfis de PDF
+                            </a>
+                        </li>
                         {% if user.is_superuser %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
@@ -46,6 +51,11 @@
                                     <li>
                                         <a class="dropdown-item {% if request.resolver_match.url_name == 'lista_funcionarios' %}active{% endif %}" href="{% url 'tickets:lista_funcionarios' %}">
                                             <i class="bi bi-people"></i> Funcionários
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item {% if request.resolver_match.url_name == 'perfis_compartilhamento_list' %}active{% endif %}" href="{% url 'tickets:perfis_compartilhamento_list' %}">
+                                            <i class="bi bi-file-pdf"></i> Perfis de Compartilhamento
                                         </a>
                                     </li>
                                 </ul>

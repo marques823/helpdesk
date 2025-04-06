@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket
+from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento
 from django.utils import timezone
 from django.urls import path
 from . import admin_views
@@ -134,3 +134,48 @@ class AtribuicaoTicketAdmin(admin.ModelAdmin):
             obj.criado_em = timezone.now()
         obj.atualizado_em = timezone.now()
         super().save_model(request, obj, form, change)
+
+@admin.register(PerfilCompartilhamento)
+class PerfilCompartilhamentoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'empresa', 'is_padrao', 'incluir_notas_tecnicas', 'incluir_historico', 'incluir_comentarios', 'criado_por')
+    list_filter = ('empresa', 'is_padrao', 'incluir_notas_tecnicas', 'incluir_historico', 'incluir_comentarios')
+    search_fields = ('nome', 'descricao', 'empresa__nome')
+    readonly_fields = ('criado_em', 'atualizado_em')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('nome', 'descricao', 'empresa', 'is_padrao')
+        }),
+        ('Opções de Conteúdo', {
+            'fields': ('incluir_notas_tecnicas', 'incluir_historico', 'incluir_comentarios', 'incluir_campos_personalizados')
+        }),
+        ('Informações do Sistema', {
+            'fields': ('criado_por', 'criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se for uma nova instância
+            obj.criado_por = request.user
+            obj.criado_em = timezone.now()
+        obj.atualizado_em = timezone.now()
+        super().save_model(request, obj, form, change)
+
+@admin.register(CampoPerfilCompartilhamento)
+class CampoPerfilCompartilhamentoAdmin(admin.ModelAdmin):
+    list_display = ('nome_campo', 'perfil', 'tipo_campo', 'ordem')
+    list_filter = ('perfil__empresa', 'perfil', 'tipo_campo')
+    search_fields = ('nome_campo', 'perfil__nome')
+    raw_id_fields = ('perfil', 'campo_personalizado')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('perfil', 'tipo_campo', 'nome_campo', 'ordem')
+        }),
+        ('Campo Personalizado', {
+            'fields': ('campo_personalizado',),
+            'classes': ('collapse',),
+            'description': 'Apenas para campos do tipo "Campo Personalizado"'
+        }),
+    )

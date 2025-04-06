@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if form.instance.pk %}
+        Editar Perfil de Compartilhamento
+    {% else %}
+        Novo Perfil de Compartilhamento
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        {% if form.instance.pk %}
+                            Editar Perfil de Compartilhamento
+                        {% else %}
+                            Novo Perfil de Compartilhamento
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.nome.id_for_label }}" class="form-label">{{ form.nome.label }}</label>
+                            {{ form.nome }}
+                            {% if form.nome.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.nome.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.descricao.id_for_label }}" class="form-label">{{ form.descricao.label }}</label>
+                            {{ form.descricao }}
+                            {% if form.descricao.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.descricao.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.empresa.id_for_label }}" class="form-label">{{ form.empresa.label }}</label>
+                            {{ form.empresa }}
+                            {% if form.empresa.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.empresa.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.is_padrao }}
+                            <label class="form-check-label" for="{{ form.is_padrao.id_for_label }}">
+                                Definir como perfil padrão
+                            </label>
+                            {% if form.is_padrao.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.is_padrao.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Se marcado, este perfil será selecionado por padrão ao compartilhar tickets.
+                            </small>
+                        </div>
+                        
+                        <h5 class="mt-4 mb-3">Componentes a incluir no PDF</h5>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.incluir_historico }}
+                            <label class="form-check-label" for="{{ form.incluir_historico.id_for_label }}">
+                                Incluir histórico de alterações
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.incluir_comentarios }}
+                            <label class="form-check-label" for="{{ form.incluir_comentarios.id_for_label }}">
+                                Incluir comentários
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.incluir_notas_tecnicas }}
+                            <label class="form-check-label" for="{{ form.incluir_notas_tecnicas.id_for_label }}">
+                                Incluir notas técnicas
+                            </label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.incluir_campos_personalizados }}
+                            <label class="form-check-label" for="{{ form.incluir_campos_personalizados.id_for_label }}">
+                                Incluir campos personalizados
+                            </label>
+                        </div>
+                        
+                        <div class="d-flex mt-4">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-save me-1"></i> Salvar
+                            </button>
+                            <a href="{% url 'tickets:perfis_compartilhamento_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Voltar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

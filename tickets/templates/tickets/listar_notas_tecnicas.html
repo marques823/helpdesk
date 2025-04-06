@@ -37,8 +37,8 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-4">
-                    <p><strong>Status:</strong> <span class="badge badge-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></p>
-                    <p><strong>Prioridade:</strong> <span class="badge badge-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span></p>
+                    <p><strong>Status:</strong> <span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span></p>
+                    <p><strong>Prioridade:</strong> <span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span></p>
                 </div>
                 <div class="col-md-4">
                     <p><strong>Empresa:</strong> {{ ticket.empresa.nome }}</p>
@@ -67,7 +67,7 @@
                                 <div>
                                     <h5 class="mb-1">
                                         {% if nota.equipamento %}
-                                            <span class="badge badge-info">{{ nota.equipamento }}</span>
+                                            <span class="badge bg-info">{{ nota.equipamento }}</span>
                                         {% endif %}
                                         <span class="ml-2">Nota #{{ nota.id }}</span>
                                     </h5>

@@ -1,0 +1,29 @@
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="{% url 'tickets:editar_ticket' ticket.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-edit me-1"></i> Editar
+                    </a>
+                    <a href="{% url 'tickets:atribuir_ticket' ticket.id %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-user-plus me-1"></i> Atribuir
+                    </a>
+                    <a href="{% url 'tickets:multi_atribuir_ticket' ticket.id %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-users me-1"></i> Atribuir a Múltiplos
+                    </a>
+                    <a href="{% url 'tickets:compartilhar_ticket_pdf' ticket.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-pdf me-1"></i> Compartilhar PDF
+                    </a>
+                    {% if ticket.status != 'fechado' %}
+                        <form method="post" action="{% url 'tickets:fechar_ticket' ticket.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-check-circle me-1"></i> Fechar Ticket
+                            </button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{% url 'tickets:reabrir_ticket' ticket.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning btn-sm">
+                                <i class="fas fa-folder-open me-1"></i> Reabrir Ticket
+                            </button>
+                        </form>
+                    {% endif %}
+                </div> 

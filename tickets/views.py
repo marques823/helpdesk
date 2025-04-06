@@ -10,19 +10,39 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket
-from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento
+from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, CampoPerfilCompartilhamentoForm, CompartilharTicketForm
 from django.core.exceptions import ObjectDoesNotExist
 import json
 from datetime import datetime
 from django.urls import reverse
 from django.template.loader import render_to_string
+import weasyprint
+from weasyprint import HTML
+from django.conf import settings
+import tempfile
+import os
+from io import BytesIO
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
 
 def is_admin(user):
     return user.is_superuser
+
+def pode_visualizar_ticket(user, ticket):
+    """Verifica se o usuário pode visualizar o ticket"""
+    if user.is_superuser:
+        return True
+    
+    try:
+        funcionario = user.funcionarios.first()
+        if funcionario:
+            return funcionario.pode_ver_ticket(ticket)
+    except:
+        pass
+    
+    return False
 
 def is_suporte(user):
     return user.is_staff and not user.is_superuser
@@ -621,6 +641,10 @@ def detalhe_ticket(request, ticket_id):
         pode_editar = funcionario and funcionario.pode_editar_ticket(ticket) if funcionario else False
         pode_atribuir = funcionario and funcionario.pode_atribuir_ticket(ticket) if funcionario else False
         
+        # Verifica se é técnico de suporte
+        is_suporte = funcionario.is_suporte() if funcionario else False
+        is_admin = funcionario.is_admin() if funcionario else False
+        
         context = {
             'ticket': ticket,
             'comentarios': comentarios,
@@ -633,7 +657,9 @@ def detalhe_ticket(request, ticket_id):
             'campos_personalizados': valores_campos,
             'funcionario': funcionario,
             'pode_editar': pode_editar,
-            'pode_atribuir': pode_atribuir
+            'pode_atribuir': pode_atribuir,
+            'is_suporte': is_suporte,
+            'is_admin': is_admin
         }
         
         logger.info(f"Ticket {ticket_id} carregado com sucesso para usuário {request.user.username}")
@@ -1523,3 +1549,256 @@ def exportar_relatorio(request, tipo):
         # Capturar qualquer exceção e exibir uma mensagem de erro
         import traceback
         return HttpResponse(f"Erro ao gerar relatório: {str(e)}<br><pre>{traceback.format_exc()}</pre>")
+
+# Views para gerenciamento de perfis de compartilhamento
+@login_required
+def perfis_compartilhamento_list(request):
+    """Lista todos os perfis de compartilhamento disponíveis para o usuário."""
+    user = request.user
+    
+    if user.is_superuser:
+        perfis = PerfilCompartilhamento.objects.all()
+    else:
+        # Para usuários normais, mostrar apenas perfis de empresas às quais eles têm acesso
+        funcionario = Funcionario.objects.filter(usuario=user).first()
+        if funcionario:
+            empresas = funcionario.empresas.all()
+            perfis = PerfilCompartilhamento.objects.filter(empresa__in=empresas)
+        else:
+            perfis = PerfilCompartilhamento.objects.none()
+    
+    return render(request, 'tickets/perfis_compartilhamento_list.html', {'perfis': perfis})
+
+@login_required
+def perfil_compartilhamento_novo(request):
+    """Cria um novo perfil de compartilhamento."""
+    if request.method == 'POST':
+        form = PerfilCompartilhamentoForm(request.POST, user=request.user)
+        if form.is_valid():
+            perfil = form.save(commit=False)
+            perfil.criado_por = request.user
+            perfil.save()
+            messages.success(request, 'Perfil de compartilhamento criado com sucesso!')
+            return redirect('tickets:perfis_compartilhamento_list')
+    else:
+        form = PerfilCompartilhamentoForm(user=request.user)
+    
+    return render(request, 'tickets/perfil_compartilhamento_form.html', {'form': form})
+
+@login_required
+def perfil_compartilhamento_editar(request, pk):
+    """Edita um perfil de compartilhamento existente."""
+    perfil = get_object_or_404(PerfilCompartilhamento, pk=pk)
+    
+    # Verificar permissões
+    if not request.user.is_superuser:
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        if not funcionario or not funcionario.empresas.filter(id=perfil.empresa.id).exists():
+            messages.error(request, 'Você não tem permissão para editar este perfil.')
+            return redirect('tickets:perfis_compartilhamento_list')
+    
+    if request.method == 'POST':
+        form = PerfilCompartilhamentoForm(request.POST, instance=perfil, user=request.user)
+        if form.is_valid():
+            perfil = form.save(commit=False)
+            perfil.atualizado_por = request.user
+            perfil.save()
+            messages.success(request, 'Perfil de compartilhamento atualizado com sucesso!')
+            return redirect('tickets:perfis_compartilhamento_list')
+    else:
+        form = PerfilCompartilhamentoForm(instance=perfil, user=request.user)
+    
+    return render(request, 'tickets/perfil_compartilhamento_form.html', {'form': form})
+
+@login_required
+def perfil_compartilhamento_excluir(request, pk):
+    """Exclui um perfil de compartilhamento."""
+    perfil = get_object_or_404(PerfilCompartilhamento, pk=pk)
+    
+    # Verificar permissões
+    if not request.user.is_superuser:
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        if not funcionario or not funcionario.empresas.filter(id=perfil.empresa.id).exists():
+            messages.error(request, 'Você não tem permissão para excluir este perfil.')
+            return redirect('tickets:perfis_compartilhamento_list')
+    
+    if request.method == 'POST':
+        perfil.delete()
+        messages.success(request, 'Perfil de compartilhamento excluído com sucesso!')
+        return redirect('tickets:perfis_compartilhamento_list')
+    
+    return render(request, 'tickets/perfil_compartilhamento_confirm_delete.html', {'perfil': perfil})
+
+@login_required
+def campos_perfil_compartilhamento_list(request, perfil_id):
+    """Lista todos os campos de um perfil de compartilhamento."""
+    perfil = get_object_or_404(PerfilCompartilhamento, pk=perfil_id)
+    
+    # Verificar permissões
+    if not request.user.is_superuser:
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        if not funcionario or not funcionario.empresas.filter(id=perfil.empresa.id).exists():
+            messages.error(request, 'Você não tem permissão para visualizar este perfil.')
+            return redirect('tickets:perfis_compartilhamento_list')
+    
+    campos = CampoPerfilCompartilhamento.objects.filter(perfil=perfil).order_by('ordem')
+    
+    return render(request, 'tickets/campos_perfil_compartilhamento_list.html', {
+        'perfil': perfil,
+        'campos': campos
+    })
+
+@login_required
+def campo_perfil_compartilhamento_novo(request, perfil_id):
+    """Adiciona um novo campo a um perfil de compartilhamento."""
+    perfil = get_object_or_404(PerfilCompartilhamento, pk=perfil_id)
+    
+    # Verificar permissões
+    if not request.user.is_superuser:
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        if not funcionario or not funcionario.empresas.filter(id=perfil.empresa.id).exists():
+            messages.error(request, 'Você não tem permissão para editar este perfil.')
+            return redirect('tickets:perfis_compartilhamento_list')
+    
+    if request.method == 'POST':
+        form = CampoPerfilCompartilhamentoForm(request.POST, user=request.user)
+        if form.is_valid():
+            campo = form.save(commit=False)
+            campo.perfil = perfil
+            campo.save()
+            messages.success(request, 'Campo adicionado com sucesso!')
+            return redirect('tickets:campos_perfil_compartilhamento_list', perfil_id=perfil.id)
+    else:
+        form = CampoPerfilCompartilhamentoForm(
+            user=request.user,
+            initial={'perfil': perfil}
+        )
+        # Definir queryset de campo_personalizado para mostrar apenas os da empresa do perfil
+        form.fields['campo_personalizado'].queryset = CampoPersonalizado.objects.filter(empresa=perfil.empresa)
+    
+    return render(request, 'tickets/campo_perfil_compartilhamento_form.html', {
+        'form': form,
+        'perfil': perfil
+    })
+
+@login_required
+def campo_perfil_compartilhamento_editar(request, pk):
+    """Edita um campo de um perfil de compartilhamento."""
+    campo = get_object_or_404(CampoPerfilCompartilhamento, pk=pk)
+    perfil = campo.perfil
+    
+    # Verificar permissões
+    if not request.user.is_superuser:
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        if not funcionario or not funcionario.empresas.filter(id=perfil.empresa.id).exists():
+            messages.error(request, 'Você não tem permissão para editar este campo.')
+            return redirect('tickets:perfis_compartilhamento_list')
+    
+    if request.method == 'POST':
+        form = CampoPerfilCompartilhamentoForm(request.POST, instance=campo, user=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Campo atualizado com sucesso!')
+            return redirect('tickets:campos_perfil_compartilhamento_list', perfil_id=perfil.id)
+    else:
+        form = CampoPerfilCompartilhamentoForm(instance=campo, user=request.user)
+        # Definir queryset de campo_personalizado para mostrar apenas os da empresa do perfil
+        form.fields['campo_personalizado'].queryset = CampoPersonalizado.objects.filter(empresa=perfil.empresa)
+    
+    return render(request, 'tickets/campo_perfil_compartilhamento_form.html', {
+        'form': form,
+        'perfil': perfil
+    })
+
+@login_required
+def campo_perfil_compartilhamento_excluir(request, pk):
+    """Exclui um campo de um perfil de compartilhamento."""
+    campo = get_object_or_404(CampoPerfilCompartilhamento, pk=pk)
+    perfil = campo.perfil
+    
+    # Verificar permissões
+    if not request.user.is_superuser:
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        if not funcionario or not funcionario.empresas.filter(id=perfil.empresa.id).exists():
+            messages.error(request, 'Você não tem permissão para excluir este campo.')
+            return redirect('tickets:perfis_compartilhamento_list')
+    
+    if request.method == 'POST':
+        campo.delete()
+        messages.success(request, 'Campo excluído com sucesso!')
+        return redirect('tickets:campos_perfil_compartilhamento_list', perfil_id=perfil.id)
+    
+    return render(request, 'tickets/campo_perfil_compartilhamento_confirm_delete.html', {
+        'campo': campo,
+        'perfil': perfil
+    })
+
+@login_required
+def compartilhar_ticket_pdf(request, ticket_id):
+    """Compartilha um ticket em formato PDF."""
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    
+    # Verificar permissões
+    if not pode_visualizar_ticket(request.user, ticket):
+        messages.error(request, 'Você não tem permissão para visualizar este ticket.')
+        return redirect('tickets:dashboard')
+    
+    if request.method == 'POST':
+        form = CompartilharTicketForm(request.POST, ticket=ticket, user=request.user)
+        if form.is_valid():
+            perfil = form.cleaned_data['perfil']
+            
+            # Gerar PDF
+            return gerar_pdf_ticket(request, ticket, perfil)
+    else:
+        form = CompartilharTicketForm(ticket=ticket, user=request.user)
+    
+    return render(request, 'tickets/compartilhar_ticket_form.html', {
+        'form': form,
+        'ticket': ticket
+    })
+
+def gerar_pdf_ticket(request, ticket, perfil):
+    """Gera um PDF com as informações do ticket de acordo com o perfil de compartilhamento."""
+    # Obter dados do ticket
+    comentarios = Comentario.objects.filter(ticket=ticket).order_by('criado_em')
+    notas_tecnicas = NotaTecnica.objects.filter(ticket=ticket).order_by('criado_em')
+    campos_personalizados = ValorCampoPersonalizado.objects.filter(ticket=ticket)
+    historico = HistoricoTicket.objects.filter(ticket=ticket).order_by('data_alteracao')
+    
+    # Obter campos a serem exibidos de acordo com o perfil
+    campos_perfil = CampoPerfilCompartilhamento.objects.filter(perfil=perfil).order_by('ordem')
+    
+    # Preparar contexto para o template
+    context = {
+        'ticket': ticket,
+        'perfil': perfil,
+        'campos_perfil': campos_perfil,
+        'empresa': ticket.empresa,
+        'comentarios': comentarios if perfil.incluir_comentarios else None,
+        'notas_tecnicas': notas_tecnicas if perfil.incluir_notas_tecnicas else None,
+        'campos_personalizados': campos_personalizados if perfil.incluir_campos_personalizados else None,
+        'historico': historico if perfil.incluir_historico else None,
+    }
+    
+    # Renderizar template HTML
+    html_string = render_to_string('tickets/ticket_pdf_template.html', context)
+    
+    # Configurar resposta HTTP com PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="ticket_{ticket.id}.pdf"'
+    
+    # Criar arquivo PDF com WeasyPrint
+    pdf = weasyprint.HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf()
+    response.write(pdf)
+    
+    return response
+
+@login_required
+def get_campos_personalizados(request):
+    """AJAX view para obter campos personalizados de uma empresa."""
+    empresa_id = request.GET.get('empresa_id')
+    if empresa_id:
+        campos = CampoPersonalizado.objects.filter(empresa_id=empresa_id).values('id', 'nome')
+        return JsonResponse(list(campos), safe=False)
+    return JsonResponse([], safe=False)

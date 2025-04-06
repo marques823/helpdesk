@@ -166,8 +166,8 @@ class Ticket(models.Model):
         return f"#{self.id} - {self.titulo}"
     
     def get_atribuicoes(self):
-        """Retorna todos os funcionários atribuídos a este ticket"""
-        return [atribuicao.funcionario for atribuicao in self.atribuicoes.all()]
+        """Retorna todas as atribuições deste ticket"""
+        return self.atribuicoes.all()
 
 class AtribuicaoTicket(models.Model):
     """
@@ -333,3 +333,73 @@ class NotaTecnica(models.Model):
         verbose_name = 'Nota Técnica'
         verbose_name_plural = 'Notas Técnicas'
         ordering = ['-criado_em']
+
+class PerfilCompartilhamento(models.Model):
+    """
+    Modelo para armazenar perfis de compartilhamento de tickets em PDF.
+    Cada perfil define quais campos do ticket serão incluídos no PDF gerado.
+    """
+    nome = models.CharField(max_length=100, verbose_name="Nome do perfil")
+    descricao = models.TextField(blank=True, null=True, verbose_name="Descrição do perfil")
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name='perfis_compartilhamento')
+    is_padrao = models.BooleanField(default=False, verbose_name="Perfil padrão", help_text="Se marcado, este perfil será o padrão para a empresa")
+    incluir_notas_tecnicas = models.BooleanField(default=False, verbose_name="Incluir notas técnicas")
+    incluir_historico = models.BooleanField(default=False, verbose_name="Incluir histórico")
+    incluir_comentarios = models.BooleanField(default=True, verbose_name="Incluir comentários")
+    incluir_campos_personalizados = models.BooleanField(default=True, verbose_name="Incluir campos personalizados")
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='perfis_compartilhamento_criados')
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(default=timezone.now)
+
+    def save(self, *args, **kwargs):
+        # Se este perfil for definido como padrão, desative o padrão anterior
+        if self.is_padrao:
+            PerfilCompartilhamento.objects.filter(
+                empresa=self.empresa, 
+                is_padrao=True
+            ).exclude(pk=self.pk).update(is_padrao=False)
+            
+        if not self.id:
+            self.criado_em = timezone.now()
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.nome} ({self.empresa.nome})"
+
+    class Meta:
+        verbose_name = 'Perfil de Compartilhamento'
+        verbose_name_plural = 'Perfis de Compartilhamento'
+        ordering = ['-is_padrao', 'nome']
+        unique_together = ['nome', 'empresa']
+
+class CampoPerfilCompartilhamento(models.Model):
+    """
+    Modelo para definir quais campos específicos serão incluídos em um perfil de compartilhamento.
+    """
+    TIPO_CAMPO_CHOICES = [
+        ('basico', 'Campo Básico'),
+        ('personalizado', 'Campo Personalizado')
+    ]
+    
+    perfil = models.ForeignKey(PerfilCompartilhamento, on_delete=models.CASCADE, related_name='campos')
+    tipo_campo = models.CharField(max_length=20, choices=TIPO_CAMPO_CHOICES, default='basico')
+    nome_campo = models.CharField(max_length=100, verbose_name="Nome do campo")
+    # Se for um campo personalizado, referência para o modelo CampoPersonalizado
+    campo_personalizado = models.ForeignKey(
+        CampoPersonalizado, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True, 
+        related_name='perfis_compartilhamento'
+    )
+    ordem = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return f"{self.nome_campo} - {self.perfil.nome}"
+    
+    class Meta:
+        verbose_name = 'Campo de Perfil de Compartilhamento'
+        verbose_name_plural = 'Campos de Perfil de Compartilhamento'
+        ordering = ['ordem', 'nome_campo']
+        unique_together = ['perfil', 'nome_campo']

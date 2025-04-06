@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Ticket #{{ ticket.id }} - {{ ticket.titulo }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #333;
+        }
+        h1 {
+            font-size: 18pt;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        h2 {
+            font-size: 16pt;
+            color: #2980b9;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        h3 {
+            font-size: 14pt;
+            color: #3498db;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header img {
+            max-width: 200px;
+            height: auto;
+        }
+        .company-name {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .ticket-info {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .ticket-info th, .ticket-info td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .ticket-info th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            width: 30%;
+        }
+        .ticket-description {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .comment, .note, .history-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .comment-header, .note-header, .history-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .comment-date, .note-date, .history-date {
+            font-size: 10pt;
+            color: #777;
+        }
+        .footer {
+            text-align: center;
+            font-size: 10pt;
+            color: #777;
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-aberto {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-em-andamento {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-fechado {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status-pendente {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        .meta-info {
+            font-size: 10pt;
+            color: #777;
+            margin-top: 5px;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        .page-number:before {
+            content: "Página " counter(page);
+        }
+        @page {
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 10pt;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        {% if empresa.logo %}
+            <img src="{{ empresa.logo.url }}" alt="{{ empresa.nome }}">
+        {% endif %}
+        <div class="company-name">{{ empresa.nome }}</div>
+        <div>{{ empresa.endereco }}</div>
+        <div>CNPJ: {{ empresa.cnpj }}</div>
+    </div>
+    
+    <h1>Ticket #{{ ticket.id }} - {{ ticket.titulo }}</h1>
+    
+    <table class="ticket-info">
+        <tr>
+            <th>Status</th>
+            <td>
+                <span class="status status-{{ ticket.status|slugify }}">
+                    {{ ticket.get_status_display }}
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <th>Criado em</th>
+            <td>{{ ticket.criado_em|date:"d/m/Y H:i" }}</td>
+        </tr>
+        <tr>
+            <th>Última atualização</th>
+            <td>{{ ticket.atualizado_em|date:"d/m/Y H:i" }}</td>
+        </tr>
+        <tr>
+            <th>Prioridade</th>
+            <td>{{ ticket.get_prioridade_display }}</td>
+        </tr>
+        <tr>
+            <th>Categoria</th>
+            <td>{{ ticket.categoria|default:"Não categorizado" }}</td>
+        </tr>
+        <tr>
+            <th>Cliente</th>
+            <td>{{ ticket.cliente.nome }} ({{ ticket.cliente.email }})</td>
+        </tr>
+        {% if ticket.atribuido_a %}
+        <tr>
+            <th>Atribuído a</th>
+            <td>{{ ticket.atribuido_a.nome }} ({{ ticket.atribuido_a.email }})</td>
+        </tr>
+        {% endif %}
+        
+        {% for campo in campos_perfil %}
+            {% if campo.tipo_campo == 'titulo' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'descricao' %}
+                <!-- Mostrado abaixo -->
+            {% elif campo.tipo_campo == 'status' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'prioridade' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'categoria' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'cliente' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'atribuido_a' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'criado_em' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'atualizado_em' %}
+                <!-- Já mostrado acima -->
+            {% elif campo.tipo_campo == 'personalizado' and campo.campo_personalizado %}
+                {% for valor in campos_personalizados %}
+                    {% if valor.campo.id == campo.campo_personalizado.id %}
+                        <tr>
+                            <th>{{ campo.nome_campo|default:campo.campo_personalizado.nome }}</th>
+                            <td>{{ valor.valor }}</td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+    </table>
+    
+    <h2>Descrição</h2>
+    <div class="ticket-description">
+        {{ ticket.descricao|linebreaks }}
+    </div>
+    
+    {% if notas_tecnicas %}
+        <h2>Notas Técnicas</h2>
+        <div class="section">
+            {% for nota in notas_tecnicas %}
+                <div class="note">
+                    <div class="note-header">
+                        <span>Nota de {{ nota.tecnico.nome }}</span>
+                        <span class="note-date">{{ nota.criado_em|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <p><strong>Descrição:</strong> {{ nota.descricao|linebreaks }}</p>
+                    {% if nota.equipamento %}
+                        <p><strong>Equipamento:</strong> {{ nota.equipamento }}</p>
+                    {% endif %}
+                    {% if nota.solucao_aplicada %}
+                        <p><strong>Solução Aplicada:</strong> {{ nota.solucao_aplicada|linebreaks }}</p>
+                    {% endif %}
+                    {% if nota.pendencias %}
+                        <p><strong>Pendências:</strong> {{ nota.pendencias|linebreaks }}</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    {% if comentarios %}
+        <h2>Comentários</h2>
+        <div class="section">
+            {% for comentario in comentarios %}
+                <div class="comment">
+                    <div class="comment-header">
+                        <span>{{ comentario.autor.nome }}</span>
+                        <span class="comment-date">{{ comentario.criado_em|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <p>{{ comentario.conteudo|linebreaks }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    {% if historico %}
+        <h2>Histórico de Alterações</h2>
+        <div class="section">
+            {% for item in historico %}
+                <div class="history-item">
+                    <div class="history-header">
+                        <span>{{ item.autor.nome }}</span>
+                        <span class="history-date">{{ item.criado_em|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <p>{{ item.descricao }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <div class="footer">
+        <p>Documento gerado em {{ ticket.empresa.nome }} em {% now "d/m/Y H:i" %}</p>
+        <p>Este documento contém informações confidenciais e é destinado apenas para uso interno.</p>
+    </div>
+</body>
+</html> 

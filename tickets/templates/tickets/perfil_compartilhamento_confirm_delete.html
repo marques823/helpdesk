@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Perfil de Compartilhamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Confirmar Exclusão</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Você tem certeza que deseja excluir o perfil de compartilhamento <strong>"{{ perfil.nome }}"</strong>?</p>
+                    
+                    <p>Esta ação não pode ser desfeita. Todos os campos associados a este perfil também serão excluídos.</p>
+                    
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i> Atenção</h5>
+                        <p class="mb-0">A exclusão deste perfil pode afetar a funcionalidade de compartilhamento de tickets para a empresa <strong>{{ perfil.empresa.nome }}</strong>.</p>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex mt-4">
+                            <button type="submit" class="btn btn-danger me-2">
+                                <i class="fas fa-trash me-1"></i> Sim, excluir
+                            </button>
+                            <a href="{% url 'tickets:perfis_compartilhamento_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
