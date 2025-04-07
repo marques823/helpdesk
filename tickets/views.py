@@ -23,6 +23,7 @@ from django.conf import settings
 import tempfile
 import os
 from io import BytesIO
+from django.db.models import Count
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -1913,3 +1914,84 @@ def get_categorias_por_empresa(request):
             return JsonResponse({"error": str(e)}, status=400)
     
     return JsonResponse({"categorias": categorias})
+
+@login_required
+def get_estatisticas_categorias(request):
+    """API para obter estatísticas de tickets por categoria"""
+    empresa_id = request.GET.get('empresa_id')
+    estatisticas = []
+    
+    if empresa_id:
+        try:
+            # Verifica permissão
+            if not request.user.is_superuser:
+                funcionario = request.user.funcionarios.first()
+                if not funcionario or not funcionario.empresas.filter(id=empresa_id).exists():
+                    return JsonResponse({"error": "Você não tem acesso a esta empresa"}, status=403)
+            
+            # Obtém todas as categorias da empresa
+            categorias = CategoriaChamado.objects.filter(
+                empresa_id=empresa_id,
+                ativo=True
+            ).order_by('ordem', 'nome')
+            
+            # Para cada categoria, obtém estatísticas dos tickets
+            for categoria in categorias:
+                # Tickets totais da categoria
+                total_tickets = Ticket.objects.filter(categoria=categoria).count()
+                
+                # Tickets em aberto (status = aberto ou em_andamento ou pendente)
+                tickets_abertos = Ticket.objects.filter(
+                    categoria=categoria,
+                    status__in=['aberto', 'em_andamento', 'pendente']
+                ).count()
+                
+                # Tickets fechados (status = resolvido ou fechado)
+                tickets_fechados = Ticket.objects.filter(
+                    categoria=categoria,
+                    status__in=['resolvido', 'fechado']
+                ).count()
+                
+                estatisticas.append({
+                    'id': categoria.id,
+                    'nome': categoria.nome,
+                    'cor': categoria.cor,
+                    'icone': categoria.icone,
+                    'total': total_tickets,
+                    'abertos': tickets_abertos,
+                    'fechados': tickets_fechados,
+                    'porcentagem_fechados': round((tickets_fechados / total_tickets) * 100) if total_tickets > 0 else 0
+                })
+                
+            # Adiciona estatística para "Sem categoria"
+            tickets_sem_categoria = Ticket.objects.filter(
+                empresa_id=empresa_id,
+                categoria__isnull=True
+            )
+            
+            total_sem_categoria = tickets_sem_categoria.count()
+            
+            if total_sem_categoria > 0:
+                tickets_abertos_sem_categoria = tickets_sem_categoria.filter(
+                    status__in=['aberto', 'em_andamento', 'pendente']
+                ).count()
+                
+                tickets_fechados_sem_categoria = tickets_sem_categoria.filter(
+                    status__in=['resolvido', 'fechado']
+                ).count()
+                
+                estatisticas.append({
+                    'id': None,
+                    'nome': 'Sem categoria',
+                    'cor': 'secondary',
+                    'icone': 'fa-question-circle',
+                    'total': total_sem_categoria,
+                    'abertos': tickets_abertos_sem_categoria,
+                    'fechados': tickets_fechados_sem_categoria,
+                    'porcentagem_fechados': round((tickets_fechados_sem_categoria / total_sem_categoria) * 100) if total_sem_categoria > 0 else 0
+                })
+                
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    
+    return JsonResponse({"estatisticas": estatisticas})

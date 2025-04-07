@@ -56,4 +56,7 @@ urlpatterns = [
     
     # URL para obter categorias por empresa via AJAX
     path('get-categorias-por-empresa/', views.get_categorias_por_empresa, name='get_categorias_por_empresa'),
+    
+    # Adicione esta URL junto com as outras API URLs
+    path('get-estatisticas-categorias/', views.get_estatisticas_categorias, name='get_estatisticas_categorias'),
 ] 
