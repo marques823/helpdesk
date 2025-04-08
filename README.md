@@ -29,12 +29,30 @@
 - Responder aos tickets existentes
 - Atualizar o status dos tickets (Aberto, Em Andamento, Fechado)
 - Priorizar tickets baseado na urgência
+- Adicionar notas técnicas aos tickets para documentação interna
 
-### Para Administradores
+### Para Administradores de Empresa
+- Acesso ao painel administrativo da empresa através do botão "Painel Admin" no dashboard
+- Gerenciar usuários da própria empresa
+  - Adicionar novos usuários com limites configuráveis
+  - Editar informações de usuários existentes
+  - Visualizar lista completa de usuários
+- Gerenciar categorias de chamados
+  - Criar e editar categorias personalizadas
+  - Definir ícones e cores para melhor visualização
+  - Organizar a ordem de exibição das categorias
+- Configurar campos personalizados para chamados
+  - Criar campos específicos para a empresa
+  - Definir tipos de campo (texto, número, data, seleção)
+  - Configurar se o campo é obrigatório
+- Visualizar estatísticas específicas da empresa
+
+### Para Administradores do Sistema
 - Gerenciar empresas e usuários
 - Ter visibilidade de todos os tickets do sistema
 - Poder responder e gerenciar qualquer ticket
 - Acessar estatísticas gerais do sistema
+- Configurar parâmetros globais do sistema
 
 ## 3. Boas Práticas
 - Manter as descrições dos tickets claras e detalhadas
@@ -42,25 +60,53 @@
 - Responder aos tickets em tempo hábil
 - Usar a prioridade corretamente para indicar urgência
 - Manter um histórico de comunicação através dos comentários
+- Categorizar corretamente os chamados para facilitar o gerenciamento
 
 ## 4. Recursos Disponíveis
 - Dashboard com visão geral dos tickets
-- Filtros por status e prioridade
+  - Visualização por categorias
+  - Filtros por status, prioridade e empresa
+  - Barra de pesquisa avançada
+- Interface administrativa para empresas
+  - Gerenciamento de usuários
+  - Configuração de categorias
+  - Campos personalizados
 - Sistema de notificações por email
 - Histórico completo de interações
 - Interface responsiva para acesso em diferentes dispositivos
+- Geração de relatórios e estatísticas
+- Exportação de chamados em formato PDF
 
-## 5. Manutenção
+## 5. Novos Recursos (Última Atualização)
+- Interface de dashboard aprimorada
+  - Cards para acesso rápido às funções administrativas
+  - Botão destacado para criação de chamados
+  - Melhor organização visual das categorias
+- Sistema multi-empresa com isolamento de dados
+  - Cada empresa vê apenas seus próprios chamados e usuários
+  - Administradores de empresa têm controle sobre suas configurações
+- Categorização avançada de chamados
+  - Interface visual com ícones e cores personalizáveis
+  - Fluxo de navegação por categoria > status > lista de chamados
+- Campos personalizados por empresa
+  - Cada empresa pode definir campos específicos para seus chamados
+  - Suporte a diferentes tipos de campo (texto, número, data, seleção, etc)
+- Melhorias no formulário de criação de usuários
+  - Interface simplificada para administradores de empresa
+  - Validação aprimorada dos dados de usuário
+
+## 6. Manutenção
 - Fazer backup regular do banco de dados
 - Monitorar o uso do sistema
 - Atualizar as dependências quando necessário
 - Manter os logs do sistema para diagnóstico
 
-## 6. Segurança
+## 7. Segurança
 - Usar senhas fortes
 - Não compartilhar credenciais
 - Fazer logout após o uso
 - Manter o sistema atualizado
+- Isolamento de dados entre empresas
 
 ## Requisitos do Sistema
 - Python 3.8+
