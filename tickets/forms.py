@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado
+from django.db.models import Q
 
 class EmpresaForm(forms.ModelForm):
     class Meta:
@@ -22,12 +23,24 @@ class FuncionarioForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
+        self.criacao_usuario = kwargs.pop('criacao_usuario', False)  # Flag para indicar se é um formulário de criação de usuário
         super().__init__(*args, **kwargs)
         
-        # Filtra o campo de usuários para mostrar apenas usuários sem vínculo com funcionários
-        # Exclui os usuários que já estão associados a um funcionário
-        funcionarios_existentes = Funcionario.objects.all().values_list('usuario', flat=True)
-        self.fields['usuario'].queryset = User.objects.exclude(id__in=funcionarios_existentes)
+        # Se estiver criando um usuário novo, não precisamos do campo usuario
+        if self.criacao_usuario:
+            self.fields.pop('usuario', None)
+        else:
+            # Filtra o campo de usuários para mostrar apenas usuários sem vínculo com funcionários
+            # Exclui os usuários que já estão associados a um funcionário
+            funcionarios_existentes = Funcionario.objects.all().values_list('usuario', flat=True)
+            if self.instance and self.instance.pk and self.instance.usuario:
+                # Quando estiver editando, incluir o usuário atual na lista
+                self.fields['usuario'].queryset = User.objects.filter(
+                    Q(id=self.instance.usuario.id) | 
+                    ~Q(id__in=funcionarios_existentes)
+                )
+            else:
+                self.fields['usuario'].queryset = User.objects.exclude(id__in=funcionarios_existentes)
         
         # Se o usuário não for superusuário, filtra as empresas disponíveis
         if self.user and not self.user.is_superuser:

@@ -43,6 +43,11 @@
                                 <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Novo Chamado</span>
                             </a>
                             {% endif %}
+                            {% if funcionario and funcionario.is_admin %}
+                            <a href="{% url 'tickets:empresa_admin_dashboard' %}" class="btn btn-dark btn-sm">
+                                <i class="fas fa-cogs"></i> <span class="d-none d-sm-inline">Painel Admin</span>
+                            </a>
+                            {% endif %}
                             <a href="{% url 'tickets:relatorios_menu' %}" class="btn btn-info btn-sm">
                                 <i class="fas fa-chart-bar"></i> <span class="d-none d-sm-inline">Relatórios</span>
                             </a>
@@ -211,7 +216,73 @@
                     
                     <!-- NOVO LAYOUT: VISUALIZAÇÃO POR CATEGORIAS (Tela inicial) -->
                     {% if not show_tickets and not show_status_filters %}
+                    
+                    <!-- Botão grande para criar novo chamado -->
+                    {% if funcionario %}
                     <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="text-center">
+                                <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-lg btn-primary mb-3">
+                                    <i class="fas fa-plus me-2"></i> Criar Novo Chamado
+                                </a>
+                                <p class="text-muted small">Clique no botão acima para registrar um novo chamado</p>
+                            </div>
+                            <hr class="my-4">
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-4">
+                        <!-- Cards para acesso rápido às funções administrativas -->
+                        {% if funcionario and funcionario.is_admin %}
+                        <div class="col-md-12 mb-4">
+                            <h4 class="mb-3"><i class="fas fa-cogs me-2"></i>Administração</h4>
+                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                                <div class="col">
+                                    <a href="{% url 'tickets:empresa_admin_dashboard' %}" class="text-decoration-none">
+                                        <div class="card h-100 categoria-card">
+                                            <div class="card-body text-center py-4">
+                                                <div class="categoria-icon bg-dark mb-3">
+                                                    <i class="fas fa-tachometer-alt fa-2x"></i>
+                                                </div>
+                                                <h5 class="card-title">Painel Administrativo</h5>
+                                                <p class="card-text text-muted small">Gerenciar configurações da empresa</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                
+                                <div class="col">
+                                    <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="text-decoration-none">
+                                        <div class="card h-100 categoria-card">
+                                            <div class="card-body text-center py-4">
+                                                <div class="categoria-icon bg-primary mb-3">
+                                                    <i class="fas fa-users fa-2x"></i>
+                                                </div>
+                                                <h5 class="card-title">Usuários</h5>
+                                                <p class="card-text text-muted small">Gerenciar usuários da empresa</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                
+                                <div class="col">
+                                    <a href="{% url 'tickets:empresa_admin_categorias' %}" class="text-decoration-none">
+                                        <div class="card h-100 categoria-card">
+                                            <div class="card-body text-center py-4">
+                                                <div class="categoria-icon bg-success mb-3">
+                                                    <i class="fas fa-tags fa-2x"></i>
+                                                </div>
+                                                <h5 class="card-title">Categorias</h5>
+                                                <p class="card-text text-muted small">Gerenciar categorias de chamados</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
                         <div class="col-md-12 mb-4">
                             <h4 class="mb-3"><i class="fas fa-folder me-2"></i>Categorias de Chamados</h4>
                             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
