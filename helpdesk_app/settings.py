@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'django_filters',
     'tickets',
+    'csp',  # Content Security Policy
 ]
 
 MIDDLEWARE = [
@@ -61,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
 ]
 
 ROOT_URLCONF = 'helpdesk_app.urls'
@@ -167,6 +169,8 @@ AUTHENTICATION_BACKENDS = [
 # Configurações de sessão
 SESSION_COOKIE_AGE = 3600  # 1 hora
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_HTTPONLY = True  # Cookies só podem ser acessados através de HTTP, não JavaScript
+SESSION_SAVE_EVERY_REQUEST = True  # Atualiza o cookie de sessão a cada requisição
 
 # Configurações de CSRF e segurança
 CSRF_TRUSTED_ORIGINS = [
@@ -178,12 +182,14 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000'
 ]
 CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = True  # Evita que o token CSRF seja acessível por JavaScript
 SESSION_COOKIE_SECURE = False
 SECURE_SSL_REDIRECT = False  # Definido como False pois não estamos usando HTTPS em desenvolvimento
 SECURE_HSTS_SECONDS = 31536000  # 1 ano
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+X_FRAME_OPTIONS = 'DENY'  # Previne clickjacking
 
 # Logging
 LOGGING = {
@@ -221,3 +227,10 @@ LOGGING = {
         },
     },
 }
+
+# Configurações de Content Security Policy
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com")
+CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net")
+CSP_FONT_SRC = ("'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com")
+CSP_IMG_SRC = ("'self'", "data:", "cdn.jsdelivr.net", "cdnjs.cloudflare.com")

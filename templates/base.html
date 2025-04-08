@@ -305,7 +305,10 @@
                             <span class="nav-link">Olá, {{ user.first_name|default:user.username }}</span>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">Sair</a>
+                            <form id="logout-form" action="{% url 'logout' %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn nav-link border-0 bg-transparent">Sair</button>
+                            </form>
                         </li>
                     {% else %}
                         <li class="nav-item">
