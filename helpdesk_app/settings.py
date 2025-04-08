@@ -60,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'tickets.middleware.security_middleware.SecurityMiddleware',
     # 'csp.middleware.CSPMiddleware',  # Comentado temporariamente
 ]
 
