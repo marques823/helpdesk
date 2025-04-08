@@ -1,6 +1,5 @@
 from django.urls import path
 from . import views, admin_views
-from .feeds import AtividadeTicketFeed
 
 app_name = 'tickets'
 
