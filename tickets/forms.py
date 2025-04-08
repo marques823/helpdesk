@@ -12,6 +12,27 @@ class EmpresaForm(forms.ModelForm):
             'cnpj': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '00.000.000/0000-00'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Guardar os valores originais para validação
+        if self.instance and self.instance.pk:
+            self._original_nome = self.instance.nome
+            self._original_cnpj = self.instance.cnpj
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Verificar se estamos editando uma empresa existente
+        if hasattr(self, '_original_nome') and hasattr(self, '_original_cnpj'):
+            # Garantir que o nome e CNPJ não foram alterados
+            if cleaned_data.get('nome') != self._original_nome:
+                cleaned_data['nome'] = self._original_nome
+            
+            if cleaned_data.get('cnpj') != self._original_cnpj:
+                cleaned_data['cnpj'] = self._original_cnpj
+        
+        return cleaned_data
+
 class FuncionarioForm(forms.ModelForm):
     class Meta:
         model = Funcionario

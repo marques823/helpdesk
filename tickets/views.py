@@ -24,6 +24,8 @@ import tempfile
 import os
 from io import BytesIO
 from django.db.models import Count
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -2163,75 +2165,85 @@ def empresa_admin_usuarios(request):
 
 @login_required
 def empresa_admin_criar_usuario(request):
-    """Criar novo usuário para a empresa"""
+    # Check if user is company admin
     try:
-        # Verificar se o usuário é admin de uma empresa
-        funcionario = get_object_or_404(Funcionario, usuario=request.user)
-        if not funcionario.is_admin():
-            messages.error(request, "Você não tem permissão para acessar esta área.")
+        funcionario = Funcionario.objects.filter(
+            usuario=request.user,
+            tipo='admin'
+        ).first()
+        
+        if not funcionario:
+            messages.error(request, 'Você não tem permissão para acessar esta página.')
             return redirect('tickets:dashboard')
         
-        # Pegar a empresa do funcionário
+        # Get company associated with the admin
         empresa = funcionario.empresas.first()
         
-        # Obter configurações da empresa
+        if not empresa:
+            messages.error(request, 'Você não está associado a nenhuma empresa como administrador.')
+            return redirect('tickets:dashboard')
+        
+        # Check if company can create more users
         try:
             config = EmpresaConfig.objects.get(empresa=empresa)
+            usuarios_atuais = Funcionario.objects.filter(empresas=empresa).count()
+            pode_criar_mais = usuarios_atuais < config.limite_usuarios
+            config.pode_criar_mais_usuarios = pode_criar_mais
         except EmpresaConfig.DoesNotExist:
-            # Criar configuração padrão se não existir
-            config = EmpresaConfig(empresa=empresa)
-            config.save()
-        
-        # Verificar se a empresa pode criar mais usuários
-        if not config.pode_criar_mais_usuarios():
-            messages.error(request, f"Limite de usuários atingido ({config.limite_usuarios}). Não é possível criar mais usuários.")
-            return redirect('tickets:empresa_admin_usuarios')
+            config = None
+            messages.warning(request, 'Configuração da empresa não encontrada.')
         
         if request.method == 'POST':
-            user_form = UserForm(request.POST)
+            user_form = UserCreationForm(request.POST)
             funcionario_form = FuncionarioForm(request.POST, user=request.user, criacao_usuario=True)
             
-            if user_form.is_valid() and funcionario_form.is_valid():
-                # Criar o usuário
-                novo_usuario = user_form.save()
-                
-                # Criar o funcionário associando à empresa
-                novo_funcionario = funcionario_form.save(commit=False)
-                novo_funcionario.usuario = novo_usuario
-                novo_funcionario.save()
-                
-                # Adicionar a empresa ao funcionário
-                novo_funcionario.empresas.add(empresa)
-                
-                messages.success(request, f"Usuário {novo_usuario.username} criado com sucesso!")
-                return redirect('tickets:empresa_admin_usuarios')
-        else:
-            user_form = UserForm()
-            # Quando no formulário inicial, já inicializa com a empresa do admin
-            # e limita a visualização apenas à empresa do admin
-            initial_data = {
-                'tipo': 'cliente',
-                'empresas': [empresa.id]  # Pré-selecionar a empresa do admin
-            }
-            funcionario_form = FuncionarioForm(initial=initial_data, user=request.user, criacao_usuario=True)
+            # Explicitly set the initial queryset to only allow the admin's company
+            funcionario_form.fields['empresas'].queryset = Empresa.objects.filter(pk=empresa.pk)
+            funcionario_form.fields['empresas'].initial = [empresa]
+            funcionario_form.fields['empresas'].disabled = True
             
-            # Para garantir que apenas a empresa do admin seja mostrada
-            funcionario_form.fields['empresas'].queryset = funcionario.empresas.all()
-            funcionario_form.fields['empresas'].disabled = True  # Desativar a edição do campo
+            if user_form.is_valid() and funcionario_form.is_valid():
+                try:
+                    # Create the user
+                    novo_usuario = user_form.save()
+                    
+                    # Create the employee associating with the company
+                    novo_funcionario = funcionario_form.save(commit=False)
+                    novo_funcionario.usuario = novo_usuario
+                    novo_funcionario.save()
+                    
+                    # Clear and add only the admin's company to the employee
+                    novo_funcionario.empresas.clear()
+                    novo_funcionario.empresas.add(empresa)
+                    
+                    messages.success(request, 'Usuário criado com sucesso!')
+                    return redirect('tickets:empresa_admin_usuarios')
+                except Exception as e:
+                    messages.error(request, f'Erro ao criar usuário: {str(e)}')
+                    logger.error(f'Error creating user: {str(e)}')
+                    return redirect('tickets:dashboard')
+        else:
+            user_form = UserCreationForm()
+            funcionario_form = FuncionarioForm(user=request.user, criacao_usuario=True)
+            
+            # Explicitly set the queryset to only allow the admin's company
+            funcionario_form.fields['empresas'].queryset = Empresa.objects.filter(pk=empresa.pk)
+            funcionario_form.fields['empresas'].initial = [empresa]
+            funcionario_form.fields['empresas'].disabled = True
         
         context = {
-            'empresa': empresa,
             'user_form': user_form,
             'funcionario_form': funcionario_form,
+            'empresa': empresa,
             'config': config,
         }
         
         return render(request, 'tickets/empresa_admin/criar_usuario.html', context)
-    
+        
     except Exception as e:
-        logger.error(f"Erro ao criar usuário para a empresa: {str(e)}")
-        messages.error(request, "Ocorreu um erro ao criar o usuário.")
-        return redirect('tickets:empresa_admin_usuarios')
+        messages.error(request, f'Erro ao acessar a página: {str(e)}')
+        logger.error(f'Error accessing empresa_admin_criar_usuario: {str(e)}')
+        return redirect('tickets:dashboard')
 
 @login_required
 def empresa_admin_editar_usuario(request, funcionario_id):
@@ -2252,21 +2264,20 @@ def empresa_admin_editar_usuario(request, funcionario_id):
         
         if request.method == 'POST':
             # Não permitimos alterar a senha aqui
-            usuario_form = forms.ModelForm(request.POST, instance=usuario)
-            usuario_form.fields = {
-                'first_name': forms.CharField(max_length=150),
-                'last_name': forms.CharField(max_length=150),
-                'email': forms.EmailField(),
-            }
+            from django import forms as django_forms
+            
+            class UserEditForm(django_forms.ModelForm):
+                class Meta:
+                    model = User
+                    fields = ['first_name', 'last_name', 'email']
+            
+            usuario_form = UserEditForm(request.POST, instance=usuario)
             
             # Não precisa passar o parâmetro criacao_usuario=True porque estamos editando
             funcionario_form = FuncionarioForm(request.POST, instance=funcionario, user=request.user)
             
             if usuario_form.is_valid() and funcionario_form.is_valid():
-                usuario.first_name = usuario_form.cleaned_data['first_name']
-                usuario.last_name = usuario_form.cleaned_data['last_name']
-                usuario.email = usuario_form.cleaned_data['email']
-                usuario.save()
+                usuario = usuario_form.save()
                 
                 funcionario = funcionario_form.save(commit=False)
                 funcionario.save()
@@ -2279,12 +2290,14 @@ def empresa_admin_editar_usuario(request, funcionario_id):
                 return redirect('tickets:empresa_admin_usuarios')
         else:
             # Formulário para edição de usuário
-            usuario_form = forms.ModelForm(instance=usuario)
-            usuario_form.fields = {
-                'first_name': forms.CharField(max_length=150, initial=usuario.first_name),
-                'last_name': forms.CharField(max_length=150, initial=usuario.last_name),
-                'email': forms.EmailField(initial=usuario.email),
-            }
+            from django import forms as django_forms
+            
+            class UserEditForm(django_forms.ModelForm):
+                class Meta:
+                    model = User
+                    fields = ['first_name', 'last_name', 'email']
+            
+            usuario_form = UserEditForm(instance=usuario)
             
             # Na edição, não precisa do campo usuário, pois já está associado
             funcionario_form = FuncionarioForm(instance=funcionario, user=request.user, criacao_usuario=True)
@@ -2329,9 +2342,39 @@ def empresa_admin_config(request):
             config = EmpresaConfig(empresa=empresa)
             config.save()
         
+        # Contar o número de usuários da empresa
+        usuarios_criados = Funcionario.objects.filter(empresas=empresa).count()
+        config.usuarios_criados = usuarios_criados
+        
+        # Calcular o percentual de usuários (evita usar os filtros mul e div no template)
+        if config.limite_usuarios > 0:
+            config.percentual_usuarios = (usuarios_criados * 100) / config.limite_usuarios
+        else:
+            config.percentual_usuarios = 0
+        
+        # Se há um formulário de empresa sendo enviado
+        if request.method == 'POST':
+            # Manter os valores originais do nome e cnpj no POST
+            post_data = request.POST.copy()
+            post_data['nome'] = empresa.nome
+            post_data['cnpj'] = empresa.cnpj
+            
+            empresa_form = EmpresaForm(post_data, instance=empresa)
+            if empresa_form.is_valid():
+                empresa_form.save()
+                messages.success(request, "Informações da empresa atualizadas com sucesso!")
+                return redirect('tickets:empresa_admin_config')
+        else:
+            empresa_form = EmpresaForm(instance=empresa)
+            
+        # Tornar os campos somente leitura em vez de desativados
+        empresa_form.fields['nome'].widget.attrs['readonly'] = True
+        empresa_form.fields['cnpj'].widget.attrs['readonly'] = True
+        
         context = {
             'empresa': empresa,
             'config': config,
+            'empresa_form': empresa_form,
         }
         
         return render(request, 'tickets/empresa_admin/configuracoes.html', context)

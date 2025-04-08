@@ -12,3 +12,19 @@ def status_color(status):
         'fechado': 'secondary'
     }
     return color_map.get(status, 'secondary') 
+
+@register.filter
+def mul(value, arg):
+    """Multiplica o valor pelo argumento"""
+    try:
+        return float(value) * float(arg)
+    except (ValueError, TypeError):
+        return 0
+
+@register.filter
+def div(value, arg):
+    """Divide o valor pelo argumento"""
+    try:
+        return float(value) / float(arg)
+    except (ValueError, TypeError, ZeroDivisionError):
+        return 0 
