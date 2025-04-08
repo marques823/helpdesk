@@ -2189,7 +2189,7 @@ def empresa_admin_criar_usuario(request):
         
         if request.method == 'POST':
             user_form = UserForm(request.POST)
-            funcionario_form = FuncionarioForm(request.POST, user=request.user)
+            funcionario_form = FuncionarioForm(request.POST, user=request.user, criacao_usuario=True)
             
             if user_form.is_valid() and funcionario_form.is_valid():
                 # Criar o usuário
@@ -2213,7 +2213,7 @@ def empresa_admin_criar_usuario(request):
                 'tipo': 'cliente',
                 'empresas': [empresa.id]  # Pré-selecionar a empresa do admin
             }
-            funcionario_form = FuncionarioForm(initial=initial_data, user=request.user)
+            funcionario_form = FuncionarioForm(initial=initial_data, user=request.user, criacao_usuario=True)
             
             # Para garantir que apenas a empresa do admin seja mostrada
             funcionario_form.fields['empresas'].queryset = funcionario.empresas.all()
@@ -2259,6 +2259,7 @@ def empresa_admin_editar_usuario(request, funcionario_id):
                 'email': forms.EmailField(),
             }
             
+            # Não precisa passar o parâmetro criacao_usuario=True porque estamos editando
             funcionario_form = FuncionarioForm(request.POST, instance=funcionario, user=request.user)
             
             if usuario_form.is_valid() and funcionario_form.is_valid():
@@ -2285,7 +2286,8 @@ def empresa_admin_editar_usuario(request, funcionario_id):
                 'email': forms.EmailField(initial=usuario.email),
             }
             
-            funcionario_form = FuncionarioForm(instance=funcionario, user=request.user)
+            # Na edição, não precisa do campo usuário, pois já está associado
+            funcionario_form = FuncionarioForm(instance=funcionario, user=request.user, criacao_usuario=True)
             
             # Limitar visibilidade apenas à empresa do admin
             funcionario_form.fields['empresas'].queryset = admin_funcionario.empresas.all()

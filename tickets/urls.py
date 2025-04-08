@@ -66,4 +66,10 @@ urlpatterns = [
     path('empresa-admin/usuarios/novo/', views.empresa_admin_criar_usuario, name='empresa_admin_criar_usuario'),
     path('empresa-admin/usuarios/<int:funcionario_id>/editar/', views.empresa_admin_editar_usuario, name='empresa_admin_editar_usuario'),
     path('empresa-admin/config/', views.empresa_admin_config, name='empresa_admin_config'),
+    
+    # Rotas para gerenciamento de categorias no painel administrativo
+    path('empresa-admin/categorias/', views.empresa_admin_categorias, name='empresa_admin_categorias'),
+    path('empresa-admin/categorias/nova/', views.empresa_admin_criar_categoria, name='empresa_admin_criar_categoria'),
+    path('empresa-admin/categorias/<int:categoria_id>/editar/', views.empresa_admin_editar_categoria, name='empresa_admin_editar_categoria'),
+    path('empresa-admin/categorias/<int:categoria_id>/excluir/', views.empresa_admin_excluir_categoria, name='empresa_admin_excluir_categoria'),
 ] 
