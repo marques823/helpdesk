@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'django_filters',
     'tickets',
-    'csp',  # Content Security Policy
+    # 'csp',  # Content Security Policy - comentado temporariamente
 ]
 
 MIDDLEWARE = [
@@ -62,7 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'csp.middleware.CSPMiddleware',
+    # 'csp.middleware.CSPMiddleware',  # Comentado temporariamente
 ]
 
 ROOT_URLCONF = 'helpdesk_app.urls'
@@ -228,9 +228,13 @@ LOGGING = {
     },
 }
 
-# Configurações de Content Security Policy
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com")
-CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net")
-CSP_FONT_SRC = ("'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com")
-CSP_IMG_SRC = ("'self'", "data:", "cdn.jsdelivr.net", "cdnjs.cloudflare.com")
+# Comentando temporariamente as configurações CSP enquanto resolvemos problemas de inicialização
+# CONTENT_SECURITY_POLICY = {
+#     'DIRECTIVES': {
+#         'default-src': ("'self'",),
+#         'style-src': ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"),
+#         'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net"),
+#         'font-src': ("'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"),
+#         'img-src': ("'self'", "data:", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"),
+#     }
+# }
