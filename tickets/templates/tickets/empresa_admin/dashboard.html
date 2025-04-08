@@ -24,14 +24,13 @@
                                     <h3 class="display-4">{{ total_usuarios }}</h3>
                                     <p class="mb-0">Usuários</p>
                                     <small class="text-muted">de {{ limite_usuarios }} permitidos</small>
-                                    <div class="progress mt-2" style="height: 10px;">
+                                    <div class="progress mt-2 custom-progress">
                                         <div class="progress-bar {% if porcentagem_usuarios > 90 %}bg-danger{% elif porcentagem_usuarios > 70 %}bg-warning{% else %}bg-success{% endif %}" 
                                              role="progressbar" 
-                                             style="width: {{ porcentagem_usuarios }}%;" 
+                                             data-width="{{ porcentagem_usuarios }}"
                                              aria-valuenow="{{ porcentagem_usuarios }}" 
                                              aria-valuemin="0" 
-                                             aria-valuemax="100">
-                                        </div>
+                                             aria-valuemax="100"></div>
                                     </div>
                                 </div>
                                 <div class="card-footer bg-transparent">
@@ -112,7 +111,7 @@
                                         </div>
                                         {% if config.pode_criar_categorias %}
                                         <div class="col-md-3 mb-3">
-                                            <a href="{% url 'tickets:dashboard' %}" class="btn btn-info w-100 py-3">
+                                            <a href="{% url 'tickets:empresa_admin_categorias' %}" class="btn btn-info w-100 py-3">
                                                 <i class="fas fa-tags fa-2x mb-2"></i><br>
                                                 Gerenciar Categorias
                                             </a>
@@ -136,4 +135,26 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set the width of progress bars after page loads
+        document.querySelectorAll('.progress-bar').forEach(function(bar) {
+            const width = bar.getAttribute('data-width');
+            if (width) {
+                bar.style.width = width + '%';
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .custom-progress {
+        height: 10px;
+    }
+</style>
 {% endblock %} 

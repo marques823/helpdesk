@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento
+from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado
 
 class EmpresaForm(forms.ModelForm):
     class Meta:
@@ -24,12 +24,23 @@ class FuncionarioForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
+        # Filtra o campo de usuários para mostrar apenas usuários sem vínculo com funcionários
+        # Exclui os usuários que já estão associados a um funcionário
+        funcionarios_existentes = Funcionario.objects.all().values_list('usuario', flat=True)
+        self.fields['usuario'].queryset = User.objects.exclude(id__in=funcionarios_existentes)
+        
         # Se o usuário não for superusuário, filtra as empresas disponíveis
         if self.user and not self.user.is_superuser:
-            funcionario = self.user.funcionarios.first()
+            funcionario = Funcionario.objects.filter(usuario=self.user).first()
             if funcionario:
                 # Filtra apenas as empresas do funcionário
                 self.fields['empresas'].queryset = funcionario.empresas.all()
+                
+                # Se o usuário for apenas admin de empresa, desabilita a edição do campo
+                if funcionario.is_admin() and not funcionario.is_suporte():
+                    # Se houver apenas uma empresa, pré-seleciona ela
+                    if funcionario.empresas.count() == 1:
+                        self.initial['empresas'] = [funcionario.empresas.first().id]
             else:
                 # Se não for funcionário, remove o campo de empresas
                 self.fields.pop('empresas', None)
@@ -63,7 +74,7 @@ class TicketForm(forms.ModelForm):
         
         # Se o usuário não for admin, filtra as empresas e funcionários
         if self.user and not self.user.is_superuser:
-            funcionario = self.user.funcionarios.first()
+            funcionario = Funcionario.objects.filter(usuario=self.user).first()
             if funcionario:
                 # Filtra apenas as empresas do funcionário
                 self.fields['empresa'].queryset = funcionario.empresas.all()
@@ -101,14 +112,12 @@ class TicketForm(forms.ModelForm):
         empresa_id = self.initial.get('empresa') or self.data.get('empresa')
         if empresa_id:
             # Se uma empresa for selecionada, mostra apenas categorias daquela empresa
-            from .models import CategoriaChamado
             self.fields['categoria'].queryset = CategoriaChamado.objects.filter(
                 empresa_id=empresa_id,
                 ativo=True
             ).order_by('ordem', 'nome')
         else:
             # Se nenhuma empresa for selecionada, não mostra categorias
-            from .models import CategoriaChamado
             self.fields['categoria'].queryset = CategoriaChamado.objects.none()
 
     def clean(self):
@@ -118,7 +127,7 @@ class TicketForm(forms.ModelForm):
         
         # Verifica se o usuário tem acesso à empresa selecionada
         if self.user and not self.user.is_superuser:
-            funcionario = self.user.funcionarios.first()
+            funcionario = Funcionario.objects.filter(usuario=self.user).first()
             if funcionario and empresa:
                 if not funcionario.tem_acesso_empresa(empresa):
                     raise forms.ValidationError("Você não tem acesso a esta empresa.")
@@ -159,7 +168,7 @@ class AtribuirTicketForm(forms.ModelForm):
             
             if self.user and not self.user.is_superuser:
                 # Para usuários não-admin, mostrar apenas funcionários das empresas a que têm acesso
-                funcionario = self.user.funcionarios.first()
+                funcionario = Funcionario.objects.filter(usuario=self.user).first()
                 if funcionario:
                     self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
                         empresas=empresa,
@@ -201,7 +210,7 @@ class MultiAtribuirTicketForm(forms.Form):
         if self.empresa:
             if self.user and not self.user.is_superuser:
                 # Para usuários não-admin, mostrar apenas funcionários das empresas a que têm acesso
-                funcionario = self.user.funcionarios.first()
+                funcionario = Funcionario.objects.filter(usuario=self.user).first()
                 if funcionario:
                     funcionarios = Funcionario.objects.filter(
                         empresas=self.empresa,
@@ -412,6 +421,67 @@ class CampoPerfilCompartilhamentoForm(forms.ModelForm):
             self.fields['campo_personalizado'].queryset = CampoPersonalizado.objects.filter(empresa=self.instance.perfil.empresa)
         else:
             self.fields['campo_personalizado'].queryset = CampoPersonalizado.objects.none()
+
+class CategoriaChamadoForm(forms.ModelForm):
+    """Formulário para criar e editar categorias de chamados"""
+    class Meta:
+        model = CategoriaChamado
+        fields = ['nome', 'descricao', 'cor', 'icone', 'ordem', 'ativo']
+        widgets = {
+            'nome': forms.TextInput(attrs={'class': 'form-control'}),
+            'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'cor': forms.Select(attrs={'class': 'form-control', 'id': 'id_cor'}),
+            'icone': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_icone'}),
+            'ordem': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+            'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Opções para cores bootstrap
+        COR_CHOICES = [
+            ('primary', 'Azul (Primary)'),
+            ('secondary', 'Cinza (Secondary)'),
+            ('success', 'Verde (Success)'),
+            ('danger', 'Vermelho (Danger)'),
+            ('warning', 'Amarelo (Warning)'),
+            ('info', 'Azul claro (Info)'),
+            ('light', 'Claro (Light)'),
+            ('dark', 'Escuro (Dark)'),
+        ]
+        
+        self.fields['cor'] = forms.ChoiceField(
+            choices=COR_CHOICES,
+            widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_cor'}),
+            initial=self.instance.cor if self.instance and self.instance.pk else 'primary'
+        )
+        
+        # Configuração de ajuda para o campo de ícone
+        self.fields['icone'].help_text = 'Nome do ícone FontAwesome (ex: fa-ticket-alt, fa-desktop, fa-wifi)'
+        
+        # Se for edição, ajustar o ícone para exibir corretamente
+        if self.instance and self.instance.pk:
+            # Garantir que o valor do ícone está correto no formulário
+            if self.instance.icone and not self.instance.icone.startswith('fa-'):
+                self.initial['icone'] = f"fa-{self.instance.icone}"
+            elif not self.instance.icone:
+                self.initial['icone'] = "fa-ticket-alt"
+    
+    def clean_icone(self):
+        """Garantir que o ícone sempre tenha o prefixo 'fa-'"""
+        icone = self.cleaned_data.get('icone', '')
+        if not icone:
+            return "fa-ticket-alt"  # valor padrão
+        
+        # Remover espaços em branco
+        icone = icone.strip()
+        
+        # Adicionar prefixo 'fa-' se não existir
+        if not icone.startswith('fa-'):
+            icone = f"fa-{icone}"
+        
+        return icone
 
 class CompartilharTicketForm(forms.Form):
     perfil = forms.ModelChoiceField(

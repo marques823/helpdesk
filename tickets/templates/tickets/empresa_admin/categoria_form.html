@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if editando %}Editar{% else %}Nova{% endif %} Categoria - {{ empresa.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{% if editando %}Editar Categoria: {{ categoria.nome }}{% else %}Nova Categoria{% endif %}</h5>
+                        <a href="{% url 'tickets:empresa_admin_categorias' %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar à Lista
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.nome|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.ordem|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.descricao|as_crispy_field }}
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_cor">Cor</label>
+                                    <div class="input-group">
+                                        <div id="preview-cor" class="input-group-text" style="width: 50px;"></div>
+                                        {{ form.cor }}
+                                    </div>
+                                    <small class="form-text text-muted">Cor usada para identificar visualmente a categoria.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="id_icone">Ícone</label>
+                                    <div class="input-group">
+                                        <div id="preview-icone" class="input-group-text"><i class="fas fa-ticket-alt"></i></div>
+                                        {{ form.icone }}
+                                    </div>
+                                    <small class="form-text text-muted">{{ form.icone.help_text }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            {{ form.ativo }}
+                            <label class="form-check-label" for="id_ativo">Categoria ativa</label>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'tickets:empresa_admin_categorias' %}" class="btn btn-secondary me-2">Cancelar</a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-2"></i> {% if editando %}Salvar Alterações{% else %}Criar Categoria{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Função para atualizar o preview da cor
+        function updateColorPreview() {
+            const colorSelect = document.getElementById('id_cor');
+            const colorPreview = document.getElementById('preview-cor');
+            
+            if (colorSelect && colorPreview) {
+                const selectedColor = colorSelect.value || 'primary';
+                colorPreview.className = 'input-group-text bg-' + selectedColor;
+                // Adiciona um texto representativo na cor
+                if (selectedColor === 'light') {
+                    colorPreview.innerHTML = '<span class="text-dark">' + selectedColor + '</span>';
+                } else if (selectedColor === 'white') {
+                    colorPreview.innerHTML = '<span class="text-dark">' + selectedColor + '</span>';
+                } else {
+                    colorPreview.innerHTML = '<span class="text-white">' + selectedColor + '</span>';
+                }
+            }
+        }
+        
+        // Função para atualizar o preview do ícone
+        function updateIconPreview() {
+            const iconInput = document.getElementById('id_icone');
+            const iconPreview = document.getElementById('preview-icone');
+            
+            if (iconInput && iconPreview) {
+                let iconValue = iconInput.value ? iconInput.value.trim() : '';
+                
+                // Se não houver valor, use o padrão
+                if (!iconValue) {
+                    iconValue = 'fa-ticket-alt';
+                }
+                
+                // Certifica que começa com 'fa-'
+                if (!iconValue.startsWith('fa-')) {
+                    iconValue = 'fa-' + iconValue;
+                    // Atualiza o valor do campo para incluir o prefixo
+                    iconInput.value = iconValue;
+                }
+                
+                // Atualiza o ícone
+                iconPreview.innerHTML = '<i class="fas ' + iconValue + '"></i>';
+            }
+        }
+        
+        // Adiciona os event listeners
+        const colorSelect = document.getElementById('id_cor');
+        if (colorSelect) {
+            colorSelect.addEventListener('change', updateColorPreview);
+        }
+        
+        const iconInput = document.getElementById('id_icone');
+        if (iconInput) {
+            iconInput.addEventListener('input', updateIconPreview);
+            iconInput.addEventListener('change', updateIconPreview);
+            // Delay para garantir que o valor padrão seja carregado
+            setTimeout(updateIconPreview, 100);
+        }
+        
+        // Inicializa os previews
+        updateColorPreview();
+        updateIconPreview();
+    });
+</script>
+{% endblock %} 

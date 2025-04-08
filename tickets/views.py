@@ -11,7 +11,7 @@ from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
 from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig
-from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, CampoPerfilCompartilhamentoForm, CompartilharTicketForm
+from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, CampoPerfilCompartilhamentoForm, CompartilharTicketForm, CategoriaChamadoForm
 from django.core.exceptions import ObjectDoesNotExist
 import json
 from datetime import datetime
@@ -49,7 +49,21 @@ def is_suporte(user):
     return user.is_staff and not user.is_superuser
 
 def home(request):
-    return render(request, 'tickets/home.html')
+    has_admin_access = False
+    
+    if request.user.is_authenticated:
+        if request.user.is_superuser:
+            has_admin_access = True
+        else:
+            funcionario = Funcionario.objects.filter(usuario=request.user).first()
+            if funcionario and funcionario.is_admin():
+                has_admin_access = True
+                
+    context = {
+        'has_admin_access': has_admin_access
+    }
+    
+    return render(request, 'tickets/home.html', context)
 
 @login_required
 def dashboard(request):
@@ -63,6 +77,9 @@ def dashboard(request):
                 messages.error(request, 'Sua conta não está associada a nenhum funcionário.')
                 return redirect('login')
 
+        # Verifica permissões administrativas
+        has_admin_access = request.user.is_superuser or (funcionario and funcionario.is_admin())
+        
         # Obtém os filtros da query string
         termo_pesquisa = request.GET.get('q', '')
         status_filter = request.GET.get('status', '')
@@ -206,6 +223,7 @@ def dashboard(request):
             'categoria_counts': categoria_counts,
             'status_counts': status_counts,
             'categoria_obj': categoria_obj,
+            'has_admin_access': has_admin_access,
         }
         
         return render(request, 'tickets/dashboard.html', context)
@@ -2171,7 +2189,7 @@ def empresa_admin_criar_usuario(request):
         
         if request.method == 'POST':
             user_form = UserForm(request.POST)
-            funcionario_form = FuncionarioForm(request.POST)
+            funcionario_form = FuncionarioForm(request.POST, user=request.user)
             
             if user_form.is_valid() and funcionario_form.is_valid():
                 # Criar o usuário
@@ -2189,7 +2207,17 @@ def empresa_admin_criar_usuario(request):
                 return redirect('tickets:empresa_admin_usuarios')
         else:
             user_form = UserForm()
-            funcionario_form = FuncionarioForm(initial={'tipo': 'cliente'})  # Default para tipo cliente
+            # Quando no formulário inicial, já inicializa com a empresa do admin
+            # e limita a visualização apenas à empresa do admin
+            initial_data = {
+                'tipo': 'cliente',
+                'empresas': [empresa.id]  # Pré-selecionar a empresa do admin
+            }
+            funcionario_form = FuncionarioForm(initial=initial_data, user=request.user)
+            
+            # Para garantir que apenas a empresa do admin seja mostrada
+            funcionario_form.fields['empresas'].queryset = funcionario.empresas.all()
+            funcionario_form.fields['empresas'].disabled = True  # Desativar a edição do campo
         
         context = {
             'empresa': empresa,
@@ -2231,7 +2259,7 @@ def empresa_admin_editar_usuario(request, funcionario_id):
                 'email': forms.EmailField(),
             }
             
-            funcionario_form = FuncionarioForm(request.POST, instance=funcionario)
+            funcionario_form = FuncionarioForm(request.POST, instance=funcionario, user=request.user)
             
             if usuario_form.is_valid() and funcionario_form.is_valid():
                 usuario.first_name = usuario_form.cleaned_data['first_name']
@@ -2241,6 +2269,10 @@ def empresa_admin_editar_usuario(request, funcionario_id):
                 
                 funcionario = funcionario_form.save(commit=False)
                 funcionario.save()
+                
+                # Garantir que a empresa do admin esteja associada ao funcionário
+                if not funcionario.empresas.filter(id=empresa.id).exists():
+                    funcionario.empresas.add(empresa)
                 
                 messages.success(request, f"Usuário {usuario.username} atualizado com sucesso!")
                 return redirect('tickets:empresa_admin_usuarios')
@@ -2253,7 +2285,11 @@ def empresa_admin_editar_usuario(request, funcionario_id):
                 'email': forms.EmailField(initial=usuario.email),
             }
             
-            funcionario_form = FuncionarioForm(instance=funcionario)
+            funcionario_form = FuncionarioForm(instance=funcionario, user=request.user)
+            
+            # Limitar visibilidade apenas à empresa do admin
+            funcionario_form.fields['empresas'].queryset = admin_funcionario.empresas.all()
+            funcionario_form.fields['empresas'].disabled = True  # Desativar a edição do campo
         
         context = {
             'empresa': empresa,
@@ -2280,41 +2316,267 @@ def empresa_admin_config(request):
             messages.error(request, "Você não tem permissão para acessar esta área.")
             return redirect('tickets:dashboard')
         
-        # Pegar a empresa do funcionário admin
+        # Pegar a empresa do funcionário
         empresa = funcionario.empresas.first()
         
-        # Obter ou criar configurações da empresa
-        config, created = EmpresaConfig.objects.get_or_create(
-            empresa=empresa,
-            defaults={
-                'limite_usuarios': 5,
-                'pode_criar_categorias': True,
-                'pode_criar_campos_personalizados': True,
-                'pode_acessar_relatorios': True,
-                'ativo': True,
-            }
-        )
-        
-        if request.method == 'POST':
-            # Formulário apenas para os campos que o admin da empresa pode editar
-            empresa_form = EmpresaForm(request.POST, instance=empresa)
-            
-            if empresa_form.is_valid():
-                empresa_form.save()
-                messages.success(request, "Configurações da empresa atualizadas com sucesso!")
-                return redirect('tickets:empresa_admin_dashboard')
-        else:
-            empresa_form = EmpresaForm(instance=empresa)
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
         
         context = {
             'empresa': empresa,
             'config': config,
-            'empresa_form': empresa_form,
         }
         
         return render(request, 'tickets/empresa_admin/configuracoes.html', context)
     
     except Exception as e:
         logger.error(f"Erro nas configurações da empresa: {str(e)}")
-        messages.error(request, "Ocorreu um erro ao acessar as configurações da empresa.")
+        messages.error(request, "Ocorreu um erro ao carregar as configurações.")
+        return redirect('tickets:dashboard')
+
+# ----- Views para Gerenciar Categorias -----
+
+@login_required
+def empresa_admin_categorias(request):
+    """Listar categorias de chamados da empresa"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário
+        empresa = funcionario.empresas.first()
+        
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
+        
+        # Verificar se a empresa pode criar categorias
+        if not config.pode_criar_categorias:
+            messages.error(request, "Sua empresa não tem permissão para gerenciar categorias de chamados.")
+            return redirect('tickets:empresa_admin_dashboard')
+        
+        # Obter todas as categorias da empresa
+        categorias = CategoriaChamado.objects.filter(
+            empresa=empresa
+        ).order_by('ordem', 'nome')
+        
+        context = {
+            'empresa': empresa,
+            'config': config,
+            'categorias': categorias,
+        }
+        
+        return render(request, 'tickets/empresa_admin/categorias_list.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro ao listar categorias: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao listar as categorias.")
         return redirect('tickets:empresa_admin_dashboard')
+
+@login_required
+def empresa_admin_criar_categoria(request):
+    """Criar nova categoria de chamados"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário
+        empresa = funcionario.empresas.first()
+        
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
+        
+        # Verificar se a empresa pode criar categorias
+        if not config.pode_criar_categorias:
+            messages.error(request, "Sua empresa não tem permissão para criar categorias de chamados.")
+            return redirect('tickets:empresa_admin_categorias')
+        
+        if request.method == 'POST':
+            form = CategoriaChamadoForm(request.POST)
+            if form.is_valid():
+                categoria = form.save(commit=False)
+                categoria.empresa = empresa
+                
+                # Garantir que os campos estejam preenchidos
+                if not categoria.cor:
+                    categoria.cor = 'primary'
+                
+                # O campo icone já está tratado no clean_icone do CategoriaChamadoForm
+                
+                categoria.save()
+                messages.success(request, f"Categoria '{categoria.nome}' criada com sucesso!")
+                return redirect('tickets:empresa_admin_categorias')
+        else:
+            # Valores padrão para o formulário inicial
+            form = CategoriaChamadoForm(initial={
+                'cor': 'primary',
+                'icone': 'fa-ticket-alt',
+                'ordem': 0,
+                'ativo': True
+            })
+        
+        context = {
+            'empresa': empresa,
+            'form': form,
+            'config': config,
+        }
+        
+        return render(request, 'tickets/empresa_admin/categoria_form.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro ao criar categoria: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao criar a categoria.")
+        return redirect('tickets:empresa_admin_categorias')
+
+@login_required
+def empresa_admin_editar_categoria(request, categoria_id):
+    """Editar categoria de chamados"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário
+        empresa = funcionario.empresas.first()
+        
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
+        
+        # Verificar se a empresa pode criar categorias
+        if not config.pode_criar_categorias:
+            messages.error(request, "Sua empresa não tem permissão para editar categorias de chamados.")
+            return redirect('tickets:empresa_admin_categorias')
+        
+        # Obter a categoria e verificar se pertence à empresa do usuário
+        categoria = get_object_or_404(CategoriaChamado, id=categoria_id)
+        if categoria.empresa != empresa:
+            messages.error(request, "Você não tem permissão para editar esta categoria.")
+            return redirect('tickets:empresa_admin_categorias')
+        
+        if request.method == 'POST':
+            form = CategoriaChamadoForm(request.POST, instance=categoria)
+            if form.is_valid():
+                categoria_atualizada = form.save(commit=False)
+                
+                # Garantir que os campos estejam preenchidos
+                if not categoria_atualizada.cor:
+                    categoria_atualizada.cor = 'primary'
+                
+                # O campo icone já está tratado no clean_icone do CategoriaChamadoForm
+                
+                categoria_atualizada.save()
+                messages.success(request, f"Categoria '{categoria.nome}' atualizada com sucesso!")
+                return redirect('tickets:empresa_admin_categorias')
+        else:
+            # Preparar dados iniciais se o ícone não estiver formatado corretamente
+            if categoria.icone and not categoria.icone.startswith('fa-'):
+                categoria.icone = f"fa-{categoria.icone}"
+            elif not categoria.icone:
+                categoria.icone = "fa-ticket-alt"
+                
+            form = CategoriaChamadoForm(instance=categoria)
+        
+        context = {
+            'empresa': empresa,
+            'form': form,
+            'categoria': categoria,
+            'config': config,
+            'editando': True,
+        }
+        
+        return render(request, 'tickets/empresa_admin/categoria_form.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro ao editar categoria: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao editar a categoria.")
+        return redirect('tickets:empresa_admin_categorias')
+
+@login_required
+def empresa_admin_excluir_categoria(request, categoria_id):
+    """Excluir categoria de chamados"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário
+        empresa = funcionario.empresas.first()
+        
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
+        
+        # Verificar se a empresa pode criar categorias
+        if not config.pode_criar_categorias:
+            messages.error(request, "Sua empresa não tem permissão para excluir categorias de chamados.")
+            return redirect('tickets:empresa_admin_categorias')
+        
+        # Obter a categoria e verificar se pertence à empresa do usuário
+        categoria = get_object_or_404(CategoriaChamado, id=categoria_id)
+        if categoria.empresa != empresa:
+            messages.error(request, "Você não tem permissão para excluir esta categoria.")
+            return redirect('tickets:empresa_admin_categorias')
+        
+        # Verificar se existem tickets vinculados a esta categoria
+        tickets_count = Ticket.objects.filter(categoria=categoria).count()
+        
+        if request.method == 'POST':
+            nome_categoria = categoria.nome
+            
+            if tickets_count > 0 and 'confirm_delete' in request.POST:
+                # Atualizar tickets para remover a referência à categoria
+                Ticket.objects.filter(categoria=categoria).update(categoria=None)
+                categoria.delete()
+                messages.success(request, f"Categoria '{nome_categoria}' excluída com sucesso! {tickets_count} chamados foram desvinculados da categoria.")
+                return redirect('tickets:empresa_admin_categorias')
+            elif tickets_count == 0:
+                categoria.delete()
+                messages.success(request, f"Categoria '{nome_categoria}' excluída com sucesso!")
+                return redirect('tickets:empresa_admin_categorias')
+        
+        context = {
+            'empresa': empresa,
+            'categoria': categoria,
+            'tickets_count': tickets_count,
+            'config': config,
+        }
+        
+        return render(request, 'tickets/empresa_admin/categoria_excluir.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro ao excluir categoria: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao excluir a categoria.")
+        return redirect('tickets:empresa_admin_categorias')

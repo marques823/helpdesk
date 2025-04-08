@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gerenciar Categorias - {{ empresa.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Gerenciar Categorias de Chamados - {{ empresa.nome }}</h5>
+                        <div>
+                            <a href="{% url 'tickets:empresa_admin_dashboard' %}" class="btn btn-light btn-sm">
+                                <i class="fas fa-arrow-left"></i> Voltar ao Painel
+                            </a>
+                            <a href="{% url 'tickets:empresa_admin_criar_categoria' %}" class="btn btn-success btn-sm">
+                                <i class="fas fa-plus"></i> Nova Categoria
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if categorias %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">#</th>
+                                    <th>Nome</th>
+                                    <th>Descrição</th>
+                                    <th style="width: 100px;">Cor</th>
+                                    <th style="width: 100px;">Ícone</th>
+                                    <th style="width: 80px;">Ordem</th>
+                                    <th style="width: 80px;">Status</th>
+                                    <th style="width: 140px;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for categoria in categorias %}
+                                <tr>
+                                    <td>{{ categoria.id }}</td>
+                                    <td>{{ categoria.nome }}</td>
+                                    <td>{{ categoria.descricao|default:"-" }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ categoria.cor }} p-2">{{ categoria.cor }}</span>
+                                    </td>
+                                    <td>
+                                        {% if categoria.icone %}
+                                            <i class="fas {{ categoria.icone }} fa-lg"></i>
+                                            <small class="text-muted ms-1">{{ categoria.icone }}</small>
+                                        {% else %}
+                                            <i class="fas fa-ticket-alt fa-lg"></i>
+                                            <small class="text-muted ms-1">fa-ticket-alt (padrão)</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ categoria.ordem }}</td>
+                                    <td>
+                                        {% if categoria.ativo %}
+                                            <span class="badge bg-success">Ativo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inativo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'tickets:empresa_admin_editar_categoria' categoria.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'tickets:empresa_admin_excluir_categoria' categoria.id %}" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Nenhuma categoria cadastrada ainda. <a href="{% url 'tickets:empresa_admin_criar_categoria' %}" class="alert-link">Clique aqui</a> para criar uma nova categoria.
+                    </div>
+                    <div class="text-center py-5">
+                        <div class="mb-4">
+                            <i class="fas fa-tags fa-5x text-muted"></i>
+                        </div>
+                        <h4 class="text-muted mb-3">Sem categorias de chamados</h4>
+                        <p class="text-muted mb-4">
+                            Crie categorias para organizar os chamados da sua empresa.<br>
+                            Isso ajudará a equipe a identificar rapidamente o tipo de suporte necessário.
+                        </p>
+                        <a href="{% url 'tickets:empresa_admin_criar_categoria' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i> Criar Primeira Categoria
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
