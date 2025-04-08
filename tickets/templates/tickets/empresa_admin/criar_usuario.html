@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Criar Novo Usuário - {{ empresa.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Criar Novo Usuário - {{ empresa.nome }}</h5>
+                        <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar à Lista
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if not config.pode_criar_mais_usuarios %}
+                    <div class="alert alert-danger mb-4">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fas fa-exclamation-circle fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-1">Limite de Usuários Atingido</h5>
+                                <p class="mb-0">
+                                    Você atingiu o limite de {{ config.limite_usuarios }} usuários. 
+                                    Entre em contato com o administrador do sistema para aumentar seu limite.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <h5 class="mb-3">Informações do Usuário</h5>
+                        <div class="mb-4 p-3 border rounded bg-light">
+                            {{ user_form|crispy }}
+                        </div>
+                        
+                        <h5 class="mb-3">Informações do Funcionário</h5>
+                        <div class="mb-4 p-3 border rounded bg-light">
+                            {{ funcionario_form|crispy }}
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Este usuário terá acesso apenas à sua empresa ({{ empresa.nome }}).
+                        </div>
+                        
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="btn btn-secondary me-2">Cancelar</a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-user-plus me-2"></i> Criar Usuário
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

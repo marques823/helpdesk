@@ -18,6 +18,42 @@ class Empresa(models.Model):
         verbose_name = 'Empresa'
         verbose_name_plural = 'Empresas'
 
+class EmpresaConfig(models.Model):
+    """
+    Configurações específicas para cada empresa, incluindo limites e permissões administrativas.
+    """
+    empresa = models.OneToOneField(Empresa, on_delete=models.CASCADE, related_name='config')
+    limite_usuarios = models.IntegerField(default=5, help_text="Número máximo de usuários que a empresa pode criar")
+    pode_criar_categorias = models.BooleanField(default=True, help_text="Se a empresa pode criar categorias de chamados")
+    pode_criar_campos_personalizados = models.BooleanField(default=True, help_text="Se a empresa pode criar campos personalizados")
+    pode_acessar_relatorios = models.BooleanField(default=True, help_text="Se a empresa pode acessar relatórios")
+    token_api = models.CharField(max_length=64, blank=True, null=True, help_text="Token para acesso à API")
+    ativo = models.BooleanField(default=True, help_text="Se as funcionalidades administrativas da empresa estão ativas")
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(default=timezone.now)
+    
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.criado_em = timezone.now()
+        self.atualizado_em = timezone.now()
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"Configurações de {self.empresa.nome}"
+    
+    def usuarios_criados(self):
+        """Retorna o número de usuários criados pela empresa"""
+        from tickets.models import Funcionario
+        return Funcionario.objects.filter(empresas=self.empresa).count()
+    
+    def pode_criar_mais_usuarios(self):
+        """Verifica se a empresa pode criar mais usuários"""
+        return self.usuarios_criados() < self.limite_usuarios
+    
+    class Meta:
+        verbose_name = 'Configuração de Empresa'
+        verbose_name_plural = 'Configurações de Empresas'
+
 class CategoriaChamado(models.Model):
     """
     Modelo para categorias de chamados, permitindo agrupar tickets por tipo de problema.

@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Painel Administrativo - {{ empresa.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Painel Administrativo - {{ empresa.nome }}</h5>
+                        <a href="{% url 'tickets:dashboard' %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card mb-3 shadow-sm">
+                                <div class="card-body text-center">
+                                    <h3 class="display-4">{{ total_usuarios }}</h3>
+                                    <p class="mb-0">Usuários</p>
+                                    <small class="text-muted">de {{ limite_usuarios }} permitidos</small>
+                                    <div class="progress mt-2" style="height: 10px;">
+                                        <div class="progress-bar {% if porcentagem_usuarios > 90 %}bg-danger{% elif porcentagem_usuarios > 70 %}bg-warning{% else %}bg-success{% endif %}" 
+                                             role="progressbar" 
+                                             style="width: {{ porcentagem_usuarios }}%;" 
+                                             aria-valuenow="{{ porcentagem_usuarios }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-users"></i> Gerenciar Usuários
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card mb-3 shadow-sm">
+                                <div class="card-body text-center">
+                                    <h3 class="display-4">{{ total_tickets }}</h3>
+                                    <p class="mb-0">Chamados</p>
+                                    <div class="mt-3">
+                                        <span class="badge bg-warning px-3 py-2 me-2">{{ tickets_abertos }} Abertos</span>
+                                        <span class="badge bg-success px-3 py-2">{{ tickets_fechados }} Fechados</span>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <a href="{% url 'tickets:dashboard' %}" class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-ticket-alt"></i> Ver Chamados
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card mb-3 shadow-sm">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-cogs fa-4x text-secondary mb-3"></i>
+                                    <h5>Configurações</h5>
+                                    <p class="text-muted small">Gerencie suas configurações de empresa</p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <a href="{% url 'tickets:empresa_admin_config' %}" class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-cog"></i> Configurações
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card mb-3 shadow-sm">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chart-bar fa-4x text-info mb-3"></i>
+                                    <h5>Relatórios</h5>
+                                    <p class="text-muted small">Visualize relatórios e estatísticas</p>
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <a href="{% url 'tickets:relatorios_menu' %}" class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-chart-line"></i> Relatórios
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="card shadow-sm">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Atalhos Rápidos</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        {% if pode_criar_mais %}
+                                        <div class="col-md-3 mb-3">
+                                            <a href="{% url 'tickets:empresa_admin_criar_usuario' %}" class="btn btn-success w-100 py-3">
+                                                <i class="fas fa-user-plus fa-2x mb-2"></i><br>
+                                                Criar Novo Usuário
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                        <div class="col-md-3 mb-3">
+                                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary w-100 py-3">
+                                                <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
+                                                Novo Chamado
+                                            </a>
+                                        </div>
+                                        {% if config.pode_criar_categorias %}
+                                        <div class="col-md-3 mb-3">
+                                            <a href="{% url 'tickets:dashboard' %}" class="btn btn-info w-100 py-3">
+                                                <i class="fas fa-tags fa-2x mb-2"></i><br>
+                                                Gerenciar Categorias
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                        {% if config.pode_criar_campos_personalizados %}
+                                        <div class="col-md-3 mb-3">
+                                            <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary w-100 py-3">
+                                                <i class="fas fa-list-alt fa-2x mb-2"></i><br>
+                                                Campos Personalizados
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

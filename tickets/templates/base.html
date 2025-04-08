@@ -1,0 +1,23 @@
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'tickets:dashboard' %}">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        
+                        {% with user_funcionario=user.funcionarios.first %}
+                        {% if user_funcionario.is_admin and not user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'empresa_admin' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'tickets:empresa_admin_dashboard' %}">
+                                <i class="bi bi-building"></i> Administração
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endwith %}
+                        
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'criar_ticket' %}active{% endif %}" href="{% url 'tickets:criar_ticket' %}">
+                                <i class="bi bi-plus-circle"></i> Criar Ticket
+                            </a>
+                        </li>
+                    {% endif %} 

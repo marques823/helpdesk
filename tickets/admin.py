@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado
+from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig
 from django.utils import timezone
 from django.urls import path
 from . import admin_views
@@ -26,6 +26,43 @@ class EmpresaAdmin(admin.ModelAdmin):
     list_display = ('nome', 'cnpj', 'telefone', 'email')
     search_fields = ('nome', 'cnpj', 'email')
     ordering = ('nome',)
+
+@admin.register(EmpresaConfig)
+class EmpresaConfigAdmin(admin.ModelAdmin):
+    list_display = ('empresa', 'limite_usuarios', 'usuarios_criados', 'ativo')
+    list_filter = ('ativo', 'pode_criar_categorias', 'pode_criar_campos_personalizados', 'pode_acessar_relatorios')
+    search_fields = ('empresa__nome', 'empresa__cnpj')
+    readonly_fields = ('criado_em', 'atualizado_em', 'usuarios_criados')
+    
+    fieldsets = (
+        (None, {
+            'fields': ('empresa', 'ativo')
+        }),
+        ('Limites e Permissões', {
+            'fields': ('limite_usuarios', 'usuarios_criados', 'pode_criar_categorias', 'pode_criar_campos_personalizados', 'pode_acessar_relatorios')
+        }),
+        ('API', {
+            'fields': ('token_api',),
+            'classes': ('collapse',)
+        }),
+        ('Informações do Sistema', {
+            'fields': ('criado_em', 'atualizado_em'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def usuarios_criados(self, obj):
+        """Retorna o número de usuários criados pela empresa"""
+        count = obj.usuarios_criados()
+        limit = obj.limite_usuarios
+        return f"{count} de {limit} ({(count / limit * 100):.0f}%)"
+    usuarios_criados.short_description = "Usuários Criados"
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se for uma nova instância
+            obj.criado_em = timezone.now()
+        obj.atualizado_em = timezone.now()
+        super().save_model(request, obj, form, change)
 
 @admin.register(Funcionario)
 class FuncionarioAdmin(admin.ModelAdmin):

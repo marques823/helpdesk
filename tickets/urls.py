@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views, admin_views
+from .feeds import AtividadeTicketFeed
 
 app_name = 'tickets'
 
@@ -59,4 +60,11 @@ urlpatterns = [
     
     # Adicione esta URL junto com as outras API URLs
     path('get-estatisticas-categorias/', views.get_estatisticas_categorias, name='get_estatisticas_categorias'),
+    
+    # Rotas para o painel administrativo de empresas
+    path('empresa-admin/', views.empresa_admin_dashboard, name='empresa_admin_dashboard'),
+    path('empresa-admin/usuarios/', views.empresa_admin_usuarios, name='empresa_admin_usuarios'),
+    path('empresa-admin/usuarios/novo/', views.empresa_admin_criar_usuario, name='empresa_admin_criar_usuario'),
+    path('empresa-admin/usuarios/<int:funcionario_id>/editar/', views.empresa_admin_editar_usuario, name='empresa_admin_editar_usuario'),
+    path('empresa-admin/config/', views.empresa_admin_config, name='empresa_admin_config'),
 ] 

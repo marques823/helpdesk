@@ -10,7 +10,7 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig
 from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, CampoPerfilCompartilhamentoForm, CompartilharTicketForm
 from django.core.exceptions import ObjectDoesNotExist
 import json
@@ -2041,3 +2041,280 @@ def get_estatisticas_categorias(request):
 def logout_success(request):
     """Exibe a página de logout bem-sucedido"""
     return render(request, 'registration/logged_out.html')
+
+# ----- Views Painel Administrativo de Empresas -----
+
+@login_required
+def empresa_admin_dashboard(request):
+    """Dashboard administrativo para empresas"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário (assumindo que um admin gerencia apenas uma empresa)
+        empresas = funcionario.empresas.all()
+        if not empresas.exists():
+            messages.error(request, "Você não está associado a nenhuma empresa.")
+            return redirect('tickets:dashboard')
+        
+        empresa = empresas.first()  # Pega a primeira empresa associada
+        
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
+        
+        # Estatísticas para o dashboard
+        total_usuarios = funcionario.empresas.first().funcionarios.count()
+        limite_usuarios = config.limite_usuarios
+        porcentagem_usuarios = (total_usuarios / limite_usuarios) * 100 if limite_usuarios > 0 else 0
+        
+        total_tickets = Ticket.objects.filter(empresa=empresa).count()
+        tickets_abertos = Ticket.objects.filter(empresa=empresa, status__in=['aberto', 'em_andamento', 'pendente']).count()
+        tickets_fechados = Ticket.objects.filter(empresa=empresa, status__in=['resolvido', 'fechado']).count()
+        
+        context = {
+            'empresa': empresa,
+            'config': config,
+            'total_usuarios': total_usuarios,
+            'limite_usuarios': limite_usuarios,
+            'porcentagem_usuarios': porcentagem_usuarios,
+            'total_tickets': total_tickets,
+            'tickets_abertos': tickets_abertos,
+            'tickets_fechados': tickets_fechados,
+            'pode_criar_mais': config.pode_criar_mais_usuarios(),
+        }
+        
+        return render(request, 'tickets/empresa_admin/dashboard.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro no dashboard administrativo: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar o dashboard administrativo.")
+        return redirect('tickets:dashboard')
+
+@login_required
+def empresa_admin_usuarios(request):
+    """Gerenciamento de usuários para administradores de empresa"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário (assumindo que um admin gerencia apenas uma empresa)
+        empresas = funcionario.empresas.all()
+        if not empresas.exists():
+            messages.error(request, "Você não está associado a nenhuma empresa.")
+            return redirect('tickets:dashboard')
+        
+        empresa = empresas.first()  # Pega a primeira empresa associada
+        
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
+        
+        # Obter todos os funcionários da empresa
+        funcionarios = Funcionario.objects.filter(empresas=empresa).order_by('-tipo', 'usuario__username')
+        
+        context = {
+            'empresa': empresa,
+            'config': config,
+            'funcionarios': funcionarios,
+            'total_usuarios': funcionarios.count(),
+            'limite_usuarios': config.limite_usuarios,
+            'pode_criar_mais': config.pode_criar_mais_usuarios(),
+        }
+        
+        return render(request, 'tickets/empresa_admin/usuarios.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro no gerenciamento de usuários da empresa: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar a lista de usuários.")
+        return redirect('tickets:dashboard')
+
+@login_required
+def empresa_admin_criar_usuario(request):
+    """Criar novo usuário para a empresa"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário
+        empresa = funcionario.empresas.first()
+        
+        # Obter configurações da empresa
+        try:
+            config = EmpresaConfig.objects.get(empresa=empresa)
+        except EmpresaConfig.DoesNotExist:
+            # Criar configuração padrão se não existir
+            config = EmpresaConfig(empresa=empresa)
+            config.save()
+        
+        # Verificar se a empresa pode criar mais usuários
+        if not config.pode_criar_mais_usuarios():
+            messages.error(request, f"Limite de usuários atingido ({config.limite_usuarios}). Não é possível criar mais usuários.")
+            return redirect('tickets:empresa_admin_usuarios')
+        
+        if request.method == 'POST':
+            user_form = UserForm(request.POST)
+            funcionario_form = FuncionarioForm(request.POST)
+            
+            if user_form.is_valid() and funcionario_form.is_valid():
+                # Criar o usuário
+                novo_usuario = user_form.save()
+                
+                # Criar o funcionário associando à empresa
+                novo_funcionario = funcionario_form.save(commit=False)
+                novo_funcionario.usuario = novo_usuario
+                novo_funcionario.save()
+                
+                # Adicionar a empresa ao funcionário
+                novo_funcionario.empresas.add(empresa)
+                
+                messages.success(request, f"Usuário {novo_usuario.username} criado com sucesso!")
+                return redirect('tickets:empresa_admin_usuarios')
+        else:
+            user_form = UserForm()
+            funcionario_form = FuncionarioForm(initial={'tipo': 'cliente'})  # Default para tipo cliente
+        
+        context = {
+            'empresa': empresa,
+            'user_form': user_form,
+            'funcionario_form': funcionario_form,
+            'config': config,
+        }
+        
+        return render(request, 'tickets/empresa_admin/criar_usuario.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro ao criar usuário para a empresa: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao criar o usuário.")
+        return redirect('tickets:empresa_admin_usuarios')
+
+@login_required
+def empresa_admin_editar_usuario(request, funcionario_id):
+    """Editar usuário existente da empresa"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        admin_funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not admin_funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário admin
+        empresa = admin_funcionario.empresas.first()
+        
+        # Verificar se o funcionário a ser editado pertence à empresa
+        funcionario = get_object_or_404(Funcionario, id=funcionario_id, empresas=empresa)
+        usuario = funcionario.usuario
+        
+        if request.method == 'POST':
+            # Não permitimos alterar a senha aqui
+            usuario_form = forms.ModelForm(request.POST, instance=usuario)
+            usuario_form.fields = {
+                'first_name': forms.CharField(max_length=150),
+                'last_name': forms.CharField(max_length=150),
+                'email': forms.EmailField(),
+            }
+            
+            funcionario_form = FuncionarioForm(request.POST, instance=funcionario)
+            
+            if usuario_form.is_valid() and funcionario_form.is_valid():
+                usuario.first_name = usuario_form.cleaned_data['first_name']
+                usuario.last_name = usuario_form.cleaned_data['last_name']
+                usuario.email = usuario_form.cleaned_data['email']
+                usuario.save()
+                
+                funcionario = funcionario_form.save(commit=False)
+                funcionario.save()
+                
+                messages.success(request, f"Usuário {usuario.username} atualizado com sucesso!")
+                return redirect('tickets:empresa_admin_usuarios')
+        else:
+            # Formulário para edição de usuário
+            usuario_form = forms.ModelForm(instance=usuario)
+            usuario_form.fields = {
+                'first_name': forms.CharField(max_length=150, initial=usuario.first_name),
+                'last_name': forms.CharField(max_length=150, initial=usuario.last_name),
+                'email': forms.EmailField(initial=usuario.email),
+            }
+            
+            funcionario_form = FuncionarioForm(instance=funcionario)
+        
+        context = {
+            'empresa': empresa,
+            'usuario_form': usuario_form,
+            'funcionario_form': funcionario_form,
+            'funcionario': funcionario,
+            'usuario': usuario,
+        }
+        
+        return render(request, 'tickets/empresa_admin/editar_usuario.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro ao editar usuário da empresa: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao editar o usuário.")
+        return redirect('tickets:empresa_admin_usuarios')
+
+@login_required
+def empresa_admin_config(request):
+    """Configurações da empresa para administradores"""
+    try:
+        # Verificar se o usuário é admin de uma empresa
+        funcionario = get_object_or_404(Funcionario, usuario=request.user)
+        if not funcionario.is_admin():
+            messages.error(request, "Você não tem permissão para acessar esta área.")
+            return redirect('tickets:dashboard')
+        
+        # Pegar a empresa do funcionário admin
+        empresa = funcionario.empresas.first()
+        
+        # Obter ou criar configurações da empresa
+        config, created = EmpresaConfig.objects.get_or_create(
+            empresa=empresa,
+            defaults={
+                'limite_usuarios': 5,
+                'pode_criar_categorias': True,
+                'pode_criar_campos_personalizados': True,
+                'pode_acessar_relatorios': True,
+                'ativo': True,
+            }
+        )
+        
+        if request.method == 'POST':
+            # Formulário apenas para os campos que o admin da empresa pode editar
+            empresa_form = EmpresaForm(request.POST, instance=empresa)
+            
+            if empresa_form.is_valid():
+                empresa_form.save()
+                messages.success(request, "Configurações da empresa atualizadas com sucesso!")
+                return redirect('tickets:empresa_admin_dashboard')
+        else:
+            empresa_form = EmpresaForm(instance=empresa)
+        
+        context = {
+            'empresa': empresa,
+            'config': config,
+            'empresa_form': empresa_form,
+        }
+        
+        return render(request, 'tickets/empresa_admin/configuracoes.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro nas configurações da empresa: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao acessar as configurações da empresa.")
+        return redirect('tickets:empresa_admin_dashboard')

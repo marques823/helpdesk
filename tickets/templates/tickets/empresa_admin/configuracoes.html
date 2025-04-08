@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Configurações - {{ empresa.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-10 offset-md-1">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Configurações - {{ empresa.nome }}</h5>
+                        <a href="{% url 'tickets:empresa_admin_dashboard' %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar ao Painel
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="mb-3">Informações da Empresa</h5>
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="p-3 border rounded bg-light mb-4">
+                                    {{ empresa_form|crispy }}
+                                </div>
+                                
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i> Salvar Alterações
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Limites e Plano</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="py-3 border-bottom">
+                                        <h6>Limite de Usuários</h6>
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span class="badge bg-primary rounded-pill px-3 py-2">{{ config.limite_usuarios }}</span>
+                                            <div class="progress flex-grow-1 mx-2" style="height: 8px;">
+                                                <div class="progress-bar {% if config.usuarios_criados > config.limite_usuarios %}bg-danger{% elif config.usuarios_criados > config.limite_usuarios|floatformat:0|add:"-2" %}bg-warning{% else %}bg-success{% endif %}" 
+                                                    role="progressbar" 
+                                                    style="width: {{ config.usuarios_criados|floatformat:0|mul:100|div:config.limite_usuarios }}%;" 
+                                                    aria-valuenow="{{ config.usuarios_criados }}" 
+                                                    aria-valuemin="0" 
+                                                    aria-valuemax="{{ config.limite_usuarios }}">
+                                                </div>
+                                            </div>
+                                            <span>{{ config.usuarios_criados }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="py-3 border-bottom">
+                                        <h6>Funcionalidades</h6>
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                                Gerenciar Categorias
+                                                <span class="badge {% if config.pode_criar_categorias %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
+                                                    {% if config.pode_criar_categorias %}
+                                                    <i class="fas fa-check"></i>
+                                                    {% else %}
+                                                    <i class="fas fa-times"></i>
+                                                    {% endif %}
+                                                </span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                                Campos Personalizados
+                                                <span class="badge {% if config.pode_criar_campos_personalizados %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
+                                                    {% if config.pode_criar_campos_personalizados %}
+                                                    <i class="fas fa-check"></i>
+                                                    {% else %}
+                                                    <i class="fas fa-times"></i>
+                                                    {% endif %}
+                                                </span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                                Acesso a Relatórios
+                                                <span class="badge {% if config.pode_acessar_relatorios %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
+                                                    {% if config.pode_acessar_relatorios %}
+                                                    <i class="fas fa-check"></i>
+                                                    {% else %}
+                                                    <i class="fas fa-times"></i>
+                                                    {% endif %}
+                                                </span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="pt-3">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Para alterar limites ou funcionalidades, entre em contato com o administrador do sistema.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
