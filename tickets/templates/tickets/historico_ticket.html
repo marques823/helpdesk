@@ -42,7 +42,7 @@
                                             {% if user.is_superuser and registro.dados_anteriores %}
                                                 <div class="mt-2">
                                                     <h6>Dados Anteriores:</h6>
-                                                    <pre class="bg-light p-2 rounded small overflow-auto">{{ registro.dados_anteriores|pprint }}</pre>
+                                                    <pre class="pre-themed p-2 rounded small overflow-auto">{{ registro.dados_anteriores|pprint }}</pre>
                                                 </div>
                                             {% endif %}
                                             
@@ -111,6 +111,7 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block styles %}
 <style>
@@ -132,11 +133,13 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background-color: #007bff;
+    background-color: var(--bs-primary);
 }
 
 .timeline-content {
-    background-color: #f8f9fa;
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color);
     border-radius: 4px;
     padding: 15px;
 }
@@ -149,10 +152,13 @@
     font-size: 0.9rem;
 }
 
-pre {
+pre.pre-themed {
     white-space: pre-wrap;
     word-wrap: break-word;
     max-height: 200px;
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color);
 }
 
 @media (max-width: 767.98px) {
@@ -179,6 +185,4 @@ pre {
     }
 }
 </style>
-{% endblock %}
-
 {% endblock %} 

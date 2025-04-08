@@ -30,12 +30,14 @@
                                     <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Voltar</span>
                                 </a>
                             {% endif %}
+                            {% if show_tickets %}
                             <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilters" aria-expanded="false" aria-controls="collapseFilters">
                                 <i class="fas fa-filter"></i> <span class="d-none d-sm-inline">Filtros</span>
                                 {% if status_filter or prioridade_filter or empresa_filter or order_by != '-criado_em' %}
                                 <span class="badge bg-primary ms-1">!</span>
                                 {% endif %}
                             </button>
+                            {% endif %}
                             {% if funcionario %}
                             <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary btn-sm btn-new-ticket">
                                 <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Novo Chamado</span>
@@ -51,20 +53,27 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    {% if show_tickets %}
                     <div class="row mb-4">
                         <div class="col-md-12">
-                            <!-- Campo de pesquisa sempre visível -->
+                            <!-- Campo de pesquisa apenas quando mostra os tickets -->
                             <form method="get" class="mb-3">
+                                {% if selected_category %}
+                                    <input type="hidden" name="selected_category" value="{{ selected_category }}">
+                                {% endif %}
+                                {% if selected_status %}
+                                    <input type="hidden" name="selected_status" value="{{ selected_status }}">
+                                {% endif %}
+                                <input type="hidden" name="show_tickets" value="true">
                                 <div class="col-md-12 mb-3">
                                     <div class="input-group">
                                         <input type="text" name="q" class="form-control" placeholder="Pesquisar chamados por título, descrição, empresa, criador ou ID..." value="{{ termo_pesquisa }}">
                                         {% if termo_pesquisa %}
-                                            <a href="{% url 'tickets:dashboard' %}{% if status_filter or prioridade_filter or empresa_filter or order_by %}?{% if status_filter %}status={{ status_filter }}{% if prioridade_filter or empresa_filter or order_by %}&{% endif %}{% endif %}{% if prioridade_filter %}prioridade={{ prioridade_filter }}{% if empresa_filter or order_by %}&{% endif %}{% endif %}{% if empresa_filter %}empresa={{ empresa_filter }}{% if order_by %}&{% endif %}{% endif %}{% if order_by %}order_by={{ order_by }}{% endif %}{% endif %}" class="btn btn-outline-secondary">
+                                            <a href="{% url 'tickets:dashboard' %}?show_tickets=true{% if selected_category %}&selected_category={{ selected_category }}{% endif %}{% if selected_status %}&selected_status={{ selected_status }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}" class="btn btn-outline-secondary">
                                                 <i class="fas fa-times"></i> Limpar pesquisa
                                             </a>
                                         {% endif %}
                                     </div>
-                                    {% if show_tickets %}
                                     <small class="text-muted mt-1"><i class="fas fa-info-circle"></i> A pesquisa é realizada automaticamente enquanto você digita</small>
                                     <div class="text-end mt-2">
                                         <button class="btn btn-link btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAdvancedSearch" aria-expanded="false" aria-controls="collapseAdvancedSearch">
@@ -96,23 +105,20 @@
                                             </div>
                                         </div>
                                     </div>
-                                    {% endif %}
                                 </div>
                             </form>
 
                             <div class="collapse {% if status_filter or prioridade_filter or empresa_filter or order_by != '-criado_em' %}show{% endif %}" id="collapseFilters">
                                 <div class="card card-body">
                                     <form method="get" class="row g-3">
-                                        {% if show_tickets %}
-                                            <!-- Incluir hidden fields para preservar os filtros de categoria e status -->
-                                            {% if selected_category %}
-                                                <input type="hidden" name="selected_category" value="{{ selected_category }}">
-                                            {% endif %}
-                                            {% if selected_status %}
-                                                <input type="hidden" name="selected_status" value="{{ selected_status }}">
-                                            {% endif %}
-                                            <input type="hidden" name="show_tickets" value="true">
+                                        <!-- Incluir hidden fields para preservar os filtros de categoria e status -->
+                                        {% if selected_category %}
+                                            <input type="hidden" name="selected_category" value="{{ selected_category }}">
                                         {% endif %}
+                                        {% if selected_status %}
+                                            <input type="hidden" name="selected_status" value="{{ selected_status }}">
+                                        {% endif %}
+                                        <input type="hidden" name="show_tickets" value="true">
                                         
                                         <div class="col-md-3 col-6">
                                             <label for="status" class="form-label">Status</label>
@@ -160,7 +166,7 @@
                                         </div>
                                         <div class="col-12 mt-3">
                                             <div class="d-flex flex-wrap gap-2">
-                                                <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary btn-sm">
+                                                <a href="{% url 'tickets:dashboard' %}?show_tickets=true{% if selected_category %}&selected_category={{ selected_category }}{% endif %}{% if selected_status %}&selected_status={{ selected_status }}{% endif %}" class="btn btn-secondary btn-sm">
                                                     <i class="fas fa-times"></i> <span class="d-none d-sm-inline">Limpar Filtros</span>
                                                 </a>
                                                 <button type="submit" class="btn btn-primary btn-sm">
@@ -174,7 +180,7 @@
                         </div>
                     </div>
 
-                    <!-- Indicadores dos filtros ativos -->
+                    <!-- Indicadores dos filtros ativos apenas quando mostra tickets -->
                     {% if status_filter or prioridade_filter or empresa_filter or categoria_filter or order_by != '-criado_em' %}
                     <div class="row mb-3">
                         <div class="col-md-12">
@@ -197,32 +203,10 @@
                                     Empresa: {{ empresa_filter|get_empresa_nome }}
                                 </span>
                                 {% endif %}
-                                
-                                {% if categoria_filter %}
-                                <span class="badge badge-text-colored badge-text-secondary">
-                                    Categoria: {{ categoria_filter|get_categoria_nome }}
-                                </span>
-                                {% endif %}
-                                
-                                {% if order_by != '-criado_em' %}
-                                <span class="badge badge-text-colored badge-text-secondary">
-                                    Ordenação: 
-                                    {% if order_by == 'criado_em' %}
-                                        Data (antiga)
-                                    {% elif order_by == 'prioridade' %}
-                                        Prioridade
-                                    {% elif order_by == '-prioridade' %}
-                                        Prioridade (inv)
-                                    {% elif order_by == 'status' %}
-                                        Status
-                                    {% elif order_by == '-status' %}
-                                        Status (inv)
-                                    {% endif %}
-                                </span>
-                                {% endif %}
                             </div>
                         </div>
                     </div>
+                    {% endif %}
                     {% endif %}
                     
                     <!-- NOVO LAYOUT: VISUALIZAÇÃO POR CATEGORIAS (Tela inicial) -->

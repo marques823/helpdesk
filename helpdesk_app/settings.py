@@ -27,14 +27,12 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '10.10.10.2',
-    'helpdesk.tecnicolitoral.com',
-    'helpdesk.tecnicolitoral.com:8002',
-    '*'
-]
+# Obter hosts permitidos do arquivo .env ou usar uma lista padrão
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,10.10.10.2,helpdesk.tecnicolitoral.com,helpdesk.tecnicolitoral.com:8002', cast=Csv())
+
+# Garantir que o host que está causando o erro seja incluído
+if 'helpdesk.tecnicolitoral.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('helpdesk.tecnicolitoral.com')
 
 
 # Application definition
@@ -177,14 +175,26 @@ CSRF_TRUSTED_ORIGINS = [
     'https://helpdesk.tecnicolitoral.com',
     'https://helpdesk.tecnicolitoral.com:8002',
     'http://helpdesk.tecnicolitoral.com:8002',
+    'http://helpdesk.tecnicolitoral.com',
     'http://10.10.10.2:8002',
     'http://10.10.10.2:8000',
     'http://localhost:8000'
 ]
-CSRF_COOKIE_SECURE = False
+
+# Detecção automática se estamos em ambiente de produção
+IS_PRODUCTION = not DEBUG
+
+# Em produção, usamos configurações mais seguras
+if IS_PRODUCTION:
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+else:
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = False
+    SECURE_SSL_REDIRECT = False
+
 CSRF_COOKIE_HTTPONLY = True  # Evita que o token CSRF seja acessível por JavaScript
-SESSION_COOKIE_SECURE = False
-SECURE_SSL_REDIRECT = False  # Definido como False pois não estamos usando HTTPS em desenvolvimento
 SECURE_HSTS_SECONDS = 31536000  # 1 ano
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
