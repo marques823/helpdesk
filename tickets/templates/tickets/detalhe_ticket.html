@@ -159,11 +159,15 @@
                                     {% else %}
                                         <div class="d-flex justify-content-between mb-2">
                                             <strong>Status:</strong> 
-                                            <span class="badge bg-{{ ticket.status|status_color }}">{{ ticket.get_status_display }}</span>
+                                            <span class="badge badge-text-colored text-{{ ticket.status|status_color }}">
+                                                {{ ticket.get_status_display }}
+                                            </span>
                                         </div>
                                         <div class="d-flex justify-content-between mb-2">
                                             <strong>Prioridade:</strong> 
-                                            <span class="badge bg-{{ ticket.prioridade|prioridade_color }}">{{ ticket.get_prioridade_display }}</span>
+                                            <span class="badge badge-text-colored text-{{ ticket.prioridade|prioridade_color }}">
+                                                {{ ticket.get_prioridade_display }}
+                                            </span>
                                         </div>
                                     {% endif %}
                                     
@@ -175,7 +179,7 @@
                                     {% if ticket.categoria %}
                                     <div class="d-flex justify-content-between mb-2">
                                         <strong>Categoria:</strong>
-                                        <span class="badge bg-{{ ticket.categoria.cor }}">
+                                        <span class="badge badge-text-colored badge-text-{{ ticket.categoria.cor }}">
                                             <i class="fas {{ ticket.categoria.icone }} me-1"></i> {{ ticket.categoria.nome }}
                                         </span>
                                     </div>

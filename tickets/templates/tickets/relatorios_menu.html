@@ -1,42 +1,88 @@
-{% extends 'tickets/base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Menu de Relatórios{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h1>Relatórios</h1>
-    
-    <div class="row mt-4">
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Relatório de Tickets</h5>
-                    <p class="card-text">Gere relatórios detalhados sobre os tickets, filtrados por status, prioridade, empresa, etc.</p>
-                    <a href="{% url 'tickets:relatorio_tickets' %}" class="btn btn-primary">Acessar</a>
-                </div>
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="card-title mb-0">Relatórios</h2>
+                <a href="{% url 'tickets:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
             </div>
         </div>
-        
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Relatório de Empresas</h5>
-                    <p class="card-text">Estatísticas e detalhes sobre as empresas e seus tickets.</p>
-                    <a href="{% url 'tickets:relatorio_empresas' %}" class="btn btn-primary">Acessar</a>
+        <div class="card-body">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
+                <div class="col">
+                    <a href="{% url 'tickets:relatorio_tickets' %}" class="text-decoration-none">
+                        <div class="card h-100 categoria-card">
+                            <div class="card-body text-center py-4">
+                                <div class="categoria-icon bg-primary mb-3">
+                                    <i class="fas fa-headset fa-2x"></i>
+                                </div>
+                                <h5 class="card-title">Relatório de Chamados</h5>
+                                <p class="card-text text-muted small">Gere relatórios detalhados sobre os chamados, filtrados por status, prioridade, empresa e outros critérios.</p>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Relatório de Técnicos</h5>
-                    <p class="card-text">Análise de desempenho e estatísticas de atendimento por técnico.</p>
-                    <a href="{% url 'tickets:relatorio_tecnicos' %}" class="btn btn-primary">Acessar</a>
+                
+                <div class="col">
+                    <a href="{% url 'tickets:relatorio_empresas' %}" class="text-decoration-none">
+                        <div class="card h-100 categoria-card">
+                            <div class="card-body text-center py-4">
+                                <div class="categoria-icon bg-success mb-3">
+                                    <i class="fas fa-building fa-2x"></i>
+                                </div>
+                                <h5 class="card-title">Relatório de Empresas</h5>
+                                <p class="card-text text-muted small">Estatísticas e detalhes sobre as empresas cadastradas e seus chamados associados.</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="col">
+                    <a href="{% url 'tickets:relatorio_tecnicos' %}" class="text-decoration-none">
+                        <div class="card h-100 categoria-card">
+                            <div class="card-body text-center py-4">
+                                <div class="categoria-icon bg-info mb-3">
+                                    <i class="fas fa-user-cog fa-2x"></i>
+                                </div>
+                                <h5 class="card-title">Relatório de Técnicos</h5>
+                                <p class="card-text text-muted small">Análise de desempenho e estatísticas de atendimento por técnico ao longo do tempo.</p>
+                            </div>
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .categoria-card {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+    .categoria-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        border-color: var(--bs-primary);
+    }
+    .categoria-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        color: white;
+    }
+</style>
 {% endblock %} 

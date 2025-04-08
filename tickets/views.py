@@ -70,6 +70,12 @@ def dashboard(request):
         empresa_filter = request.GET.get('empresa', '')
         categoria_filter = request.GET.get('categoria', '')
         order_by = request.GET.get('order_by', '-criado_em')
+        
+        # Determina se deve mostrar a visualização por categorias ou a lista de tickets
+        show_tickets = request.GET.get('show_tickets', '') == 'true'
+        show_status_filters = request.GET.get('show_status', '') == 'true'
+        selected_category = request.GET.get('selected_category', '')
+        selected_status = request.GET.get('selected_status', '')
 
         # Aplica os filtros de acordo com as permissões do usuário
         if request.user.is_superuser:
@@ -90,7 +96,8 @@ def dashboard(request):
                     Q(atribuicoes__funcionario=funcionario)
                 ).filter(empresa__in=empresas).distinct()
         
-        # Prepara as categorias para filtro baseado nas empresas disponíveis
+        # Prepara as categorias para a visualização de categorias
+        # Se a empresa estiver filtrada, mostra apenas categorias dessa empresa
         if empresa_filter:
             categorias = CategoriaChamado.objects.filter(
                 empresa_id=empresa_filter,
@@ -101,6 +108,32 @@ def dashboard(request):
                 empresa__in=empresas,
                 ativo=True
             ).order_by('ordem', 'nome')
+        
+        # Prepara a contagem de tickets por categoria
+        categoria_counts = {}
+        for categoria in categorias:
+            categoria_counts[categoria.id] = tickets.filter(categoria=categoria).count()
+        
+        # Se temos uma categoria selecionada e estamos mostrando status
+        if selected_category and show_status_filters:
+            # Filtrar tickets apenas pela categoria selecionada
+            categoria_obj = get_object_or_404(CategoriaChamado, id=selected_category)
+            filtered_tickets = tickets.filter(categoria=categoria_obj)
+            
+            # Preparar contagens por status
+            status_counts = {}
+            for status_code, status_name in Ticket.STATUS_CHOICES:
+                status_counts[status_code] = filtered_tickets.filter(status=status_code).count()
+        else:
+            status_counts = None
+            categoria_obj = None
+        
+        # Aplicar filtros de categoria e status se fornecidos
+        if selected_category:
+            tickets = tickets.filter(categoria_id=selected_category)
+        
+        if selected_status:
+            tickets = tickets.filter(status=selected_status)
 
         # Aplica os filtros de pesquisa
         if termo_pesquisa:
@@ -136,16 +169,17 @@ def dashboard(request):
         # Ordenação
         tickets = tickets.order_by(order_by)
         
-        # Paginação
-        paginator = Paginator(tickets, 20)  # 20 tickets por página
-        page = request.GET.get('page')
-        
-        try:
-            tickets = paginator.page(page)
-        except PageNotAnInteger:
-            tickets = paginator.page(1)
-        except EmptyPage:
-            tickets = paginator.page(paginator.num_pages)
+        # Paginação - Apenas se estiver mostrando tickets
+        if show_tickets:
+            paginator = Paginator(tickets, 20)  # 20 tickets por página
+            page = request.GET.get('page')
+            
+            try:
+                tickets = paginator.page(page)
+            except PageNotAnInteger:
+                tickets = paginator.page(1)
+            except EmptyPage:
+                tickets = paginator.page(paginator.num_pages)
         
         # Prepara os contextos para os templates
         status_choices = Ticket.STATUS_CHOICES
@@ -163,7 +197,15 @@ def dashboard(request):
             'prioridade_choices': prioridade_choices,
             'empresas': empresas,
             'categorias': categorias,
-            'funcionario': funcionario
+            'funcionario': funcionario,
+            # Novos contextos para visualização de categorias
+            'show_tickets': show_tickets,
+            'show_status_filters': show_status_filters,
+            'selected_category': selected_category,
+            'selected_status': selected_status,
+            'categoria_counts': categoria_counts,
+            'status_counts': status_counts,
+            'categoria_obj': categoria_obj,
         }
         
         return render(request, 'tickets/dashboard.html', context)
@@ -1995,3 +2037,7 @@ def get_estatisticas_categorias(request):
             return JsonResponse({"error": str(e)}, status=400)
     
     return JsonResponse({"estatisticas": estatisticas})
+
+def logout_success(request):
+    """Exibe a página de logout bem-sucedido"""
+    return render(request, 'registration/logged_out.html')

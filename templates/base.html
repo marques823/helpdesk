@@ -1,21 +1,243 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Prevenir o flash branco -->
+    <script>
+        // Aplicar tema imediatamente antes do carregamento da página
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
+                document.documentElement.style.backgroundColor = '#212529';
+                document.documentElement.style.color = '#dee2e6';
+            }
+        })();
+    </script>
     <title>{% block title %}Helpdesk{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bs-primary: #0d6efd;
+            --bs-secondary: #6c757d;
+            --bs-success: #198754;
+            --bs-info: #0dcaf0;
+            --bs-warning: #ffc107;
+            --bs-danger: #dc3545;
+        }
+        
+        /* Evita o piscar branco durante transições */
+        html, body {
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        
+        body {
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+        }
+        
+        [data-bs-theme="dark"] {
+            --bs-body-bg: #212529;
+            --bs-body-color: #dee2e6;
+            --bs-tertiary-bg: #2b3035;
+            --bs-emphasis-color: #fff;
+            --bs-card-bg: #343a40;
+            --bs-card-border-color: #495057;
+            --bs-border-color: #495057;
+            
+            /* Melhorar contraste de texto */
+            --bs-body-color: #f8f9fa;
+            --bs-secondary-color: #e9ecef;
+            --bs-secondary-bg: #343a40;
+            
+            /* Formulários no tema escuro */
+            --bs-form-control-bg: #2b3035;
+            --bs-form-control-disabled-bg: #212529;
+            --bs-input-bg: #2b3035;
+            --bs-input-color: #f8f9fa;
+            --bs-input-border-color: #495057;
+            --bs-input-focus-bg: #2b3035;
+            --bs-input-focus-border-color: #6ea8fe;
+            --bs-input-focus-color: #f8f9fa;
+            --bs-input-placeholder-color: #adb5bd;
+            
+            /* Card específico para filtros */
+            --bs-card-cap-bg: #343a40;
+            --bs-btn-disabled-color: #adb5bd;
+        }
+        
+        /* Forçar estilo correto para card específico de filtros */
+        [data-bs-theme="dark"] .card.card-body.bg-light {
+            background-color: #343a40 !important;
+            border-color: #495057 !important;
+        }
+        
+        /* Corrigir todos os elementos bg-light no tema escuro */
+        [data-bs-theme="dark"] .bg-light {
+            background-color: #343a40 !important;
+            border-color: #495057 !important;
+            color: #f8f9fa !important;
+        }
+        
+        /* Corrigir badges bg-light no tema escuro */
+        [data-bs-theme="dark"] .badge.bg-light {
+            background-color: #495057 !important;
+            color: #f8f9fa !important;
+        }
+        
+        /* Melhorar visualização de elementos pre no tema escuro */
+        [data-bs-theme="dark"] pre.bg-light {
+            background-color: #2b3035 !important;
+            color: #e9ecef !important;
+            border: 1px solid #495057;
+        }
+        
+        /* Melhorar contraste do texto secundário no tema escuro */
+        [data-bs-theme="dark"] .text-muted {
+            color: #adb5bd !important;
+        }
+        
+        [data-bs-theme="dark"] .form-select,
+        [data-bs-theme="dark"] .form-control {
+            background-color: #2b3035;
+            color: #f8f9fa;
+            border-color: #495057;
+        }
+        
+        [data-bs-theme="dark"] .form-select:focus,
+        [data-bs-theme="dark"] .form-control:focus {
+            background-color: #2b3035;
+            color: #f8f9fa;
+            border-color: #6ea8fe;
+        }
+        
         .navbar-brand {
             font-weight: bold;
         }
+        
         .card {
             margin-bottom: 1rem;
+            transition: transform 0.2s ease;
         }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
         .badge {
             font-size: 0.9rem;
         }
+        
+        /* Theme switcher */
+        .theme-icon {
+            width: 1em;
+            height: 1em;
+            display: inline-block;
+            margin-right: 0.2em;
+        }
+        
+        /* Category cards */
+        .category-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .category-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+        
+        /* Status badges with same width */
+        .status-badge {
+            width: 100%;
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .status-badge:hover {
+            filter: brightness(1.1);
+            transform: scale(1.03);
+        }
+        
+        /* Badges com texto colorido em vez de fundo colorido */
+        .badge-text-colored {
+            background-color: transparent !important;
+            border: none !important;
+            font-weight: 600;
+            padding: 0.3rem 0.6rem;
+        }
+        
+        /* Cores para os diferentes status */
+        .text-pending { color: var(--bs-warning) !important; }
+        .text-open { color: var(--bs-primary) !important; }
+        .text-in_progress { color: var(--bs-info) !important; }
+        .text-resolved { color: var(--bs-success) !important; }
+        .text-closed { color: var(--bs-secondary) !important; }
+        .text-reopened { color: var(--bs-danger) !important; }
+        
+        /* Status alternativos com hífen */
+        .text-in-progress { color: var(--bs-info) !important; }
+        .text-re-opened { color: var(--bs-danger) !important; }
+        
+        /* Status com letras maiúsculas */
+        .text-PENDING { color: var(--bs-warning) !important; }
+        .text-OPEN { color: var(--bs-primary) !important; }
+        .text-IN_PROGRESS { color: var(--bs-info) !important; }
+        .text-IN-PROGRESS { color: var(--bs-info) !important; }
+        .text-RESOLVED { color: var(--bs-success) !important; }
+        .text-CLOSED { color: var(--bs-secondary) !important; }
+        .text-REOPENED { color: var(--bs-danger) !important; }
+        .text-RE-OPENED { color: var(--bs-danger) !important; }
+        
+        /* Cores para as diferentes prioridades */
+        .text-low { color: var(--bs-success) !important; }
+        .text-medium { color: var(--bs-warning) !important; }
+        .text-high { color: var(--bs-danger) !important; }
+        .text-critical { color: var(--bs-danger) !important; font-weight: bold !important; }
+        
+        /* Prioridades com letras maiúsculas */
+        .text-LOW { color: var(--bs-success) !important; }
+        .text-MEDIUM { color: var(--bs-warning) !important; }
+        .text-HIGH { color: var(--bs-danger) !important; }
+        .text-CRITICAL { color: var(--bs-danger) !important; font-weight: bold !important; }
+        
+        /* Suporte para cores dinâmicas de categorias via data-color */
+        .badge-text-colored[data-color="primary"] { color: var(--bs-primary) !important; }
+        .badge-text-colored[data-color="secondary"] { color: var(--bs-secondary) !important; }
+        .badge-text-colored[data-color="success"] { color: var(--bs-success) !important; }
+        .badge-text-colored[data-color="danger"] { color: var(--bs-danger) !important; }
+        .badge-text-colored[data-color="warning"] { color: var(--bs-warning) !important; }
+        .badge-text-colored[data-color="info"] { color: var(--bs-info) !important; }
+        .badge-text-colored[data-color="light"] { color: var(--bs-light) !important; }
+        .badge-text-colored[data-color="dark"] { color: var(--bs-dark) !important; }
+        
+        /* Adicionar classes diretas para cada badge sem depender do data-color */
+        .badge-text-primary { color: var(--bs-primary) !important; }
+        .badge-text-secondary { color: var(--bs-secondary) !important; }
+        .badge-text-success { color: var(--bs-success) !important; }
+        .badge-text-danger { color: var(--bs-danger) !important; }
+        .badge-text-warning { color: var(--bs-warning) !important; }
+        .badge-text-info { color: var(--bs-info) !important; }
+        .badge-text-light { color: var(--bs-light) !important; }
+        .badge-text-dark { color: var(--bs-dark) !important; }
         
         /* Melhorias para responsividade mobile */
         @media (max-width: 767.98px) {
@@ -38,6 +260,12 @@
             h3 {
                 font-size: 1.3rem;
             }
+            
+            /* Make "Novo Ticket" button bigger on mobile */
+            .btn-new-ticket {
+                font-size: 1.1rem;
+                padding: 0.5rem 1rem;
+            }
         }
     </style>
     {% block styles %}{% endblock %}
@@ -46,9 +274,15 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{% url 'tickets:dashboard' %}">Helpdesk</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <div class="d-flex align-items-center">
+                <button id="theme-toggle" class="btn btn-outline-light btn-sm me-2" aria-label="Toggle theme">
+                    <i class="fa fa-moon theme-icon" id="dark-icon"></i>
+                    <i class="fa fa-sun theme-icon d-none" id="light-icon"></i>
+                </button>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
@@ -98,6 +332,52 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Theme toggler
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const darkIcon = document.getElementById('dark-icon');
+            const lightIcon = document.getElementById('light-icon');
+            const htmlElement = document.documentElement;
+            const bodyElement = document.body;
+            
+            // Check for saved theme preference or use user's system preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else {
+                // Check user preference
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                applyTheme(prefersDark ? 'dark' : 'light');
+            }
+            
+            // Toggle theme
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = htmlElement.getAttribute('data-bs-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                applyTheme(newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+            
+            function applyTheme(theme) {
+                htmlElement.setAttribute('data-bs-theme', theme);
+                bodyElement.style.backgroundColor = theme === 'dark' ? '#212529' : '#fff';
+                bodyElement.style.color = theme === 'dark' ? '#dee2e6' : '#212529';
+                updateIcons(theme);
+            }
+            
+            function updateIcons(theme) {
+                if (theme === 'dark') {
+                    darkIcon.classList.add('d-none');
+                    lightIcon.classList.remove('d-none');
+                } else {
+                    darkIcon.classList.remove('d-none');
+                    lightIcon.classList.add('d-none');
+                }
+            }
+        });
+    </script>
     {% block scripts %}{% endblock %}
     {% block extra_js %}{% endblock %}
 </body>

@@ -1,20 +1,27 @@
-{% extends 'tickets/base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Relatório de Empresas{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1>Relatório de Empresas</h1>
-        <a href="{% url 'tickets:relatorios_menu' %}" class="btn btn-secondary">Voltar</a>
-    </div>
-    
-    <div class="alert alert-info">
-        <h4 class="alert-heading">Funcionalidade em Desenvolvimento</h4>
-        <p>O relatório detalhado de empresas está sendo implementado e estará disponível em breve.</p>
-        <hr>
-        <p class="mb-0">Este relatório permitirá analisar estatísticas de tickets por empresa, incluindo volume de chamados, tempo médio de resolução e distribuição por prioridade e status.</p>
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="card-title mb-0">Relatório de Empresas</h2>
+                <a href="{% url 'tickets:relatorios_menu' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <h4 class="alert-heading"><i class="fas fa-info-circle me-2"></i> Funcionalidade em Desenvolvimento</h4>
+                <p>O relatório detalhado de empresas está sendo implementado e estará disponível em breve.</p>
+                <hr>
+                <p class="mb-0">Este relatório permitirá analisar estatísticas de chamados por empresa, incluindo volume de chamados, tempo médio de resolução e distribuição por prioridade e status.</p>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %} 
