@@ -10,8 +10,12 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig
-from .forms import TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, CampoPerfilCompartilhamentoForm, CompartilharTicketForm, CategoriaChamadoForm
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao
+from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
+                   AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
+                   NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
+                   CampoPerfilCompartilhamentoForm, CompartilharTicketForm, CategoriaChamadoForm, 
+                   PreferenciasNotificacaoForm)
 from django.core.exceptions import ObjectDoesNotExist
 import json
 from datetime import datetime
@@ -2625,3 +2629,31 @@ def empresa_admin_excluir_categoria(request, categoria_id):
         logger.error(f"Erro ao excluir categoria: {str(e)}")
         messages.error(request, "Ocorreu um erro ao excluir a categoria.")
         return redirect('tickets:empresa_admin_categorias')
+
+@login_required
+def gerenciar_notificacoes(request):
+    """
+    Permite ao usuário gerenciar suas preferências de notificação
+    """
+    try:
+        # Tenta obter as preferências do usuário
+        preferencias, created = PreferenciasNotificacao.objects.get_or_create(usuario=request.user)
+        
+        if request.method == 'POST':
+            form = PreferenciasNotificacaoForm(request.POST, instance=preferencias)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Suas preferências de notificação foram atualizadas com sucesso!')
+                return redirect('tickets:dashboard')
+        else:
+            form = PreferenciasNotificacaoForm(instance=preferencias)
+            
+        context = {
+            'form': form,
+            'title': 'Gerenciar Notificações',
+        }
+        
+        return render(request, 'tickets/gerenciar_notificacoes.html', context)
+    except Exception as e:
+        messages.error(request, f'Ocorreu um erro ao gerenciar suas notificações: {str(e)}')
+        return redirect('tickets:dashboard')

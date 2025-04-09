@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="card-title mb-0">Preferências de Notificação por E-mail</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Configure quais tipos de notificações você deseja receber por e-mail.
+                </div>
+                
+                <div class="mb-4">
+                    <div class="form-check form-switch mb-3">
+                        {{ form.notificar_todas }}
+                        <label class="form-check-label fw-bold" for="{{ form.notificar_todas.id_for_label }}">
+                            Receber todas as notificações
+                        </label>
+                        <small class="form-text text-muted d-block">
+                            Se ativado, você receberá todos os tipos de notificações independente das configurações abaixo.
+                        </small>
+                    </div>
+                    
+                    <h6 class="mt-4 mb-3 fw-bold">Tipos específicos de notificação:</h6>
+                    
+                    <div class="form-check form-switch mb-3">
+                        {{ form.notificar_atribuicao }}
+                        <label class="form-check-label" for="{{ form.notificar_atribuicao.id_for_label }}">
+                            Notificar quando um ticket for atribuído a mim
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        {{ form.notificar_alteracao_status }}
+                        <label class="form-check-label" for="{{ form.notificar_alteracao_status.id_for_label }}">
+                            Notificar alterações de status em tickets
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        {{ form.notificar_novo_comentario }}
+                        <label class="form-check-label" for="{{ form.notificar_novo_comentario.id_for_label }}">
+                            Notificar novos comentários em meus tickets
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        {{ form.notificar_prioridade_alterada }}
+                        <label class="form-check-label" for="{{ form.notificar_prioridade_alterada.id_for_label }}">
+                            Notificar alterações de prioridade em tickets
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'tickets:dashboard' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Voltar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Salvar Preferências
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

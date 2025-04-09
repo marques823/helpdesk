@@ -469,3 +469,22 @@ class CampoPerfilCompartilhamento(models.Model):
         verbose_name_plural = 'Campos de Perfil de Compartilhamento'
         ordering = ['ordem', 'nome_campo']
         unique_together = ['perfil', 'nome_campo']
+
+class PreferenciasNotificacao(models.Model):
+    """
+    Preferências de notificação por e-mail para cada usuário
+    """
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferencias_notificacao')
+    notificar_todas = models.BooleanField(default=True, help_text="Receber todas as notificações")
+    notificar_atribuicao = models.BooleanField(default=True, help_text="Receber notificações quando um ticket for atribuído")
+    notificar_alteracao_status = models.BooleanField(default=True, help_text="Receber notificações quando o status de um ticket for alterado")
+    notificar_novo_comentario = models.BooleanField(default=True, help_text="Receber notificações quando um novo comentário for adicionado")
+    notificar_prioridade_alterada = models.BooleanField(default=True, help_text="Receber notificações quando a prioridade for alterada")
+    atualizado_em = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Preferências de notificação de {self.usuario.username}"
+        
+    class Meta:
+        verbose_name = 'Preferência de Notificação'
+        verbose_name_plural = 'Preferências de Notificação'

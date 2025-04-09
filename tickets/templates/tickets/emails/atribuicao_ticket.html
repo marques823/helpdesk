@@ -1,0 +1,15 @@
+{% extends "tickets/emails/base_email.html" %}
+
+{% block title %}Ticket Atribuído - Helpdesk{% endblock %}
+
+{% block header_title %}Ticket Atribuído a Você{% endblock %}
+
+{% block content %}
+<p>Olá {{ destinatario.get_full_name|default:destinatario.username }},</p>
+
+<p>Um ticket foi atribuído a você no sistema de Helpdesk.</p>
+
+<p>Para visualizar os detalhes completos e tomar as ações necessárias, acesse o sistema clicando no botão abaixo.</p>
+
+<p>Se você tiver alguma dúvida, entre em contato com o administrador do sistema.</p>
+{% endblock %} 
