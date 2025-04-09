@@ -48,7 +48,13 @@
                                     <label for="id_icone">Ícone</label>
                                     <div class="input-group">
                                         <div id="preview-icone" class="input-group-text"><i class="fas fa-ticket-alt"></i></div>
-                                        {{ form.icone }}
+                                        <select id="id_icone" name="icone" class="form-select icone-select">
+                                            {% for valor, texto in form.fields.icone.choices %}
+                                                <option value="{{ valor }}" {% if form.icone.value == valor %}selected{% endif %} data-icon="{{ valor }}">
+                                                    <i class="fas {{ valor }}"></i> {{ texto }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
                                     </div>
                                     <small class="form-text text-muted">{{ form.icone.help_text }}</small>
                                 </div>
@@ -100,22 +106,15 @@
         
         // Função para atualizar o preview do ícone
         function updateIconPreview() {
-            const iconInput = document.getElementById('id_icone');
+            const iconSelect = document.getElementById('id_icone');
             const iconPreview = document.getElementById('preview-icone');
             
-            if (iconInput && iconPreview) {
-                let iconValue = iconInput.value ? iconInput.value.trim() : '';
+            if (iconSelect && iconPreview) {
+                let iconValue = iconSelect.value ? iconSelect.value.trim() : '';
                 
                 // Se não houver valor, use o padrão
                 if (!iconValue) {
                     iconValue = 'fa-ticket-alt';
-                }
-                
-                // Certifica que começa com 'fa-'
-                if (!iconValue.startsWith('fa-')) {
-                    iconValue = 'fa-' + iconValue;
-                    // Atualiza o valor do campo para incluir o prefixo
-                    iconInput.value = iconValue;
                 }
                 
                 // Atualiza o ícone
@@ -129,17 +128,29 @@
             colorSelect.addEventListener('change', updateColorPreview);
         }
         
-        const iconInput = document.getElementById('id_icone');
-        if (iconInput) {
-            iconInput.addEventListener('input', updateIconPreview);
-            iconInput.addEventListener('change', updateIconPreview);
-            // Delay para garantir que o valor padrão seja carregado
-            setTimeout(updateIconPreview, 100);
+        const iconSelect = document.getElementById('id_icone');
+        if (iconSelect) {
+            iconSelect.addEventListener('change', updateIconPreview);
+            // Atualiza imediatamente para exibir o ícone selecionado
+            updateIconPreview();
         }
         
         // Inicializa os previews
         updateColorPreview();
-        updateIconPreview();
     });
 </script>
+
+<style>
+    /* Estilo para melhorar a visualização dos ícones no dropdown */
+    .icone-select option {
+        padding: 8px;
+    }
+    #preview-icone {
+        min-width: 40px;
+        justify-content: center;
+    }
+    #preview-icone i {
+        font-size: 1.25rem;
+    }
+</style>
 {% endblock %} 
