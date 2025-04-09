@@ -42,15 +42,23 @@
 
 {% block styles %}
 <style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
     .categoria-card {
-        transition: all 0.3s ease;
+        transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
         border: 1px solid #dee2e6;
     }
     .categoria-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        border-color: var(--bs-primary);
+        transform: translateY(-5px) !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        border-color: var(--bs-primary) !important;
     }
+    
+    /* O restante do CSS permanece igual */
     .categoria-icon {
         width: 70px;
         height: 70px;
