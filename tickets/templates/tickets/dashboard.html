@@ -267,16 +267,6 @@
                             </div>
                         </div>
                         
-                        <!-- Cards para acesso rápido às funções administrativas -->
-                        {% if funcionario and funcionario.is_admin %}
-                        <div class="col-md-12 mb-4 text-center">
-                            <a href="{% url 'tickets:empresa_admin_dashboard' %}" class="btn btn-dark btn-lg">
-                                <i class="fas fa-cogs me-2"></i> Acessar Painel Administrativo
-                            </a>
-                            <p class="text-muted small mt-2">Gerencie usuários, categorias e configurações da empresa</p>
-                        </div>
-                        {% endif %}
-                        
                         <!-- SEÇÃO DE MODIFICAÇÕES RECENTES -->
                         {% if not show_tickets and modificacoes_recentes %}
                         <div class="col-md-12 mb-4">
