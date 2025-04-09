@@ -1,4 +1,4 @@
-{% extends 'tickets/base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block title %}Adicionar Nota Técnica - Chamado #{{ ticket.id }}{% endblock %}
@@ -87,4 +87,39 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    /* Estilos para compatibilidade com o tema escuro */
+    .card {
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+    }
+    
+    .form-control, .form-select {
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        border-color: var(--bs-border-color);
+    }
+    
+    .form-control:focus, .form-select:focus {
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+    }
+    
+    .text-muted {
+        color: var(--bs-secondary-color) !important;
+    }
+    
+    .breadcrumb {
+        background-color: var(--bs-tertiary-bg);
+    }
+</style>
 {% endblock %} 

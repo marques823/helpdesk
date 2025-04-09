@@ -260,7 +260,7 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
-                                        <table class="table table-hover">
+                                        <table class="table">
                                             <thead>
                                                 <tr>
                                                     <th>Ticket</th>
@@ -390,7 +390,7 @@
                             {% endif %}
                             
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table">
                                     <thead>
                                         <tr>
                                             <th>Título</th>
@@ -445,7 +445,7 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                    </div>
+                            </div>
 
                             {% if tickets.paginator.num_pages > 1 %}
                             <div class="d-flex justify-content-center mt-4">
@@ -543,6 +543,12 @@
 
 {% block styles %}
 <style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
     /* Configuração específica para os cards de categoria */
     .categoria-card {
         transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
@@ -576,7 +582,6 @@
         border-radius: 8px;
         text-align: center;
         color: white !important;
-        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         display: flex;
         flex-direction: column;
@@ -592,15 +597,9 @@
         text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
     
-    .status-badge:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.15) !important;
-    }
-    
     /* Estilo para destacar as linhas clicáveis */
     .chamado-row:hover {
         background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-        transition: background-color 0.2s !important;
     }
     
     /* Ajustes para garantir que os links não interfiram */
