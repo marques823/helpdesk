@@ -28,7 +28,7 @@
                             <h4>Campos Existentes</h4>
                             {% if campos %}
                                 <div class="table-responsive">
-                                    <table class="table table-hover">
+                                    <table class="table">
                                         <thead>
                                             <tr>
                                                 <th>Nome</th>
@@ -92,4 +92,27 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    .table th {
+        position: sticky;
+        top: 0;
+        background-color: var(--bs-card-bg);
+        border-bottom: 2px solid var(--bs-border-color);
+    }
+    
+    /* Efeito hover nos chamados */
+    tr:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        transition: background-color 0.2s !important;
+    }
+</style>
 {% endblock %} 

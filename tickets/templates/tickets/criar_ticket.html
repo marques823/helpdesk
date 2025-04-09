@@ -32,6 +32,12 @@
 
 {% block styles %}
 <style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
     @media (max-width: 767.98px) {
         .card-body {
             padding: 1rem;
