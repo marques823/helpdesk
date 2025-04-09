@@ -1,39 +1,182 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}Atribuir Chamado{% endblock %}
+{% block title %}Atribuir Chamado #{{ ticket.id }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="card-title mb-0">Atribuir Chamado</h2>
-                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Voltar
-                    </a>
+<div class="container-fluid mt-2 px-2">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10 col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Atribuir Chamado</h5>
+                        <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-light">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <h5 class="text-muted mb-4">Chamado #{{ ticket.id }} - {{ ticket.titulo }}</h5>
+                
+                <!-- Informações do chamado -->
+                <div class="bg-light p-2 border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="badge bg-secondary me-2">#{{ ticket.id }}</span>
+                        <span class="fw-bold text-truncate me-auto">{{ ticket.titulo }}</span>
+                        <small class="text-muted d-none d-md-inline">{{ ticket.empresa.nome }}</small>
+                    </div>
+                </div>
+                
+                <div class="card-body px-3 py-3">
+                    <!-- Atual atribuição -->
+                    {% if ticket.atribuido_a %}
+                    <div class="alert alert-info d-flex align-items-center mb-3">
+                        <div class="me-3">
+                            <i class="fas fa-info-circle fa-lg"></i>
+                        </div>
+                        <div>
+                            <p class="mb-0">
+                                <strong>Atribuição atual:</strong> 
+                                {{ ticket.atribuido_a.usuario.get_full_name|default:ticket.atribuido_a.usuario.username }}
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
                     
-                    <form method="post">
+                    <form method="post" id="atribuirForm" class="needs-validation">
                         {% csrf_token %}
-                        {{ form|crispy }}
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.atribuido_a.id_for_label }}" class="form-label">
+                                <i class="fas fa-user-check me-1"></i> Atribuir para
+                                <span class="text-danger">*</span>
+                            </label>
+                            {{ form.atribuido_a }}
+                            {% if form.atribuido_a.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.atribuido_a.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Selecione o técnico que ficará responsável por este chamado</small>
+                            
+                            <!-- Lista de técnicos recomendados (baseada em carga de trabalho ou especialidade) -->
+                            <div class="mt-3">
+                                <h6 class="fw-bold mb-2 small text-muted">Sugestões:</h6>
+                                <div class="d-flex flex-wrap gap-2 mt-1">
+                                    {% for funcionario in form.atribuido_a.field.queryset %}
+                                        {% if funcionario.tipo == 'suporte' or funcionario.tipo == 'admin' %}
+                                        <button type="button" class="btn btn-sm btn-outline-secondary tech-suggestion" 
+                                                data-tech-id="{{ funcionario.id }}">
+                                            {{ funcionario.usuario.get_full_name|default:funcionario.usuario.username }}
+                                        </button>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Checkbox para notificar -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" value="1" id="notificarTecnico" name="notificar" checked>
+                            <label class="form-check-label" for="notificarTecnico">
+                                Notificar técnico sobre a atribuição
+                            </label>
+                        </div>
+                        
                         <div class="d-flex justify-content-between mt-4">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-user-check"></i> Atribuir Chamado
-                            </button>
-                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Cancelar
+                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Cancelar
                             </a>
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="fas fa-user-check me-1"></i> Atribuir Chamado
+                            </button>
+                        </div>
+                        
+                        <!-- Loading indicator -->
+                        <div class="d-none text-center py-3 mt-3" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Atribuindo...</span>
+                            </div>
+                            <p class="mt-2">Atualizando atribuição do chamado...</p>
                         </div>
                     </form>
+                    
+                    <!-- Atribuição multipla (link) -->
+                    <div class="text-center mt-4">
+                        <a href="{% url 'tickets:multi_atribuir_ticket' ticket.id %}" class="text-decoration-none">
+                            <i class="fas fa-users me-1"></i> Quero atribuir para múltiplos técnicos
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('atribuirForm');
+    const loading = document.getElementById('loading');
+    const techSuggestions = document.querySelectorAll('.tech-suggestion');
+    const techSelect = document.querySelector('select[name="atribuido_a"]');
+    
+    // Aplicar formatação ao select
+    if (techSelect && !techSelect.classList.contains('form-select')) {
+        techSelect.classList.add('form-select');
+        if (techSelect.classList.contains('form-control')) {
+            techSelect.classList.remove('form-control');
+        }
+    }
+    
+    // Manipular cliques nas sugestões de técnicos
+    techSuggestions.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const techId = this.getAttribute('data-tech-id');
+            if (techSelect && techId) {
+                techSelect.value = techId;
+                
+                // Atualizar estilos dos botões
+                techSuggestions.forEach(b => {
+                    b.classList.remove('btn-primary');
+                    b.classList.add('btn-outline-secondary');
+                });
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-primary');
+            }
+        });
+    });
+    
+    // Destacar o técnico já selecionado nas sugestões
+    if (techSelect && techSelect.value) {
+        const selectedBtn = document.querySelector(`.tech-suggestion[data-tech-id="${techSelect.value}"]`);
+        if (selectedBtn) {
+            selectedBtn.classList.remove('btn-outline-secondary');
+            selectedBtn.classList.add('btn-primary');
+        }
+    }
+    
+    // Manipular submissão do formulário
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Verificar se há um técnico selecionado
+            if (techSelect && techSelect.value) {
+                e.preventDefault();
+                
+                // Esconder o formulário e mostrar loading
+                const formControls = form.querySelectorAll('.mb-4, .d-flex');
+                formControls.forEach(el => el.style.display = 'none');
+                loading.classList.remove('d-none');
+                
+                // Enviar o formulário
+                setTimeout(() => {
+                    this.submit();
+                }, 300);
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
 
 {% block styles %}
@@ -42,6 +185,83 @@
     * {
         transition: none !important;
         transform: none !important;
+    }
+    
+    /* Melhorias para dispositivos móveis */
+    @media (max-width: 767.98px) {
+        .container-fluid {
+            padding: 0.5rem !important;
+        }
+        
+        .card {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+        }
+        
+        .form-label {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .form-select, .form-control {
+            font-size: 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+        
+        .form-text {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+        
+        .tech-suggestion {
+            font-size: 0.8rem !important;
+            padding: 0.25rem 0.5rem !important;
+        }
+    }
+    
+    /* Estilos para melhorar a aparência dos formulários */
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+    
+    .form-text {
+        margin-top: 0.25rem;
+    }
+    
+    /* Estilos para as sugestões de técnicos */
+    .tech-suggestion {
+        transition: all 0.2s ease !important;
+    }
+    
+    .tech-suggestion:hover {
+        transform: translateY(-2px) !important;
+    }
+    
+    /* Estilos para tema escuro */
+    [data-bs-theme="dark"] .bg-light {
+        background-color: var(--bs-dark-bg-subtle) !important;
+    }
+    
+    [data-bs-theme="dark"] .alert-info {
+        background-color: rgba(var(--bs-info-rgb), 0.15);
+        border-color: rgba(var(--bs-info-rgb), 0.7);
+        color: var(--bs-body-color);
+    }
+    
+    [data-bs-theme="dark"] .card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
     }
 </style>
 {% endblock %} 

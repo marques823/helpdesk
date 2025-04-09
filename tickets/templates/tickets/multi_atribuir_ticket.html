@@ -2,90 +2,144 @@
 {% load crispy_forms_tags %}
 {% load ticket_tags %}
 
+{% block title %}Atribuição Múltipla - Chamado #{{ ticket.id }}{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3>Atribuição Múltipla</h3>
-                    <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Voltar
-                    </a>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h5>Detalhes do Chamado</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <p><strong>ID:</strong> #{{ ticket.id }}</p>
-                                            <p><strong>Título:</strong> {{ ticket.titulo }}</p>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <p><strong>Status:</strong> {{ ticket.get_status_display }}</p>
-                                            <p><strong>Empresa:</strong> {{ ticket.empresa.nome }}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+<div class="container-fluid mt-2 px-2">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10 col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Atribuição Múltipla</h5>
+                        <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-light">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
                     </div>
-                    
-                    <div class="mb-3">
-                        <h5>Atribuições Atuais</h5>
+                </div>
+                
+                <!-- Informações do chamado -->
+                <div class="bg-light p-2 border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="badge bg-secondary me-2">#{{ ticket.id }}</span>
+                        <span class="fw-bold text-truncate me-auto">{{ ticket.titulo }}</span>
+                        <span class="badge {% if ticket.status == 'aberto' %}bg-info{% elif ticket.status == 'em_andamento' %}bg-primary{% elif ticket.status == 'pendente' %}bg-warning{% elif ticket.status == 'resolvido' %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ ticket.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body px-3 py-3">
+                    <!-- Atribuições atuais -->
+                    <div class="mb-4">
+                        <h6 class="mb-2 d-flex align-items-center text-primary">
+                            <i class="fas fa-users me-2"></i>Atribuições Atuais
+                        </h6>
                         {% with atribuicoes=ticket.get_atribuicoes %}
                             {% if atribuicoes %}
-                                <ul class="list-group mb-3">
+                                <div class="list-group mb-0">
                                     {% for atribuicao in atribuicoes %}
-                                        <li class="list-group-item d-flex justify-content-between align-items-center {% if atribuicao.principal %}list-group-item-primary{% endif %}">
-                                            {{ atribuicao.funcionario.usuario.get_full_name|default:atribuicao.funcionario.usuario.username }}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center 
+                                                {% if atribuicao.principal %}border-start border-primary border-4{% endif %}">
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-2">
+                                                    <i class="fas fa-user-circle fa-lg text-muted"></i>
+                                                </div>
+                                                <div>
+                                                    {{ atribuicao.funcionario.usuario.get_full_name|default:atribuicao.funcionario.usuario.username }}
+                                                    {% if atribuicao.principal %}
+                                                        <br><small class="text-muted">Técnico principal</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
                                             {% if atribuicao.principal %}
                                                 <span class="badge rounded-pill bg-primary">Principal</span>
                                             {% endif %}
-                                        </li>
+                                        </div>
                                     {% endfor %}
-                                </ul>
+                                </div>
                             {% else %}
-                                <p class="text-muted">Nenhum técnico atribuído no momento.</p>
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Nenhum técnico atribuído no momento.
+                                </div>
                             {% endif %}
                         {% endwith %}
                     </div>
                     
-                    <form method="post">
+                    <form method="post" id="multiAtribuirForm" class="needs-validation">
                         {% csrf_token %}
                         
-                        <div class="mb-3">
-                            <label class="form-label">{{ form.funcionarios.label }}</label>
-                            <div class="border rounded p-3">
-                                {% for choice in form.funcionarios %}
-                                    <div class="form-check">
-                                        {{ choice.tag }}
-                                        <label class="form-check-label" for="{{ choice.id_for_label }}">
-                                            {{ choice.choice_label }}
-                                        </label>
-                                    </div>
-                                {% endfor %}
+                        <div class="mb-4">
+                            <label class="form-label d-flex align-items-center text-primary">
+                                <i class="fas fa-user-plus me-2"></i>Selecione os Técnicos
+                            </label>
+                            <div class="border rounded p-3 bg-light">
+                                <div class="mb-2 d-flex align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-primary me-2" id="selectAll">
+                                        <i class="fas fa-check-square me-1"></i>Marcar Todos
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAll">
+                                        <i class="fas fa-square me-1"></i>Desmarcar Todos
+                                    </button>
+                                </div>
+                                <div class="tech-check-list mt-3">
+                                    {% for choice in form.funcionarios %}
+                                        <div class="form-check mb-2">
+                                            {{ choice.tag }}
+                                            <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                                {{ choice.choice_label }}
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
                             </div>
                             {% if form.funcionarios.errors %}
-                                <div class="text-danger">
+                                <div class="invalid-feedback d-block mt-1">
                                     {{ form.funcionarios.errors }}
                                 </div>
                             {% endif %}
-                            <div class="form-text">Selecione todos os técnicos que devem trabalhar neste ticket.</div>
+                            <small class="form-text text-muted">Selecione todos os técnicos que devem trabalhar neste chamado</small>
                         </div>
                         
-                        {{ form.funcionario_principal|as_crispy_field }}
+                        <div class="mb-4">
+                            <label for="{{ form.funcionario_principal.id_for_label }}" class="form-label d-flex align-items-center text-primary">
+                                <i class="fas fa-user-tie me-2"></i>Técnico Principal
+                            </label>
+                            {{ form.funcionario_principal }}
+                            {% if form.funcionario_principal.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.funcionario_principal.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                Este será o responsável principal pelo chamado e aparecerá como atribuído na lista de chamados
+                            </small>
+                        </div>
+                        
+                        <!-- Checkbox para notificar -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" value="1" id="notificarTecnicos" name="notificar" checked>
+                            <label class="form-check-label" for="notificarTecnicos">
+                                Notificar técnicos sobre a atribuição
+                            </label>
+                        </div>
                         
                         <div class="d-flex justify-content-between mt-4">
-                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">Cancelar</a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-users"></i> Atualizar Atribuições
+                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="fas fa-users me-1"></i> Atualizar Atribuições
                             </button>
+                        </div>
+                        
+                        <!-- Loading indicator -->
+                        <div class="d-none text-center py-3 mt-3" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Atribuindo...</span>
+                            </div>
+                            <p class="mt-2">Atualizando atribuições do chamado...</p>
                         </div>
                     </form>
                 </div>
@@ -95,12 +149,188 @@
 </div>
 {% endblock %}
 
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('multiAtribuirForm');
+    const loading = document.getElementById('loading');
+    const checkboxes = document.querySelectorAll('input[name="funcionarios"]');
+    const principalSelect = document.querySelector('select[name="funcionario_principal"]');
+    const selectAllBtn = document.getElementById('selectAll');
+    const clearAllBtn = document.getElementById('clearAll');
+    
+    // Garantir que o select principal tem as classes corretas
+    if (principalSelect && !principalSelect.classList.contains('form-select')) {
+        principalSelect.classList.add('form-select');
+        if (principalSelect.classList.contains('form-control')) {
+            principalSelect.classList.remove('form-control');
+        }
+    }
+    
+    // Manipular seleção e desseleção de todos
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+    }
+    
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+    }
+    
+    // Atualizar as opções do select de principal quando as checkboxes são alteradas
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (principalSelect) {
+                const options = principalSelect.querySelectorAll('option');
+                const techId = this.value;
+                
+                options.forEach(option => {
+                    if (option.value === techId) {
+                        option.disabled = !this.checked;
+                        // Se a opção estiver selecionada mas foi desmarcada, limpar a seleção
+                        if (!this.checked && principalSelect.value === techId) {
+                            principalSelect.value = '';
+                        }
+                    }
+                });
+            }
+        });
+    });
+    
+    // Marcar a checkbox correspondente quando um técnico principal é selecionado
+    if (principalSelect) {
+        principalSelect.addEventListener('change', function() {
+            const techId = this.value;
+            
+            if (techId) {
+                const correspondingCheckbox = document.querySelector(`input[name="funcionarios"][value="${techId}"]`);
+                if (correspondingCheckbox && !correspondingCheckbox.checked) {
+                    correspondingCheckbox.checked = true;
+                }
+            }
+        });
+    }
+    
+    // Manipular submissão do formulário
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Verificar se pelo menos um técnico foi selecionado
+            let hasChecked = false;
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    hasChecked = true;
+                }
+            });
+            
+            if (!hasChecked) {
+                e.preventDefault();
+                alert('Selecione pelo menos um técnico para atribuir o chamado.');
+                return;
+            }
+            
+            e.preventDefault();
+            
+            // Esconder o formulário e mostrar loading
+            const formControls = form.querySelectorAll('.mb-4, .d-flex');
+            formControls.forEach(el => el.style.display = 'none');
+            loading.classList.remove('d-none');
+            
+            // Enviar o formulário
+            setTimeout(() => {
+                this.submit();
+            }, 300);
+        });
+    }
+});
+</script>
+{% endblock %}
+
 {% block styles %}
 <style>
     /* Reset inicial para remover todas as transições/movimentos */
     * {
         transition: none !important;
         transform: none !important;
+    }
+    
+    /* Melhorias para dispositivos móveis */
+    @media (max-width: 767.98px) {
+        .container-fluid {
+            padding: 0.5rem !important;
+        }
+        
+        .card {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+        }
+        
+        .form-label {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .form-select, .form-control {
+            font-size: 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+        
+        .tech-check-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+    }
+    
+    /* Estilos para melhorar a aparência dos formulários */
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+    
+    .form-text {
+        margin-top: 0.25rem;
+        font-size: 0.875em;
+    }
+    
+    .list-group-item {
+        transition: background-color 0.2s ease !important;
+    }
+    
+    .list-group-item:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.05);
+    }
+    
+    /* Melhorias de usabilidade */
+    .tech-check-list {
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+    
+    /* Estilo para tema escuro */
+    [data-bs-theme="dark"] .bg-light {
+        background-color: var(--bs-dark-bg-subtle) !important;
+    }
+    
+    [data-bs-theme="dark"] .card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
     }
 </style>
 {% endblock %} 
