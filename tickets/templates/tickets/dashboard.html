@@ -217,25 +217,9 @@
                     <!-- NOVO LAYOUT: VISUALIZAÇÃO POR CATEGORIAS (Tela inicial) -->
                     {% if not show_tickets and not show_status_filters %}
                     
-                    <!-- Botão grande para criar novo chamado -->
-                    {% if funcionario %}
-                    <div class="row mb-4">
-                        <div class="col-md-12">
-                            <div class="text-center">
-                                <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-lg btn-primary mb-3">
-                                    <i class="fas fa-plus me-2"></i> Criar Novo Chamado
-                                </a>
-                                <p class="text-muted small">Clique no botão acima para registrar um novo chamado</p>
-                            </div>
-                            <hr class="my-4">
-                        </div>
-                    </div>
-                    {% endif %}
-                    
                     <div class="row mb-4">
                         <!-- Categorias de chamados -->
                         <div class="col-md-12 mb-4">
-                            <h4 class="mb-3"><i class="fas fa-folder me-2"></i>Categorias de Chamados</h4>
                             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                                 {% for categoria in categorias %}
                                 <div class="col">
@@ -267,51 +251,72 @@
                             </div>
                         </div>
                         
-                        <!-- Cards para acesso rápido às funções administrativas -->
-                        {% if funcionario and funcionario.is_admin %}
+                        <!-- SEÇÃO DE MODIFICAÇÕES RECENTES -->
+                        {% if not show_tickets and modificacoes_recentes %}
                         <div class="col-md-12 mb-4">
-                            <h4 class="mb-3"><i class="fas fa-cogs me-2"></i>Administração</h4>
-                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
-                                <div class="col">
-                                    <a href="{% url 'tickets:empresa_admin_dashboard' %}" class="text-decoration-none">
-                                        <div class="card h-100 categoria-card">
-                                            <div class="card-body text-center py-4">
-                                                <div class="categoria-icon bg-dark mb-3">
-                                                    <i class="fas fa-tachometer-alt fa-2x"></i>
-                                                </div>
-                                                <h5 class="card-title">Painel Administrativo</h5>
-                                                <p class="card-text text-muted small">Gerenciar configurações da empresa</p>
-                                            </div>
-                                        </div>
-                                    </a>
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Modificações Recentes</h5>
                                 </div>
-                                
-                                <div class="col">
-                                    <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="text-decoration-none">
-                                        <div class="card h-100 categoria-card">
-                                            <div class="card-body text-center py-4">
-                                                <div class="categoria-icon bg-primary mb-3">
-                                                    <i class="fas fa-users fa-2x"></i>
-                                                </div>
-                                                <h5 class="card-title">Usuários</h5>
-                                                <p class="card-text text-muted small">Gerenciar usuários da empresa</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-                                
-                                <div class="col">
-                                    <a href="{% url 'tickets:empresa_admin_categorias' %}" class="text-decoration-none">
-                                        <div class="card h-100 categoria-card">
-                                            <div class="card-body text-center py-4">
-                                                <div class="categoria-icon bg-success mb-3">
-                                                    <i class="fas fa-tags fa-2x"></i>
-                                                </div>
-                                                <h5 class="card-title">Categorias</h5>
-                                                <p class="card-text text-muted small">Gerenciar categorias de chamados</p>
-                                            </div>
-                                        </div>
-                                    </a>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Ticket</th>
+                                                    <th>Alteração</th>
+                                                    <th>Usuário</th>
+                                                    <th>Data/Hora</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for alteracao in modificacoes_recentes %}
+                                                <tr class="chamado-row" data-href="{% url 'tickets:detalhe_ticket' alteracao.ticket.id %}">
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <span class="ticket-id text-muted small">#{{ alteracao.ticket.id }}</span>
+                                                            <span class="ms-2">{{ alteracao.ticket.titulo|truncatechars:40 }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        {% if alteracao.tipo_alteracao == 'status' %}
+                                                        <span class="badge badge-text-colored text-primary">
+                                                            <i class="fas fa-sync-alt me-1"></i> Alteração de Status
+                                                        </span>
+                                                        {% elif alteracao.tipo_alteracao == 'prioridade' %}
+                                                        <span class="badge badge-text-colored text-warning">
+                                                            <i class="fas fa-exclamation-triangle me-1"></i> Alteração de Prioridade
+                                                        </span>
+                                                        {% elif alteracao.tipo_alteracao == 'atribuicao' %}
+                                                        <span class="badge badge-text-colored text-info">
+                                                            <i class="fas fa-user-check me-1"></i> Atribuição
+                                                        </span>
+                                                        {% elif alteracao.tipo_alteracao == 'comentario' %}
+                                                        <span class="badge badge-text-colored text-success">
+                                                            <i class="fas fa-comment me-1"></i> Comentário
+                                                        </span>
+                                                        {% else %}
+                                                        <span class="badge badge-text-colored text-secondary">
+                                                            <i class="fas fa-edit me-1"></i> Atualização
+                                                        </span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ alteracao.usuario.get_full_name|default:alteracao.usuario.username }}</td>
+                                                    <td>{{ alteracao.data_alteracao|date:"d/m/Y H:i" }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="4" class="text-center">
+                                                        <div class="alert alert-info mb-0">
+                                                            <i class="fas fa-info-circle me-2"></i>
+                                                            Nenhuma modificação recente encontrada.
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -385,7 +390,7 @@
                             {% endif %}
                             
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table">
                                     <thead>
                                         <tr>
                                             <th>Título</th>
@@ -440,7 +445,7 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                    </div>
+                            </div>
 
                             {% if tickets.paginator.num_pages > 1 %}
                             <div class="d-flex justify-content-center mt-4">
@@ -538,7 +543,7 @@
 
 {% block styles %}
 <style>
-    /* Reset inicial para remover todas as transições/movimentos de todos os elementos */
+    /* Reset inicial para remover todas as transições/movimentos */
     * {
         transition: none !important;
         transform: none !important;
@@ -552,11 +557,6 @@
         display: flex;
         flex-direction: column;
         overflow: hidden;
-    }
-    
-    /* Configuração específica para os cards na seção de administração */
-    .row-cols-lg-4 .categoria-card {
-        height: 220px; /* Garante que todos os cards de administração tenham a mesma altura */
     }
     
     .categoria-card:hover {
@@ -582,7 +582,6 @@
         border-radius: 8px;
         text-align: center;
         color: white !important;
-        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         display: flex;
         flex-direction: column;
@@ -598,27 +597,9 @@
         text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
     
-    .status-badge:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.15) !important;
-    }
-    
-    /* Aumentar o contraste para temas claros */
-    .bg-novo h6, .bg-novo .fw-bold,
-    .bg-aberto h6, .bg-aberto .fw-bold,
-    .bg-em_andamento h6, .bg-em_andamento .fw-bold,
-    .bg-aguardando h6, .bg-aguardando .fw-bold,
-    .bg-resolvido h6, .bg-resolvido .fw-bold,
-    .bg-fechado h6, .bg-fechado .fw-bold,
-    .bg-dark h6, .bg-dark .fw-bold {
-        color: white !important;
-        font-weight: 600 !important;
-    }
-    
     /* Estilo para destacar as linhas clicáveis */
     .chamado-row:hover {
         background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-        transition: background-color 0.2s !important;
     }
     
     /* Ajustes para garantir que os links não interfiram */

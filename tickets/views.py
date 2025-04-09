@@ -73,15 +73,23 @@ def home(request):
 
 @login_required
 def dashboard(request):
+    """View que renderiza o dashboard de chamados, com melhorias de desempenho e organização."""
     try:
-        # Verifica se o usuário é um funcionário ou admin
-        funcionario = None
-        if not request.user.is_superuser:
+        # Inicializando o contexto
+        context = {
+            'show_tickets': False,
+            'show_status_filters': False
+        }
+        
+        # Verificando o usuário
+        if not hasattr(request.user, 'funcionarios'):
             funcionario = Funcionario.objects.filter(usuario=request.user).first()
             if not funcionario:
                 logout(request)
                 messages.error(request, 'Sua conta não está associada a nenhum funcionário.')
                 return redirect('login')
+        else:
+            funcionario = request.user.funcionarios.first()
 
         # Verifica permissões administrativas
         has_admin_access = request.user.is_superuser or (funcionario and funcionario.is_admin())
@@ -192,6 +200,21 @@ def dashboard(request):
         # Ordenação
         tickets = tickets.order_by(order_by)
         
+        # Obter as alterações recentes para exibir no dashboard
+        if has_admin_access or funcionario.is_suporte():
+            if funcionario.is_admin():
+                # Admin vê alterações apenas da sua empresa
+                historico_recente = HistoricoTicket.objects.filter(
+                    ticket__empresa__in=empresas
+                ).select_related('ticket', 'usuario', 'ticket__empresa').order_by('-data_alteracao')[:10]
+            else:
+                # Suporte vê todas as alterações
+                historico_recente = HistoricoTicket.objects.filter(
+                    ticket__empresa__in=empresas
+                ).select_related('ticket', 'usuario', 'ticket__empresa').order_by('-data_alteracao')[:10]
+        else:
+            historico_recente = HistoricoTicket.objects.none()
+        
         # Paginação - Apenas se estiver mostrando tickets
         if show_tickets:
             paginator = Paginator(tickets, 20)  # 20 tickets por página
@@ -208,7 +231,8 @@ def dashboard(request):
         status_choices = Ticket.STATUS_CHOICES
         prioridade_choices = Ticket.PRIORIDADE_CHOICES
         
-        context = {
+        # Atualiza o contexto com todas as variáveis necessárias
+        context.update({
             'tickets': tickets,
             'termo_pesquisa': termo_pesquisa,
             'status_filter': status_filter,
@@ -221,7 +245,6 @@ def dashboard(request):
             'empresas': empresas,
             'categorias': categorias,
             'funcionario': funcionario,
-            # Novos contextos para visualização de categorias
             'show_tickets': show_tickets,
             'show_status_filters': show_status_filters,
             'selected_category': selected_category,
@@ -230,7 +253,8 @@ def dashboard(request):
             'status_counts': status_counts,
             'categoria_obj': categoria_obj,
             'has_admin_access': has_admin_access,
-        }
+            'modificacoes_recentes': historico_recente
+        })
         
         return render(request, 'tickets/dashboard.html', context)
     except Exception as e:
