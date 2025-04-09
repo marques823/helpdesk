@@ -18,11 +18,11 @@
         <div class="card-body">
             <!-- Filtros -->
             <div class="mb-4">
-                <button class="btn btn-outline-primary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilters" aria-expanded="true" aria-controls="collapseFilters">
+                <button class="btn btn-outline-primary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilters" aria-expanded="false" aria-controls="collapseFilters">
                     <i class="fas fa-filter me-2"></i> Mostrar/Ocultar Filtros
                 </button>
                 
-                <div class="collapse show" id="collapseFilters">
+                <div class="collapse" id="collapseFilters">
                     <div class="card card-body">
                         <form method="get" id="report-form" class="row g-3">
                             <div class="col-md-3 col-sm-6">
@@ -298,6 +298,12 @@
 
 {% block styles %}
 <style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
     .table th {
         position: sticky;
         top: 0;
@@ -305,10 +311,12 @@
         border-bottom: 2px solid var(--bs-border-color);
     }
     
+    /* Removido o efeito hover
     .chamado-row:hover {
         background-color: rgba(var(--bs-primary-rgb), 0.1);
         transition: background-color 0.2s;
     }
+    */
     
     @media print {
         .btn, form, .pagination, nav, .collapse, .collapseFilters {
