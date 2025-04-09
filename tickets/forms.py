@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado
+from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, PreferenciasNotificacao
 from django.db.models import Q
 
 class EmpresaForm(forms.ModelForm):
@@ -585,3 +585,21 @@ class CompartilharTicketForm(forms.Form):
             perfil_padrao = PerfilCompartilhamento.objects.filter(empresa=self.ticket.empresa, is_padrao=True).first()
             if perfil_padrao:
                 self.fields['perfil'].initial = perfil_padrao 
+
+class PreferenciasNotificacaoForm(forms.ModelForm):
+    class Meta:
+        model = PreferenciasNotificacao
+        fields = [
+            'notificar_todas',
+            'notificar_atribuicao',
+            'notificar_alteracao_status',
+            'notificar_novo_comentario',
+            'notificar_prioridade_alterada'
+        ]
+        widgets = {
+            'notificar_todas': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notificar_atribuicao': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notificar_alteracao_status': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notificar_novo_comentario': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notificar_prioridade_alterada': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        } 
