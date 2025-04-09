@@ -233,6 +233,40 @@
                     {% endif %}
                     
                     <div class="row mb-4">
+                        <!-- Categorias de chamados -->
+                        <div class="col-md-12 mb-4">
+                            <h4 class="mb-3"><i class="fas fa-folder me-2"></i>Categorias de Chamados</h4>
+                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                                {% for categoria in categorias %}
+                                <div class="col">
+                                    <a href="{% url 'tickets:dashboard' %}?show_status=true&selected_category={{ categoria.id }}" class="text-decoration-none">
+                                        <div class="card h-100 categoria-card">
+                                            <div class="card-body text-center py-4">
+                                                <div class="categoria-icon bg-{{ categoria.cor }} mb-3">
+                                                    <i class="fas {{ categoria.icone }} fa-2x"></i>
+                                                </div>
+                                                <h5 class="card-title">{{ categoria.nome }}</h5>
+                                                {% if categoria.descricao %}
+                                                    <p class="card-text text-muted small">{{ categoria.descricao }}</p>
+                                                {% else %}
+                                                    <p class="card-text text-muted small">
+                                                        {{ categoria_counts|get_item:categoria.id }} chamado(s)
+                                                    </p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                {% empty %}
+                                <div class="col-12">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i> Nenhuma categoria encontrada. Entre em contato com o administrador do sistema.
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
                         <!-- Cards para acesso rápido às funções administrativas -->
                         {% if funcionario and funcionario.is_admin %}
                         <div class="col-md-12 mb-4">
@@ -282,39 +316,6 @@
                             </div>
                         </div>
                         {% endif %}
-                        
-                        <div class="col-md-12 mb-4">
-                            <h4 class="mb-3"><i class="fas fa-folder me-2"></i>Categorias de Chamados</h4>
-                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                                {% for categoria in categorias %}
-                                <div class="col">
-                                    <a href="{% url 'tickets:dashboard' %}?show_status=true&selected_category={{ categoria.id }}" class="text-decoration-none">
-                                        <div class="card h-100 categoria-card">
-                                            <div class="card-body text-center py-4">
-                                                <div class="categoria-icon bg-{{ categoria.cor }} mb-3">
-                                                    <i class="fas {{ categoria.icone }} fa-2x"></i>
-                                                </div>
-                                                <h5 class="card-title">{{ categoria.nome }}</h5>
-                                                {% if categoria.descricao %}
-                                                    <p class="card-text text-muted small">{{ categoria.descricao }}</p>
-                                                {% else %}
-                                                    <p class="card-text text-muted small">
-                                                        {{ categoria_counts|get_item:categoria.id }} chamado(s)
-                                                    </p>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-                                {% empty %}
-                                <div class="col-12">
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i> Nenhuma categoria encontrada. Entre em contato com o administrador do sistema.
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
                     </div>
                     {% endif %}
                     
@@ -328,7 +329,7 @@
                                 </a> 
                                 <i class="fas fa-chevron-right mx-2 small"></i> 
                                 <span class="fw-bold">{{ categoria_obj.nome }}</span>
-                            </h5>
+                                    </h5>
                             
                             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4">
                                 {% for status_code, status_label in status_choices %}
@@ -359,7 +360,7 @@
                         </div>
                     </div>
                     {% endif %}
-                    
+
                     <!-- VISUALIZAÇÃO DE TICKETS -->
                     {% if show_tickets %}
                     <div class="row">
@@ -439,14 +440,14 @@
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                            </div>
-                            
+                    </div>
+
                             {% if tickets.paginator.num_pages > 1 %}
                             <div class="d-flex justify-content-center mt-4">
                                 <nav aria-label="Paginação">
                                     <ul class="pagination">
-                                        {% if tickets.has_previous %}
-                                            <li class="page-item">
+                                    {% if tickets.has_previous %}
+                                    <li class="page-item">
                                                 <a class="page-link" href="?page=1{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}{% if selected_category %}&selected_category={{ selected_category }}{% endif %}{% if selected_status %}&selected_status={{ selected_status }}{% endif %}&show_tickets=true">
                                                     <i class="fas fa-angle-double-left"></i>
                                                 </a>
@@ -454,8 +455,8 @@
                                             <li class="page-item">
                                                 <a class="page-link" href="?page={{ tickets.previous_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}{% if selected_category %}&selected_category={{ selected_category }}{% endif %}{% if selected_status %}&selected_status={{ selected_status }}{% endif %}&show_tickets=true">
                                                     <i class="fas fa-angle-left"></i>
-                                                </a>
-                                            </li>
+                                        </a>
+                                    </li>
                                         {% else %}
                                             <li class="page-item disabled">
                                                 <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
@@ -476,11 +477,11 @@
                                                         {{ num }}
                                                     </a>
                                                 </li>
-                                            {% endif %}
-                                        {% endfor %}
-                                        
-                                        {% if tickets.has_next %}
-                                            <li class="page-item">
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if tickets.has_next %}
+                                    <li class="page-item">
                                                 <a class="page-link" href="?page={{ tickets.next_page_number }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}{% if selected_category %}&selected_category={{ selected_category }}{% endif %}{% if selected_status %}&selected_status={{ selected_status }}{% endif %}&show_tickets=true">
                                                     <i class="fas fa-angle-right"></i>
                                                 </a>
@@ -488,8 +489,8 @@
                                             <li class="page-item">
                                                 <a class="page-link" href="?page={{ tickets.paginator.num_pages }}{% if termo_pesquisa %}&q={{ termo_pesquisa }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if prioridade_filter %}&prioridade={{ prioridade_filter }}{% endif %}{% if empresa_filter %}&empresa={{ empresa_filter }}{% endif %}{% if categoria_filter %}&categoria={{ categoria_filter }}{% endif %}{% if order_by %}&order_by={{ order_by }}{% endif %}{% if selected_category %}&selected_category={{ selected_category }}{% endif %}{% if selected_status %}&selected_status={{ selected_status }}{% endif %}&show_tickets=true">
                                                     <i class="fas fa-angle-double-right"></i>
-                                                </a>
-                                            </li>
+                                        </a>
+                                    </li>
                                         {% else %}
                                             <li class="page-item disabled">
                                                 <span class="page-link"><i class="fas fa-angle-right"></i></span>
@@ -497,9 +498,9 @@
                                             <li class="page-item disabled">
                                                 <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
                                             </li>
-                                        {% endif %}
-                                    </ul>
-                                </nav>
+                                    {% endif %}
+                                </ul>
+                            </nav>
                             </div>
                             {% endif %}
                         </div>
@@ -537,15 +538,33 @@
 
 {% block styles %}
 <style>
+    /* Reset inicial para remover todas as transições/movimentos de todos os elementos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    /* Configuração específica para os cards de categoria */
     .categoria-card {
-        transition: all 0.3s ease;
+        transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
         border: 1px solid #dee2e6;
+        height: 220px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
+    
+    /* Configuração específica para os cards na seção de administração */
+    .row-cols-lg-4 .categoria-card {
+        height: 220px; /* Garante que todos os cards de administração tenham a mesma altura */
+    }
+    
     .categoria-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        border-color: var(--bs-primary);
+        transform: translateY(-5px) !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        border-color: var(--bs-primary) !important;
     }
+    
     .categoria-icon {
         width: 70px;
         height: 70px;
@@ -557,10 +576,81 @@
         color: white;
     }
     
+    /* Estilos para os blocos de status */
+    .status-badge {
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        color: white !important;
+        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 110px;
+        width: 100%;
+    }
+    
+    .status-badge h6,
+    .status-badge .fw-bold {
+        color: white !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    .status-badge:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.15) !important;
+    }
+    
+    /* Aumentar o contraste para temas claros */
+    .bg-novo h6, .bg-novo .fw-bold,
+    .bg-aberto h6, .bg-aberto .fw-bold,
+    .bg-em_andamento h6, .bg-em_andamento .fw-bold,
+    .bg-aguardando h6, .bg-aguardando .fw-bold,
+    .bg-resolvido h6, .bg-resolvido .fw-bold,
+    .bg-fechado h6, .bg-fechado .fw-bold,
+    .bg-dark h6, .bg-dark .fw-bold {
+        color: white !important;
+        font-weight: 600 !important;
+    }
+    
     /* Estilo para destacar as linhas clicáveis */
     .chamado-row:hover {
-        background-color: rgba(var(--bs-primary-rgb), 0.1);
-        transition: background-color 0.2s;
+        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        transition: background-color 0.2s !important;
+    }
+    
+    /* Ajustes para garantir que os links não interfiram */
+    .col a, .row a {
+        display: block;
+        text-decoration: none;
+    }
+    
+    /* Ajustes de espaçamento para os cards */
+    .card-body.text-center.py-4 {
+        padding: 1.5rem !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        flex: 1;
+    }
+    
+    /* Garante que o conteúdo do card seja distribuído uniformemente */
+    .card-body.text-center.py-4 .card-title {
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.25rem;
+    }
+    
+    .card-body.text-center.py-4 .card-text {
+        margin-bottom: 0;
+        flex-grow: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 </style>
 {% endblock %} 

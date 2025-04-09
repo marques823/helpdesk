@@ -17,9 +17,9 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="card mb-3 shadow-sm">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                        <div class="col">
+                            <div class="card h-100 admin-card">
                                 <div class="card-body text-center">
                                     <h3 class="display-4">{{ total_usuarios }}</h3>
                                     <p class="mb-0">Usuários</p>
@@ -40,14 +40,14 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card mb-3 shadow-sm">
+                        <div class="col">
+                            <div class="card h-100 admin-card">
                                 <div class="card-body text-center">
                                     <h3 class="display-4">{{ total_tickets }}</h3>
                                     <p class="mb-0">Chamados</p>
-                                    <div class="mt-3">
-                                        <span class="badge bg-warning px-3 py-2 me-2">{{ tickets_abertos }} Abertos</span>
-                                        <span class="badge bg-success px-3 py-2">{{ tickets_fechados }} Fechados</span>
+                                    <div class="d-flex justify-content-center mt-3 flex-wrap gap-2">
+                                        <span class="badge bg-warning">{{ tickets_abertos }} Abertos</span>
+                                        <span class="badge bg-success">{{ tickets_fechados }} Fechados</span>
                                     </div>
                                 </div>
                                 <div class="card-footer bg-transparent">
@@ -57,8 +57,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card mb-3 shadow-sm">
+                        <div class="col">
+                            <div class="card h-100 admin-card">
                                 <div class="card-body text-center">
                                     <i class="fas fa-cogs fa-4x text-secondary mb-3"></i>
                                     <h5>Configurações</h5>
@@ -71,8 +71,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card mb-3 shadow-sm">
+                        <div class="col">
+                            <div class="card h-100 admin-card">
                                 <div class="card-body text-center">
                                     <i class="fas fa-chart-bar fa-4x text-info mb-3"></i>
                                     <h5>Relatórios</h5>
@@ -94,32 +94,32 @@
                                     <h5 class="mb-0">Atalhos Rápidos</h5>
                                 </div>
                                 <div class="card-body">
-                                    <div class="row">
+                                    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-3">
                                         {% if pode_criar_mais %}
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{% url 'tickets:empresa_admin_criar_usuario' %}" class="btn btn-success w-100 py-3">
+                                        <div class="col">
+                                            <a href="{% url 'tickets:empresa_admin_criar_usuario' %}" class="btn btn-success w-100 py-3 atalho-btn">
                                                 <i class="fas fa-user-plus fa-2x mb-2"></i><br>
                                                 Criar Novo Usuário
                                             </a>
                                         </div>
                                         {% endif %}
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary w-100 py-3">
+                                        <div class="col">
+                                            <a href="{% url 'tickets:criar_ticket' %}" class="btn btn-primary w-100 py-3 atalho-btn">
                                                 <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
                                                 Novo Chamado
                                             </a>
                                         </div>
                                         {% if config.pode_criar_categorias %}
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{% url 'tickets:empresa_admin_categorias' %}" class="btn btn-info w-100 py-3">
+                                        <div class="col">
+                                            <a href="{% url 'tickets:empresa_admin_categorias' %}" class="btn btn-info w-100 py-3 atalho-btn">
                                                 <i class="fas fa-tags fa-2x mb-2"></i><br>
                                                 Gerenciar Categorias
                                             </a>
                                         </div>
                                         {% endif %}
                                         {% if config.pode_criar_campos_personalizados %}
-                                        <div class="col-md-3 mb-3">
-                                            <a href="{% url 'tickets:gerenciar_campos_personalizados' empresa.id %}" class="btn btn-secondary w-100 py-3">
+                                        <div class="col">
+                                            <a href="{% url 'tickets:gerenciar_campos_personalizados' empresa.id %}" class="btn btn-secondary w-100 py-3 atalho-btn">
                                                 <i class="fas fa-list-alt fa-2x mb-2"></i><br>
                                                 Campos Personalizados
                                             </a>
@@ -153,8 +153,74 @@
 
 {% block styles %}
 <style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
     .custom-progress {
         height: 10px;
+    }
+    
+    /* Garantir altura fixa para os cards para uniformidade */
+    .admin-card {
+        transition: box-shadow 0.3s ease !important;
+        border: 1px solid #dee2e6;
+        height: 250px; /* Altura fixa em vez de min-height */
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .admin-card .card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 1.5rem !important;
+    }
+    
+    /* Distribuição uniforme do conteúdo nos cards */
+    .admin-card h3.display-4 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .admin-card p.mb-0 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .admin-card .text-muted {
+        margin-bottom: 1rem;
+    }
+    
+    .admin-card .card-footer {
+        padding: 0.75rem 1.25rem;
+    }
+    
+    /* Aplicando transição apenas nos botões dos atalhos */
+    .atalho-btn {
+        transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+        height: 120px; /* Altura fixa para os botões de atalho */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .atalho-btn:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    }
+    
+    /* Ajustes para os badges no bloco de chamados */
+    .badge {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Ajustes para a área de badges de status */
+    .d-flex.justify-content-center.mt-3.flex-wrap.gap-2 {
+        min-height: 45px; /* Garante espaço suficiente para os badges */
     }
 </style>
 {% endblock %} 
