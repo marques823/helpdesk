@@ -41,6 +41,21 @@
                             <a href="{% url 'tickets:historico_ticket' ticket.id %}" class="btn btn-sm btn-secondary">
                                 <i class="fas fa-history"></i> <span class="d-none d-sm-inline">Histórico</span>
                             </a>
+                            
+                            {% if user.is_superuser or is_suporte or is_admin %}
+                                <a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-clipboard-list"></i> <span class="d-none d-sm-inline">Notas</span>
+                                    {% with nota_count=ticket.notas_tecnicas.count %}
+                                        {% if nota_count > 0 %}
+                                            <span class="badge bg-light text-dark">{{ nota_count }}</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </a>
+                                <a href="{% url 'tickets:compartilhar_ticket_pdf' ticket_id=ticket.id %}" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-file-pdf"></i> <span class="d-none d-sm-inline">PDF</span>
+                                </a>
+                            {% endif %}
+                            
                             <a href="{% url 'tickets:dashboard' %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-sm btn-secondary">
                                 <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Voltar</span>
                             </a>
@@ -115,7 +130,7 @@
                             </div>
                         </div>
                         <div class="col-lg-4 order-1 order-lg-2 mb-3 mb-lg-0">
-                            <div class="card sticky-top" style="top: 1rem; z-index: 100;">
+                            <div class="card sticky-sidebar mb-4" style="top: 1rem;">
                                 <div class="card-header">
                                     <h5 class="card-title mb-0">Detalhes</h5>
                                 </div>
@@ -211,32 +226,6 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                            {% if user.is_superuser or is_suporte or is_admin %}
-                            <div class="card mb-4">
-                                <div class="card-header">
-                                    <h5 class="card-title mb-0">Ferramentas Técnicas</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="d-grid gap-2">
-                                        <a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}" class="btn btn-info">
-                                            <i class="fas fa-clipboard-list"></i> Notas Técnicas
-                                            {% with nota_count=ticket.notas_tecnicas.count %}
-                                                {% if nota_count > 0 %}
-                                                    <span class="badge bg-light text-dark">{{ nota_count }}</span>
-                                                {% endif %}
-                                            {% endwith %}
-                                        </a>
-                                        <a href="{% url 'tickets:historico_ticket' ticket_id=ticket.id %}" class="btn btn-secondary">
-                                            <i class="fas fa-history"></i> Histórico de Alterações
-                                        </a>
-                                        <a href="{% url 'tickets:compartilhar_ticket_pdf' ticket_id=ticket.id %}" class="btn btn-danger">
-                                            <i class="fas fa-file-pdf"></i> Compartilhar PDF
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -251,12 +240,43 @@
         .card-header .btn {
             padding: 0.25rem 0.5rem;
             font-size: 0.75rem;
+            margin-bottom: 3px;
         }
         
-        .sticky-top {
-            position: relative;
+        .sticky-sidebar {
+            position: relative !important;
             top: 0 !important;
         }
+        
+        /* Melhorar o espaçamento dos botões no cabeçalho em telas pequenas */
+        .d-flex.flex-wrap.gap-1 {
+            gap: 0.25rem !important;
+        }
+    }
+    
+    @media (min-width: 992px) {
+        .sticky-sidebar {
+            position: sticky;
+            top: 1rem;
+            height: auto;
+        }
+    }
+    
+    /* Ajustar aparência dos botões quando em espaço limitado */
+    @media (max-width: 1200px) {
+        .btn-sm {
+            white-space: normal;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+    }
+    
+    /* Espaçamento consistente para o badge nos botões */
+    .btn .badge {
+        margin-left: 5px;
     }
 </style>
 {% endblock %}

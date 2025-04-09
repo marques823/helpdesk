@@ -465,7 +465,7 @@ class CategoriaChamadoForm(forms.ModelForm):
             'nome': forms.TextInput(attrs={'class': 'form-control'}),
             'descricao': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'cor': forms.Select(attrs={'class': 'form-control', 'id': 'id_cor'}),
-            'icone': forms.TextInput(attrs={'class': 'form-control', 'id': 'id_icone'}),
+            'icone': forms.Select(attrs={'class': 'form-control', 'id': 'id_icone'}),
             'ordem': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
             'ativo': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
@@ -491,31 +491,71 @@ class CategoriaChamadoForm(forms.ModelForm):
             initial=self.instance.cor if self.instance and self.instance.pk else 'primary'
         )
         
-        # Configuração de ajuda para o campo de ícone
-        self.fields['icone'].help_text = 'Nome do ícone FontAwesome (ex: fa-ticket-alt, fa-desktop, fa-wifi)'
+        # Lista de ícones FontAwesome comuns
+        ICONE_CHOICES = [
+            ('fa-ticket-alt', 'Ticket (Padrão)'),
+            ('fa-desktop', 'Computador'),
+            ('fa-laptop', 'Laptop'),
+            ('fa-wifi', 'Wi-Fi'),
+            ('fa-server', 'Servidor'),
+            ('fa-print', 'Impressora'),
+            ('fa-keyboard', 'Teclado'),
+            ('fa-mouse', 'Mouse'),
+            ('fa-network-wired', 'Rede'),
+            ('fa-database', 'Banco de Dados'),
+            ('fa-envelope', 'E-mail'),
+            ('fa-users', 'Usuários'),
+            ('fa-user-shield', 'Segurança'),
+            ('fa-lock', 'Cadeado'),
+            ('fa-shield-alt', 'Escudo'),
+            ('fa-bug', 'Bug'),
+            ('fa-exclamation-triangle', 'Alerta'),
+            ('fa-question-circle', 'Dúvida'),
+            ('fa-info-circle', 'Informação'),
+            ('fa-phone', 'Telefone'),
+            ('fa-mobile-alt', 'Celular'),
+            ('fa-file', 'Arquivo'),
+            ('fa-window-restore', 'Janela'),
+            ('fa-cog', 'Engrenagem'),
+            ('fa-tools', 'Ferramentas'),
+            ('fa-wrench', 'Chave de Fenda'),
+            ('fa-chart-bar', 'Gráfico'),
+            ('fa-clipboard-list', 'Lista'),
+            ('fa-box', 'Caixa'),
+            ('fa-folder', 'Pasta'),
+            ('fa-bullhorn', 'Comunicado'),
+            ('fa-comment', 'Comentário'),
+            ('fa-headset', 'Headset'),
+            ('fa-camera', 'Câmera'),
+            ('fa-video', 'Vídeo'),
+            ('fa-credit-card', 'Cartão'),
+            ('fa-dollar-sign', 'Financeiro'),
+            ('fa-calendar', 'Calendário'),
+            ('fa-clock', 'Relógio'),
+            ('fa-bookmark', 'Favorito'),
+        ]
+        
+        # Configurar campo de ícone como select
+        self.fields['icone'] = forms.ChoiceField(
+            choices=ICONE_CHOICES,
+            widget=forms.Select(attrs={'class': 'form-control', 'id': 'id_icone'}),
+            help_text='Selecione um ícone para representar visualmente a categoria'
+        )
         
         # Se for edição, ajustar o ícone para exibir corretamente
-        if self.instance and self.instance.pk:
-            # Garantir que o valor do ícone está correto no formulário
-            if self.instance.icone and not self.instance.icone.startswith('fa-'):
-                self.initial['icone'] = f"fa-{self.instance.icone}"
-            elif not self.instance.icone:
-                self.initial['icone'] = "fa-ticket-alt"
-    
-    def clean_icone(self):
-        """Garantir que o ícone sempre tenha o prefixo 'fa-'"""
-        icone = self.cleaned_data.get('icone', '')
-        if not icone:
-            return "fa-ticket-alt"  # valor padrão
-        
-        # Remover espaços em branco
-        icone = icone.strip()
-        
-        # Adicionar prefixo 'fa-' se não existir
-        if not icone.startswith('fa-'):
-            icone = f"fa-{icone}"
-        
-        return icone
+        if self.instance and self.instance.pk and self.instance.icone:
+            # Verificar se o ícone atual está na lista; se não, adicioná-lo
+            icone_atual = self.instance.icone
+            if not icone_atual.startswith('fa-'):
+                icone_atual = f"fa-{icone_atual}"
+                
+            # Verificar se o valor existe nas opções
+            if not any(icone_atual == choice[0] for choice in ICONE_CHOICES):
+                # Adicionar o valor atual às opções
+                custom_choice = [(icone_atual, f"Personalizado: {icone_atual}")]
+                self.fields['icone'].choices = custom_choice + ICONE_CHOICES
+                
+            self.initial['icone'] = icone_atual
 
 class CompartilharTicketForm(forms.Form):
     perfil = forms.ModelChoiceField(

@@ -48,11 +48,9 @@
                                     </td>
                                     <td>
                                         {% if categoria.icone %}
-                                            <i class="fas {{ categoria.icone }} fa-lg"></i>
-                                            <small class="text-muted ms-1">{{ categoria.icone }}</small>
+                                            <i class="fas {{ categoria.icone }} fa-lg" title="{{ categoria.icone }}"></i>
                                         {% else %}
-                                            <i class="fas fa-ticket-alt fa-lg"></i>
-                                            <small class="text-muted ms-1">fa-ticket-alt (padrão)</small>
+                                            <i class="fas fa-ticket-alt fa-lg" title="fa-ticket-alt (padrão)"></i>
                                         {% endif %}
                                     </td>
                                     <td>{{ categoria.ordem }}</td>
