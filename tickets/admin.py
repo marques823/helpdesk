@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Empresa, Funcionario, Ticket, Comentario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig
+from .models import (
+    Empresa, Funcionario, Ticket, Comentario, HistoricoTicket,
+    CategoriaChamado, CampoPersonalizado, ValorCampoPersonalizado,
+    EmpresaConfig, AtribuicaoTicket, PerfilCompartilhamento, 
+    CampoPerfilCompartilhamento, NotaTecnica, PreferenciasNotificacao
+)
 from django.utils import timezone
 from django.urls import path
 from . import admin_views
@@ -233,3 +238,10 @@ class CategoriaChamadoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+@admin.register(PreferenciasNotificacao)
+class PreferenciasNotificacaoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'notificar_todas', 'notificar_atribuicao', 'notificar_alteracao_status', 'atualizado_em')
+    list_filter = ('notificar_todas', 'notificar_atribuicao', 'notificar_alteracao_status')
+    search_fields = ('usuario__username', 'usuario__email')
+    raw_id_fields = ('usuario',)

@@ -1,0 +1,19 @@
+{% extends "tickets/emails/base_email.html" %}
+
+{% block title %}Status do Ticket Alterado - Helpdesk{% endblock %}
+
+{% block header_title %}Status do Ticket Alterado{% endblock %}
+
+{% block content %}
+<p>Olá,</p>
+
+<p>O status de um ticket que você está relacionado foi alterado.</p>
+
+<p>O status foi alterado de <strong>{{ status_anterior }}</strong> para <strong class="status-changed">{{ status_novo }}</strong>.</p>
+
+<p>Esta alteração foi realizada por: {{ usuario_alteracao.get_full_name|default:usuario_alteracao.username }}</p>
+
+<p>Para visualizar os detalhes completos e tomar as ações necessárias, acesse o sistema clicando no botão abaixo.</p>
+
+<p>Se você tiver alguma dúvida, entre em contato com o administrador do sistema.</p>
+{% endblock %} 

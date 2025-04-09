@@ -72,4 +72,7 @@ urlpatterns = [
     path('empresa-admin/categorias/nova/', views.empresa_admin_criar_categoria, name='empresa_admin_criar_categoria'),
     path('empresa-admin/categorias/<int:categoria_id>/editar/', views.empresa_admin_editar_categoria, name='empresa_admin_editar_categoria'),
     path('empresa-admin/categorias/<int:categoria_id>/excluir/', views.empresa_admin_excluir_categoria, name='empresa_admin_excluir_categoria'),
+    
+    # Gerenciamento de preferências de notificação
+    path('notificacoes/', views.gerenciar_notificacoes, name='gerenciar_notificacoes'),
 ] 
