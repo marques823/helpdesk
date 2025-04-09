@@ -580,7 +580,7 @@ def criar_ticket(request):
             'empresa_id': empresa_id,
             'categoria_id': categoria_id
         }
-        return render(request, 'tickets/novo_ticket.html', context)
+        return render(request, 'tickets/criar_ticket.html', context)
     except Exception as e:
         logger.error(f"Erro ao criar ticket: {str(e)}")
         messages.error(request, f"Erro ao criar ticket: {str(e)}")
