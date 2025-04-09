@@ -260,7 +260,7 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
-                                        <table class="table">
+                                        <table class="table table-hover">
                                             <thead>
                                                 <tr>
                                                     <th>Ticket</th>
@@ -390,7 +390,7 @@
                             {% endif %}
                             
                             <div class="table-responsive">
-                                <table class="table">
+                                <table class="table table-hover">
                                     <thead>
                                         <tr>
                                             <th>Título</th>
@@ -637,11 +637,11 @@
         border-bottom: 2px solid var(--bs-border-color);
     }
     
-    /* Removido o efeito hover para manter consistente com a página de relatórios */
-    /* .chamado-row:hover {
-        background-color: rgba(var(--bs-primary-rgb), 0.1);
+    /* Efeito hover nos chamados - igual ao da página de relatórios */
+    .chamado-row:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
         transition: background-color 0.2s;
-    } */
+    }
     
     /* Adicionando estilo para impressão consistente com a página de relatórios */
     @media print {
