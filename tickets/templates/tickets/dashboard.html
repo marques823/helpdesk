@@ -629,12 +629,44 @@
         text-overflow: ellipsis;
     }
     
-    /* Estilo para a tabela de titulos */
+    /* Estilo para a tabela de titulos - aplicado estilo da página de relatórios */
     .table th {
         position: sticky;
         top: 0;
         background-color: var(--bs-card-bg);
         border-bottom: 2px solid var(--bs-border-color);
+    }
+    
+    /* Removido o efeito hover para manter consistente com a página de relatórios */
+    /* .chamado-row:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.1);
+        transition: background-color 0.2s;
+    } */
+    
+    /* Adicionando estilo para impressão consistente com a página de relatórios */
+    @media print {
+        .btn, form, .pagination, nav, .collapse, .collapseFilters {
+            display: none !important;
+        }
+        
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        .card-header {
+            background-color: transparent !important;
+            border-bottom: 1px solid #000 !important;
+        }
+        
+        body {
+            font-size: 12pt;
+        }
+        
+        .table th {
+            background-color: #f8f9fa !important;
+            color: #000 !important;
+        }
     }
 </style>
 {% endblock %} 
