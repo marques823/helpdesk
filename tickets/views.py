@@ -1246,7 +1246,7 @@ def logout_view(request):
         return redirect('home')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def gerenciar_campos_personalizados(request, empresa_id):
     try:
         empresa = get_object_or_404(Empresa, id=empresa_id)
@@ -1275,7 +1275,7 @@ def gerenciar_campos_personalizados(request, empresa_id):
         return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def editar_campo_personalizado(request, campo_id):
     try:
         campo = get_object_or_404(CampoPersonalizado, id=campo_id)
@@ -1299,7 +1299,7 @@ def editar_campo_personalizado(request, campo_id):
         return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def excluir_campo_personalizado(request, campo_id):
     try:
         campo = get_object_or_404(CampoPersonalizado, id=campo_id)

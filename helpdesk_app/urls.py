@@ -23,7 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='/logout-success/', http_method_names=['post']), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='/logout-success/'), name='logout'),
     path('logout-success/', views.logout_success, name='logout_success'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('tickets/', include('tickets.urls', namespace='tickets')),
