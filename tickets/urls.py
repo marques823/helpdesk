@@ -8,6 +8,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('ticket/<int:ticket_id>/', views.detalhe_ticket, name='detalhe_ticket'),
     path('ticket/<int:ticket_id>/editar/', views.editar_ticket, name='editar_ticket'),
+    path('ticket/<int:ticket_id>/excluir/', views.excluir_ticket, name='excluir_ticket'),
     path('ticket/<int:ticket_id>/atribuir/', views.atribuir_ticket, name='atribuir_ticket'),
     path('ticket/<int:ticket_id>/multi-atribuir/', views.multi_atribuir_ticket, name='multi_atribuir_ticket'),
     path('ticket/<int:ticket_id>/historico/', views.historico_ticket, name='historico_ticket'),
