@@ -83,6 +83,22 @@ class CategoriaChamado(models.Model):
         unique_together = ['nome', 'empresa']
         ordering = ['ordem', 'nome']
 
+class CategoriaPermissao(models.Model):
+    """
+    Modelo para atribuir permissões de acesso a categorias específicas para funcionários individuais.
+    """
+    funcionario = models.ForeignKey('Funcionario', on_delete=models.CASCADE, related_name='categorias_permitidas')
+    categoria = models.ForeignKey(CategoriaChamado, on_delete=models.CASCADE, related_name='permissoes')
+    criado_em = models.DateTimeField(default=timezone.now)
+    
+    def __str__(self):
+        return f"{self.funcionario.usuario.username} - {self.categoria.nome}"
+    
+    class Meta:
+        verbose_name = 'Permissão de Categoria'
+        verbose_name_plural = 'Permissões de Categorias'
+        unique_together = ['funcionario', 'categoria']
+
 class Funcionario(models.Model):
     TIPO_CHOICES = [
         ('admin', 'Administrador'),
@@ -179,6 +195,66 @@ class Funcionario(models.Model):
         
         # Admin, suporte e cliente podem comentar em tickets que têm acesso
         return True
+    
+    def tem_acesso_categoria(self, categoria):
+        """
+        Verifica se o funcionário tem acesso à categoria especificada.
+        Administradores e suporte têm acesso a todas as categorias da empresa.
+        Clientes só têm acesso às categorias explicitamente permitidas.
+        """
+        # Primeiro, verifica se a categoria pertence a uma empresa que o funcionário tem acesso
+        if not self.tem_acesso_empresa(categoria.empresa):
+            return False
+        
+        # Administradores e suporte têm acesso a todas as categorias
+        if self.is_admin() or self.is_suporte():
+            return True
+        
+        # Clientes só têm acesso às categorias explicitamente permitidas
+        if self.is_cliente():
+            return self.categorias_permitidas.filter(categoria=categoria).exists()
+        
+        return False
+    
+    def get_categorias_permitidas(self, empresa=None):
+        """
+        Retorna as categorias que o funcionário tem acesso.
+        Para admin e suporte, retorna todas as categorias da empresa.
+        Para clientes, retorna apenas as categorias explicitamente permitidas.
+        """
+        if empresa:
+            # Verifica se o funcionário tem acesso à empresa
+            if not self.tem_acesso_empresa(empresa):
+                return CategoriaChamado.objects.none()
+                
+            # Para admin e suporte, retorna todas as categorias da empresa
+            if self.is_admin() or self.is_suporte():
+                return CategoriaChamado.objects.filter(empresa=empresa, ativo=True)
+            
+            # Para clientes, retorna apenas categorias permitidas
+            if self.is_cliente():
+                return CategoriaChamado.objects.filter(
+                    permissoes__funcionario=self,
+                    empresa=empresa,
+                    ativo=True
+                ).distinct()
+        else:
+            # Se empresa não for especificada, considerar todas as empresas que o funcionário tem acesso
+            empresas = self.empresas.all()
+            
+            # Para admin e suporte, retorna todas as categorias das empresas
+            if self.is_admin() or self.is_suporte():
+                return CategoriaChamado.objects.filter(empresa__in=empresas, ativo=True)
+            
+            # Para clientes, retorna apenas categorias permitidas
+            if self.is_cliente():
+                return CategoriaChamado.objects.filter(
+                    permissoes__funcionario=self,
+                    empresa__in=empresas,
+                    ativo=True
+                ).distinct()
+        
+        return CategoriaChamado.objects.none()
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Permissões de Categoria - {{ funcionario.usuario.username }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2><i class="fas fa-user-lock me-2"></i>Editar Permissões de Categoria</h2>
+            <p class="text-muted">Usuário: <strong>{{ funcionario.usuario.username }}</strong> ({{ funcionario.usuario.first_name }} {{ funcionario.usuario.last_name }})</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <a href="{% url 'tickets:gerenciar_permissoes_categoria' %}?empresa={{ empresa_selecionada.id }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Seleção de Empresa -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Selecionar Empresa</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <input type="hidden" name="funcionario_id" value="{{ funcionario.id }}">
+                <div class="col-md-4">
+                    <label for="empresa" class="form-label">Empresa</label>
+                    <select name="empresa" id="empresa" class="form-select" onchange="this.form.submit()">
+                        {% for emp in empresas %}
+                            <option value="{{ emp.id }}" {% if empresa_selecionada.id == emp.id %}selected{% endif %}>{{ emp.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Formulário de Permissões -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Permissões de Categoria para {{ empresa_selecionada.nome }}</h5>
+        </div>
+        <div class="card-body">
+            {% if categorias %}
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <p>Selecione as categorias que o usuário terá acesso:</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+                        {% for categoria in categorias %}
+                            <div class="col">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="categorias" 
+                                                   value="{{ categoria.id }}" 
+                                                   id="categoria_{{ categoria.id }}"
+                                                   {% if categoria.id in categorias_permitidas %}checked{% endif %}>
+                                            <label class="form-check-label w-100" for="categoria_{{ categoria.id }}">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="categoria-icon bg-{{ categoria.cor }} me-2" style="width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="fas {{ categoria.icone }}"></i>
+                                                    </div>
+                                                    <h6 class="mb-0">{{ categoria.nome }}</h6>
+                                                </div>
+                                                {% if categoria.descricao %}
+                                                    <p class="text-muted small mt-2">{{ categoria.descricao }}</p>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" id="btnSelectAll">Selecionar Todas</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Salvar Permissões
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>Não há categorias cadastradas para esta empresa.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Botão para selecionar/desselecionar todas as categorias
+        const btnSelectAll = document.getElementById('btnSelectAll');
+        const checkboxes = document.querySelectorAll('input[name="categorias"]');
+        let allSelected = false;
+        
+        if (btnSelectAll) {
+            btnSelectAll.addEventListener('click', function() {
+                allSelected = !allSelected;
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = allSelected;
+                });
+                
+                btnSelectAll.textContent = allSelected ? 'Desselecionar Todas' : 'Selecionar Todas';
+            });
+        }
+    });
+</script>
+{% endblock %} 

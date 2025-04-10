@@ -74,6 +74,10 @@ urlpatterns = [
     path('empresa-admin/categorias/<int:categoria_id>/editar/', views.empresa_admin_editar_categoria, name='empresa_admin_editar_categoria'),
     path('empresa-admin/categorias/<int:categoria_id>/excluir/', views.empresa_admin_excluir_categoria, name='empresa_admin_excluir_categoria'),
     
+    # Rotas para gerenciamento de permissões de categoria por usuário
+    path('permissoes-categoria/', views.gerenciar_permissoes_categoria, name='gerenciar_permissoes_categoria'),
+    path('permissoes-categoria/usuario/<int:funcionario_id>/', views.editar_permissoes_usuario, name='editar_permissoes_usuario'),
+    
     # Gerenciamento de preferências de notificação
     path('notificacoes/', views.gerenciar_notificacoes, name='gerenciar_notificacoes'),
 ] 
