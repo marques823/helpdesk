@@ -2115,7 +2115,7 @@ def get_estatisticas_categorias(request):
     return JsonResponse({"estatisticas": estatisticas})
 
 def logout_success(request):
-    """Exibe a página de logout bem-sucedido"""
+    """Exibe a página de logout bem-sucedido, sem requisito de autenticação"""
     return render(request, 'registration/logged_out.html')
 
 # ----- Views Painel Administrativo de Empresas -----
