@@ -178,9 +178,16 @@
                                 <button type="button" class="btn btn-outline-secondary btn-prev">
                                     <i class="fas fa-chevron-left me-2"></i> Anterior
                                 </button>
-                                <button type="submit" class="btn btn-success px-4">
-                                    <i class="fas fa-check me-2"></i> Salvar Alterações
-                                </button>
+                                <div class="d-flex gap-2">
+                                    {% if user.is_superuser or is_admin %}
+                                    <a href="#" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#excluirTicketModal">
+                                        <i class="fas fa-trash-alt me-2"></i> Excluir
+                                    </a>
+                                    {% endif %}
+                                    <button type="submit" class="btn btn-success px-4">
+                                        <i class="fas fa-check me-2"></i> Salvar Alterações
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         
@@ -193,6 +200,36 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para confirmação de exclusão -->
+<div class="modal fade" id="excluirTicketModal" tabindex="-1" aria-labelledby="excluirTicketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="excluirTicketModalLabel">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+                </div>
+                <p>Você está prestes a excluir o chamado <strong>#{{ ticket.id }}</strong> - <strong>{{ ticket.titulo }}</strong>.</p>
+                <p>Todos os dados relacionados a este chamado, incluindo comentários, histórico e notas técnicas, serão permanentemente removidos.</p>
+                <p>Tem certeza que deseja prosseguir?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form action="{% url 'tickets:excluir_ticket' ticket.id %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-2"></i> Sim, Excluir Chamado
+                    </button>
+                </form>
             </div>
         </div>
     </div>

@@ -795,6 +795,7 @@ def editar_ticket(request, ticket_id):
         ticket = get_object_or_404(Ticket, id=ticket_id)
         
         # Verificar permissões
+        is_admin = False
         if not request.user.is_superuser:
             funcionario = request.user.funcionarios.first()
             if not funcionario or not funcionario.pode_editar_ticket(ticket):
@@ -805,6 +806,11 @@ def editar_ticket(request, ticket_id):
             if not funcionario.empresas.filter(id=ticket.empresa.id).exists():
                 messages.error(request, 'Você não tem acesso a esta empresa.')
                 return redirect('tickets:dashboard')
+                
+            # Verifica se o funcionário é admin
+            is_admin = funcionario.is_admin()
+        else:
+            is_admin = True
         
         # Carrega os valores dos campos personalizados existentes
         valores_campos = ValorCampoPersonalizado.objects.filter(ticket=ticket).select_related('campo')
@@ -896,7 +902,8 @@ def editar_ticket(request, ticket_id):
         return render(request, 'tickets/editar_ticket.html', {
             'form': form,
             'ticket': ticket,
-            'campos_personalizados': valores_campos
+            'campos_personalizados': valores_campos,
+            'is_admin': is_admin
         })
     except Exception as e:
         logger.error(f"Erro ao editar ticket: {str(e)}")
@@ -2736,4 +2743,68 @@ def gerenciar_notificacoes(request):
         return render(request, 'tickets/gerenciar_notificacoes.html', context)
     except Exception as e:
         messages.error(request, f'Ocorreu um erro ao gerenciar suas notificações: {str(e)}')
+        return redirect('tickets:dashboard')
+
+@login_required
+def excluir_ticket(request, ticket_id):
+    """Excluir um ticket (apenas para administradores)"""
+    try:
+        ticket = get_object_or_404(Ticket, id=ticket_id)
+        
+        # Verificar permissões (apenas superuser ou admin)
+        is_admin = False
+        if not request.user.is_superuser:
+            funcionario = Funcionario.objects.filter(usuario=request.user, tipo='admin').first()
+            if not funcionario:
+                messages.error(request, 'Apenas administradores podem excluir chamados.')
+                return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+            
+            # Verificar se o funcionário admin tem acesso à empresa do ticket
+            if not funcionario.empresas.filter(id=ticket.empresa.id).exists():
+                messages.error(request, 'Você não tem acesso a esta empresa.')
+                return redirect('tickets:dashboard')
+            
+            is_admin = True
+        
+        # Verificar método da requisição (apenas POST para segurança)
+        if request.method != 'POST':
+            messages.error(request, 'Método não permitido.')
+            return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+            
+        # Registrar informações para histórico antes de excluir
+        ticket_info = {
+            'id': ticket.id,
+            'titulo': ticket.titulo,
+            'empresa': ticket.empresa.nome,
+            'categoria': ticket.categoria.nome if ticket.categoria else 'Sem categoria',
+            'status': ticket.status,
+            'prioridade': ticket.prioridade,
+            'data_criacao': ticket.criado_em.strftime('%d/%m/%Y %H:%M'),
+            'criado_por': ticket.criado_por.get_full_name() or ticket.criado_por.username
+        }
+        
+        # Criar uma cópia do registro de histórico em outra tabela ou arquivo para futura referência
+        # Idealmente, em sistemas reais, os tickets seriam apenas marcados como "excluídos" 
+        # mas manteriam as informações no banco de dados para referência
+        try:
+            # Registrar a exclusão no histórico do sistema (log global)
+            logger.info(f"Ticket #{ticket.id} excluído por {request.user.username} - {json.dumps(ticket_info)}")
+            
+            # Se você tiver uma tabela de logs global, poderia registrar aqui
+            # LogSistema.objects.create(...)
+            
+            messages.success(request, f'Chamado #{ticket.id} excluído com sucesso!')
+            
+            # Excluir o ticket
+            ticket.delete()
+            
+            return redirect('tickets:dashboard')
+        except Exception as e:
+            logger.error(f"Erro ao excluir ticket: {str(e)}")
+            messages.error(request, f'Erro ao excluir chamado: {str(e)}')
+            return redirect('tickets:detalhe_ticket', ticket_id=ticket_id)
+            
+    except Exception as e:
+        logger.error(f"Erro ao acessar exclusão de ticket: {str(e)}")
+        messages.error(request, 'Ocorreu um erro ao tentar excluir o chamado.')
         return redirect('tickets:dashboard')
