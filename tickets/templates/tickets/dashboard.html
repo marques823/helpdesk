@@ -260,7 +260,7 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
-                                        <table class="table">
+                                        <table class="table table-hover">
                                             <thead>
                                                 <tr>
                                                     <th>Ticket</th>
@@ -390,7 +390,7 @@
                             {% endif %}
                             
                             <div class="table-responsive">
-                                <table class="table">
+                                <table class="table table-hover">
                                     <thead>
                                         <tr>
                                             <th>Título</th>
@@ -597,11 +597,6 @@
         text-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
     
-    /* Estilo para destacar as linhas clicáveis */
-    .chamado-row:hover {
-        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
-    }
-    
     /* Ajustes para garantir que os links não interfiram */
     .col a, .row a {
         display: block;
@@ -632,6 +627,46 @@
         -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+    
+    /* Estilo para a tabela de titulos - aplicado estilo da página de relatórios */
+    .table th {
+        position: sticky;
+        top: 0;
+        background-color: var(--bs-card-bg);
+        border-bottom: 2px solid var(--bs-border-color);
+    }
+    
+    /* Efeito hover nos chamados - igual ao da página de relatórios */
+    .chamado-row:hover {
+        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        transition: background-color 0.2s;
+    }
+    
+    /* Adicionando estilo para impressão consistente com a página de relatórios */
+    @media print {
+        .btn, form, .pagination, nav, .collapse, .collapseFilters {
+            display: none !important;
+        }
+        
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        .card-header {
+            background-color: transparent !important;
+            border-bottom: 1px solid #000 !important;
+        }
+        
+        body {
+            font-size: 12pt;
+        }
+        
+        .table th {
+            background-color: #f8f9fa !important;
+            color: #000 !important;
+        }
     }
 </style>
 {% endblock %} 

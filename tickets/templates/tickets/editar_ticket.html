@@ -1,97 +1,195 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
+{% block title %}Editar Chamado #{{ ticket.id }}{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
+<div class="container-fluid mt-2 px-2">
     <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-            <div class="card">
-                <div class="card-header">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                        <h2 class="card-title mb-0">Editar Chamado #{{ ticket.id }}</h2>
+        <div class="col-lg-8 col-md-10 col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Editar Chamado #{{ ticket.id }}</h5>
                         <div class="d-flex gap-1">
-                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-secondary">
-                                <i class="fas fa-eye"></i> <span class="d-none d-sm-inline">Ver Chamado</span>
+                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-sm btn-light">
+                                <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{% url 'tickets:dashboard' %}" class="btn btn-sm btn-secondary">
-                                <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Voltar</span>
+                            <a href="{% url 'tickets:dashboard' %}" class="btn btn-sm btn-light">
+                                <i class="fas fa-arrow-left"></i>
                             </a>
                         </div>
                     </div>
                 </div>
-                <div class="card-body">
-                    <form method="post">
+                
+                <!-- Progress Indicator -->
+                <div class="progress" style="height: 4px; border-radius: 0;">
+                    <div id="progress-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                </div>
+                
+                <div class="card-body px-3 py-3">
+                    <form method="post" id="ticketForm" class="needs-validation">
                         {% csrf_token %}
-                        
-                        {# Renderiza os campos básicos do formulário #}
-                        {% for field in form %}
-                            {{ field|as_crispy_field }}
-                        {% endfor %}
-                        
-                        {# Renderiza os campos personalizados #}
-                        {% if campos_personalizados %}
-                            <hr>
-                            <h4 class="mb-3">Campos Personalizados</h4>
+
+                        <!-- Step 1: Empresa e Categoria -->
+                        <div class="form-step" id="step1">
+                            <h6 class="mb-3 text-primary">
+                                <i class="fas fa-building me-2"></i>Empresa e Categoria
+                            </h6>
                             
-                            <div class="row g-2">
-                                {% for valor in campos_personalizados %}
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="campo_{{ valor.campo.id }}" class="form-label fw-bold">
-                                                {{ valor.campo.nome }}{% if valor.campo.obrigatorio %}*{% endif %}
-                                            </label>
-                                            
-                                            {% if valor.campo.editavel %}
-                                                {% if valor.campo.tipo == 'texto' %}
-                                                    <input type="text" class="form-control form-control-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="{{ valor.valor }}" {% if valor.campo.obrigatorio %}required{% endif %}>
-                                                {% elif valor.campo.tipo == 'numero' %}
-                                                    <input type="number" class="form-control form-control-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="{{ valor.valor }}" {% if valor.campo.obrigatorio %}required{% endif %}>
-                                                {% elif valor.campo.tipo == 'data' %}
-                                                    <input type="date" class="form-control form-control-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="{{ valor.valor }}" {% if valor.campo.obrigatorio %}required{% endif %}>
-                                                {% elif valor.campo.tipo == 'selecao' %}
-                                                    <select class="form-select form-select-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" {% if valor.campo.obrigatorio %}required{% endif %}>
-                                                        <option value="">Selecione...</option>
-                                                        {% for opcao in valor.campo.opcoes.splitlines %}
-                                                            <option value="{{ opcao }}" {% if opcao == valor.valor %}selected{% endif %}>{{ opcao }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                {% elif valor.campo.tipo == 'booleano' %}
-                                                    <div class="form-check">
-                                                        <input type="checkbox" class="form-check-input" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="true" {% if valor.valor == 'true' %}checked{% endif %}>
-                                                        <label class="form-check-label" for="campo_{{ valor.campo.id }}">Sim</label>
-                                                    </div>
-                                                {% endif %}
-                                                {% if valor.campo.tipo != 'booleano' and not valor.campo.obrigatorio %}
-                                                    <small class="form-text text-muted">Este campo é opcional</small>
-                                                {% endif %}
-                                            {% else %}
-                                                {# Campo não editável - apenas mostrar o valor #}
-                                                <div class="form-control-plaintext">
-                                                    {% if valor.campo.tipo == 'booleano' %}
-                                                        {% if valor.valor == 'true' %}
-                                                            <span class="badge bg-success">Sim</span>
-                                                        {% else %}
-                                                            <span class="badge bg-secondary">Não</span>
-                                                        {% endif %}
-                                                    {% else %}
-                                                        {{ valor.valor|default:"--" }}
-                                                    {% endif %}
-                                                </div>
-                                                <small class="form-text text-muted">Este campo não pode ser editado</small>
-                                            {% endif %}
+                            <div class="mb-3">
+                                <label for="id_empresa" class="form-label">Empresa</label>
+                                {{ form.empresa }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_categoria" class="form-label">Categoria</label>
+                                {{ form.categoria }}
+                            </div>
+                            
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="button" class="btn btn-primary btn-next px-4">
+                                    Próximo <i class="fas fa-chevron-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Informações do Chamado -->
+                        <div class="form-step d-none" id="step2">
+                            <h6 class="mb-3 text-primary">
+                                <i class="fas fa-info-circle me-2"></i>Informações do Chamado
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="id_titulo" class="form-label">Título <span class="text-danger">*</span></label>
+                                {{ form.titulo }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_descricao" class="form-label">Descrição <span class="text-danger">*</span></label>
+                                {{ form.descricao }}
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-3">
+                                <button type="button" class="btn btn-outline-secondary btn-prev">
+                                    <i class="fas fa-chevron-left me-2"></i> Anterior
+                                </button>
+                                <button type="button" class="btn btn-primary btn-next px-4">
+                                    Próximo <i class="fas fa-chevron-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Detalhes e Prioridade -->
+                        <div class="form-step d-none" id="step3">
+                            <h6 class="mb-3 text-primary">
+                                <i class="fas fa-sliders-h me-2"></i>Detalhes e Prioridade
+                            </h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="id_status" class="form-label">Status</label>
+                                        {{ form.status }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="id_prioridade" class="form-label">Prioridade</label>
+                                        <div class="priority-selector">
+                                            {{ form.prioridade }}
+                                            <div class="priority-buttons mt-2 d-flex gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-success flex-grow-1 priority-btn" data-value="baixa">
+                                                    <i class="fas fa-arrow-down"></i> Baixa
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-info flex-grow-1 priority-btn" data-value="media">
+                                                    <i class="fas fa-minus"></i> Média
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-warning flex-grow-1 priority-btn" data-value="alta">
+                                                    <i class="fas fa-arrow-up"></i> Alta
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger flex-grow-1 priority-btn" data-value="urgente">
+                                                    <i class="fas fa-exclamation-triangle"></i> Urgente
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_atribuido_a" class="form-label">Atribuir para</label>
+                                {{ form.atribuido_a }}
+                            </div>
+                            
+                            {% if campos_personalizados %}
+                            <h6 class="my-3 text-primary">
+                                <i class="fas fa-list-alt me-2"></i>Campos Adicionais
+                            </h6>
+                            
+                            <div class="custom-fields-container">
+                                {% for valor in campos_personalizados %}
+                                <div class="mb-3 custom-field">
+                                    <label for="campo_{{ valor.campo.id }}" class="form-label">
+                                        {{ valor.campo.nome }}{% if valor.campo.obrigatorio %} <span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    
+                                    {% if valor.campo.editavel %}
+                                        {% if valor.campo.tipo == 'texto' %}
+                                            <input type="text" class="form-control form-control-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="{{ valor.valor }}" {% if valor.campo.obrigatorio %}required{% endif %}>
+                                        {% elif valor.campo.tipo == 'numero' %}
+                                            <input type="number" class="form-control form-control-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="{{ valor.valor }}" {% if valor.campo.obrigatorio %}required{% endif %}>
+                                        {% elif valor.campo.tipo == 'data' %}
+                                            <input type="date" class="form-control form-control-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="{{ valor.valor }}" {% if valor.campo.obrigatorio %}required{% endif %}>
+                                        {% elif valor.campo.tipo == 'selecao' %}
+                                            <select class="form-select form-select-sm" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" {% if valor.campo.obrigatorio %}required{% endif %}>
+                                                <option value="">Selecione...</option>
+                                                {% for opcao in valor.campo.opcoes.splitlines %}
+                                                    <option value="{{ opcao }}" {% if opcao == valor.valor %}selected{% endif %}>{{ opcao }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% elif valor.campo.tipo == 'booleano' %}
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="campo_{{ valor.campo.id }}" name="campo_{{ valor.campo.id }}" value="true" {% if valor.valor == 'true' %}checked{% endif %}>
+                                                <label class="form-check-label" for="campo_{{ valor.campo.id }}">Sim</label>
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {# Campo não editável - apenas mostrar o valor #}
+                                        <div class="form-control-plaintext">
+                                            {% if valor.campo.tipo == 'booleano' %}
+                                                {% if valor.valor == 'true' %}
+                                                    <span class="badge bg-success">Sim</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Não</span>
+                                                {% endif %}
+                                            {% else %}
+                                                {{ valor.valor|default:"--" }}
+                                            {% endif %}
+                                        </div>
+                                        <small class="form-text text-muted">Este campo não pode ser editado</small>
+                                    {% endif %}
+                                </div>
                                 {% endfor %}
                             </div>
-                        {% endif %}
+                            {% endif %}
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary btn-prev">
+                                    <i class="fas fa-chevron-left me-2"></i> Anterior
+                                </button>
+                                <button type="submit" class="btn btn-success px-4">
+                                    <i class="fas fa-check me-2"></i> Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
                         
-                        <div class="d-flex flex-wrap gap-2 justify-content-between mt-4">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Salvar Alterações
-                            </button>
-                            <a href="{% url 'tickets:detalhe_ticket' ticket.id %}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Cancelar
-                            </a>
+                        <!-- Loading indicator -->
+                        <div class="d-none text-center py-3" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Salvando...</span>
+                            </div>
+                            <p class="mt-2">Atualizando seu chamado...</p>
                         </div>
                     </form>
                 </div>
@@ -99,6 +197,153 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Referências aos elementos
+    const form = document.getElementById('ticketForm');
+    const steps = document.querySelectorAll('.form-step');
+    const nextBtns = document.querySelectorAll('.btn-next');
+    const prevBtns = document.querySelectorAll('.btn-prev');
+    const progressBar = document.getElementById('progress-bar');
+    const loading = document.getElementById('loading');
+    const empresaSelect = document.querySelector('select[name="empresa"]');
+    const categoriaSelect = document.querySelector('select[name="categoria"]');
+    const priorityBtns = document.querySelectorAll('.priority-btn');
+    
+    // Mascarar campos e aplicar estilos
+    applyInputEnhancements();
+    
+    // Configurar navegação entre etapas
+    let currentStep = 0;
+    updateProgressBar();
+    
+    // Manipular cliques nos botões de próximo
+    nextBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Verificar validação da etapa atual
+            if (validateCurrentStep()) {
+                steps[currentStep].classList.add('d-none');
+                currentStep++;
+                steps[currentStep].classList.remove('d-none');
+                updateProgressBar();
+            }
+        });
+    });
+    
+    // Manipular cliques nos botões de anterior
+    prevBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            steps[currentStep].classList.add('d-none');
+            currentStep--;
+            steps[currentStep].classList.remove('d-none');
+            updateProgressBar();
+        });
+    });
+    
+    // Manipular submissão do formulário
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Verificar validação antes de enviar
+        if (validateCurrentStep()) {
+            // Mostrar loading
+            form.querySelectorAll('.form-step').forEach(step => step.classList.add('d-none'));
+            loading.classList.remove('d-none');
+            
+            // Enviar o formulário
+            setTimeout(() => {
+                this.submit();
+            }, 300);
+        }
+    });
+    
+    // Manipular cliques nos botões de prioridade
+    priorityBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const value = this.getAttribute('data-value');
+            document.querySelector('select[name="prioridade"]').value = value;
+            
+            // Atualizar estilos dos botões
+            priorityBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Adicionar classe baseada na prioridade
+            const btnClassMap = {
+                'baixa': 'btn-success',
+                'media': 'btn-info',
+                'alta': 'btn-warning',
+                'urgente': 'btn-danger'
+            };
+            
+            priorityBtns.forEach(b => {
+                const val = b.getAttribute('data-value');
+                b.className = b.className.replace(/btn-(outline-)?[a-z]+/g, `btn-outline-${val === value ? btnClassMap[val].replace('btn-', '') : btnClassMap[val].replace('btn-', '')}`);
+                if (val === value) {
+                    b.classList.remove('btn-outline-' + btnClassMap[val].replace('btn-', ''));
+                    b.classList.add(btnClassMap[val]);
+                }
+            });
+        });
+    });
+    
+    // Funções auxiliares
+    function updateProgressBar() {
+        const progress = ((currentStep + 1) / steps.length) * 100;
+        progressBar.style.width = `${progress}%`;
+    }
+    
+    function validateCurrentStep() {
+        let isValid = true;
+        
+        // Validar campos da etapa atual
+        const currentStepElement = steps[currentStep];
+        const requiredFields = currentStepElement.querySelectorAll('[required]');
+        
+        requiredFields.forEach(field => {
+            if (!field.value) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        return isValid;
+    }
+    
+    function applyInputEnhancements() {
+        // Aplicar máscaras e autocomplete em campos específicos
+        
+        // Definir valor padrão para a prioridade
+        const prioridadeSelect = document.querySelector('select[name="prioridade"]');
+        if (prioridadeSelect && prioridadeSelect.value) {
+            const activePriorityBtn = document.querySelector(`.priority-btn[data-value="${prioridadeSelect.value}"]`);
+            if (activePriorityBtn) {
+                activePriorityBtn.click();
+            }
+        }
+        
+        // Aplicar classes nos selects para melhorar a usabilidade mobile
+        document.querySelectorAll('select').forEach(select => {
+            select.classList.add('form-select');
+            if (select.classList.contains('form-control')) {
+                select.classList.remove('form-control');
+            }
+        });
+        
+        // Aplicar classes nos inputs
+        document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(input => {
+            if (!input.classList.contains('form-control')) {
+                input.classList.add('form-control');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
 
 {% block styles %}
 <style>
@@ -108,30 +353,85 @@
         transform: none !important;
     }
     
+    /* Exceção para o progress bar */
+    .progress-bar {
+        transition: width 0.3s ease !important;
+    }
+    
+    /* Melhorias para dispositivos móveis */
     @media (max-width: 767.98px) {
-        .card-body {
-            padding: 1rem;
+        .container-fluid {
+            padding: 0.5rem !important;
+        }
+        
+        .card {
+            border-radius: 10px;
+        }
+        
+        .card-header {
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
         }
         
         .form-label {
             font-size: 0.9rem;
             margin-bottom: 0.25rem;
+            font-weight: 500;
         }
         
         .form-control, .form-select {
-            font-size: 0.9rem;
-            padding: 0.375rem 0.5rem;
+            font-size: 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            height: auto;
         }
         
-        .help-text, .form-text {
-            font-size: 0.75rem;
+        textarea.form-control {
+            min-height: 100px;
         }
         
-        h4 {
-            font-size: 1.25rem;
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+        
+        .priority-buttons .btn {
+            padding: 0.5rem;
         }
     }
+    
+    /* Estilo para inputs e selects */
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+    
+    /* Estilo para o passo a passo */
+    .form-step {
+        animation: fadeIn 0.3s;
+    }
+    
+    /* Animações suaves */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Estilo para campos personalizados */
+    .custom-fields-container {
+        background-color: var(--bs-tertiary-bg);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Estilo para botões de prioridade */
+    .priority-buttons .btn.active {
+        font-weight: bold;
+    }
+    
+    /* Ajustes para tema escuro */
+    [data-bs-theme="dark"] .card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    }
 </style>
-{% endblock %}
-
 {% endblock %} 

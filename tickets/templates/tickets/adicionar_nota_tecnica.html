@@ -4,89 +4,182 @@
 {% block title %}Adicionar Nota Técnica - Chamado #{{ ticket.id }}{% endblock %}
 
 {% block content %}
-<div class="container my-4">
-    <div class="row">
-        <div class="col-md-12">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'tickets:dashboard' %}">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}">Chamado #{{ ticket.id }}</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}">Notas Técnicas</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Adicionar Nota</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h2>Adicionar Nota Técnica</h2>
-            <h5 class="text-muted">Chamado #{{ ticket.id }} - {{ ticket.titulo }}</h5>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
+<div class="container-fluid mt-2 px-2">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10 col-12">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Nova Nota Técnica</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Nova Nota Técnica</h5>
+                        <div class="d-flex gap-1">
+                            <a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}" class="btn btn-sm btn-light">
+                                <i class="fas fa-list"></i>
+                            </a>
+                            <a href="{% url 'tickets:detalhe_ticket' ticket_id=ticket.id %}" class="btn btn-sm btn-light">
+                                <i class="fas fa-arrow-left"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post">
+                
+                <!-- Informações do chamado -->
+                <div class="bg-light p-2 border-bottom">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="badge bg-secondary me-2">#{{ ticket.id }}</span>
+                        <span class="fw-bold text-truncate me-auto">{{ ticket.titulo }}</span>
+                        <small class="text-muted d-none d-md-inline">{{ ticket.empresa.nome }}</small>
+                    </div>
+                </div>
+                
+                <div class="card-body px-3 py-3">
+                    <form method="post" id="notaForm" class="needs-validation">
                         {% csrf_token %}
                         
-                        <div class="form-group">
-                            <label for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                        <div class="mb-3">
+                            <label for="{{ form.descricao.id_for_label }}" class="form-label">
+                                <i class="fas fa-clipboard-list me-1"></i> Descrição da Situação
+                                <span class="text-danger">*</span>
+                            </label>
                             {{ form.descricao }}
                             {% if form.descricao.errors %}
                                 <div class="invalid-feedback d-block">
                                     {{ form.descricao.errors }}
                                 </div>
                             {% endif %}
+                            <small class="form-text text-muted">Descreva o problema encontrado e a situação atual</small>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="{{ form.equipamento.id_for_label }}">{{ form.equipamento.label }}</label>
+                        <div class="mb-3">
+                            <label for="{{ form.equipamento.id_for_label }}" class="form-label">
+                                <i class="fas fa-laptop me-1"></i> Equipamento
+                            </label>
                             {{ form.equipamento }}
                             {% if form.equipamento.errors %}
                                 <div class="invalid-feedback d-block">
                                     {{ form.equipamento.errors }}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">Especifique o equipamento relacionado à nota técnica.</small>
+                            <small class="form-text text-muted">Descreva o equipamento relacionado (modelo, número de série, etc.)</small>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="{{ form.solucao_aplicada.id_for_label }}">{{ form.solucao_aplicada.label }}</label>
+                        <div class="mb-3">
+                            <label for="{{ form.solucao_aplicada.id_for_label }}" class="form-label">
+                                <i class="fas fa-tools me-1"></i> Solução Aplicada
+                                <span class="text-danger">*</span>
+                            </label>
                             {{ form.solucao_aplicada }}
                             {% if form.solucao_aplicada.errors %}
                                 <div class="invalid-feedback d-block">
                                     {{ form.solucao_aplicada.errors }}
                                 </div>
                             {% endif %}
+                            <small class="form-text text-muted">Detalhe as ações realizadas para resolver o problema</small>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="{{ form.pendencias.id_for_label }}">{{ form.pendencias.label }}</label>
+                        <div class="mb-3">
+                            <label for="{{ form.pendencias.id_for_label }}" class="form-label">
+                                <i class="fas fa-exclamation-circle me-1"></i> Pendências
+                            </label>
                             {{ form.pendencias }}
                             {% if form.pendencias.errors %}
                                 <div class="invalid-feedback d-block">
                                     {{ form.pendencias.errors }}
                                 </div>
                             {% endif %}
-                            <small class="form-text text-muted">{{ form.pendencias.help_text }}</small>
+                            <small class="form-text text-muted">Liste tarefas pendentes ou ações futuras necessárias</small>
                         </div>
                         
-                        <div class="form-group text-right">
-                            <a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}" class="btn btn-secondary">Cancelar</a>
-                            <button type="submit" class="btn btn-primary">Salvar Nota Técnica</button>
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'tickets:listar_notas_tecnicas' ticket_id=ticket.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="fas fa-save me-1"></i> Salvar Nota Técnica
+                            </button>
+                        </div>
+                        
+                        <!-- Loading indicator -->
+                        <div class="d-none text-center py-3 mt-3" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Salvando...</span>
+                            </div>
+                            <p class="mt-2">Registrando nota técnica...</p>
                         </div>
                     </form>
+                </div>
+            </div>
+            
+            <!-- Dicas rápidas (para mobile) -->
+            <div class="card mt-3 d-md-none shadow-sm border-0">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Dicas Rápidas</h6>
+                </div>
+                <div class="card-body p-2">
+                    <div class="d-flex flex-column gap-2">
+                        <div class="alert alert-info mb-0 py-2 px-3">
+                            <small><strong>Dica:</strong> Uma boa nota técnica deve incluir o problema encontrado, ações realizadas e resultados obtidos.</small>
+                        </div>
+                        <div class="alert alert-info mb-0 py-2 px-3">
+                            <small><strong>Dica:</strong> Inclua informações como modelo do equipamento, versão do software e erros específicos.</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('notaForm');
+    const loading = document.getElementById('loading');
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Verificar validação básica
+            if (form.checkValidity()) {
+                e.preventDefault();
+                
+                // Esconder o formulário e mostrar loading
+                const formControls = form.querySelectorAll('.mb-3, .d-flex');
+                formControls.forEach(el => el.style.display = 'none');
+                loading.classList.remove('d-none');
+                
+                // Enviar o formulário
+                setTimeout(() => {
+                    this.submit();
+                }, 300);
+            }
+        });
+    }
+    
+    // Melhorar a aparência dos campos
+    document.querySelectorAll('textarea').forEach(textarea => {
+        // Garantir que todos os textareas tenham a classe form-control
+        if (!textarea.classList.contains('form-control')) {
+            textarea.classList.add('form-control');
+        }
+        
+        // Ajustar o tamanho dos textareas
+        if (textarea.id === '{{ form.descricao.id_for_label }}') {
+            textarea.setAttribute('rows', '4');
+        } else if (textarea.id === '{{ form.solucao_aplicada.id_for_label }}') {
+            textarea.setAttribute('rows', '4');
+        } else if (textarea.id === '{{ form.pendencias.id_for_label }}') {
+            textarea.setAttribute('rows', '3');
+        }
+    });
+    
+    document.querySelectorAll('input[type="text"]').forEach(input => {
+        // Garantir que todos os inputs tenham a classe form-control
+        if (!input.classList.contains('form-control')) {
+            input.classList.add('form-control');
+        }
+    });
+});
+</script>
 {% endblock %}
 
 {% block styles %}
@@ -97,29 +190,72 @@
         transform: none !important;
     }
     
-    /* Estilos para compatibilidade com o tema escuro */
-    .card {
-        background-color: var(--bs-body-bg);
+    /* Melhorias para dispositivos móveis */
+    @media (max-width: 767.98px) {
+        .container-fluid {
+            padding: 0.5rem !important;
+        }
+        
+        .card {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+        }
+        
+        .form-label {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            font-size: 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+        
+        .form-text {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+    }
+    
+    /* Estilos para melhorar a aparência dos formulários */
+    .form-control:focus {
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+    
+    .form-text {
+        margin-top: 0.25rem;
+    }
+    
+    /* Melhorias visuais */
+    .alert {
+        border-left: 4px solid rgba(var(--bs-info-rgb), 0.7);
+    }
+    
+    /* Estilos para tema escuro */
+    [data-bs-theme="dark"] .bg-light {
+        background-color: var(--bs-dark-bg-subtle) !important;
+    }
+    
+    [data-bs-theme="dark"] .alert-info {
+        background-color: rgba(var(--bs-info-rgb), 0.15);
+        border-color: rgba(var(--bs-info-rgb), 0.7);
         color: var(--bs-body-color);
     }
     
-    .form-control, .form-select {
-        background-color: var(--bs-body-bg);
-        color: var(--bs-body-color);
-        border-color: var(--bs-border-color);
-    }
-    
-    .form-control:focus, .form-select:focus {
-        background-color: var(--bs-body-bg);
-        color: var(--bs-body-color);
-    }
-    
-    .text-muted {
-        color: var(--bs-secondary-color) !important;
-    }
-    
-    .breadcrumb {
-        background-color: var(--bs-tertiary-bg);
+    [data-bs-theme="dark"] .card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
     }
 </style>
 {% endblock %} 

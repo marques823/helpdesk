@@ -5,19 +5,25 @@
 {% block title %}Criar Novo Usuário - {{ empresa.nome }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
+<div class="container-fluid mt-2 px-2">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10 col-12">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Criar Novo Usuário - {{ empresa.nome }}</h5>
-                        <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="btn btn-light btn-sm">
-                            <i class="fas fa-arrow-left"></i> Voltar à Lista
+                        <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="btn btn-sm btn-light">
+                            <i class="fas fa-arrow-left"></i>
                         </a>
                     </div>
                 </div>
-                <div class="card-body">
+                
+                <!-- Progress Indicator -->
+                <div class="progress" style="height: 4px; border-radius: 0;">
+                    <div id="progress-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                </div>
+                
+                <div class="card-body px-3 py-3">
                     {% if not config.pode_criar_mais_usuarios %}
                     <div class="alert alert-danger mb-4">
                         <div class="d-flex align-items-center">
@@ -34,29 +40,127 @@
                         </div>
                     </div>
                     {% else %}
-                    <form method="post">
+                    <form method="post" id="userForm" class="needs-validation" novalidate>
                         {% csrf_token %}
                         
-                        <h5 class="mb-3">Informações do Usuário</h5>
-                        <div class="mb-4 p-3 border rounded bg-light">
-                            {{ user_form|crispy }}
+                        <!-- Step 1: Informações de Acesso -->
+                        <div class="form-step" id="step1">
+                            <h6 class="mb-3 text-primary">
+                                <i class="fas fa-user-lock me-2"></i>Informações de Acesso
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="id_username" class="form-label">Nome de usuário <span class="text-danger">*</span></label>
+                                {{ user_form.username }}
+                                <div class="mt-1 small text-muted">
+                                    <i class="fas fa-info-circle me-1"></i> Será utilizado para login no sistema
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_password1" class="form-label">Senha <span class="text-danger">*</span></label>
+                                {{ user_form.password1 }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_password2" class="form-label">Confirmar senha <span class="text-danger">*</span></label>
+                                {{ user_form.password2 }}
+                                <div class="mt-1 small text-muted">
+                                    <i class="fas fa-shield-alt me-1"></i> As senhas devem ser idênticas
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="button" class="btn btn-primary btn-next px-4">
+                                    Próximo <i class="fas fa-chevron-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Informações Pessoais -->
+                        <div class="form-step d-none" id="step2">
+                            <h6 class="mb-3 text-primary">
+                                <i class="fas fa-address-card me-2"></i>Informações Pessoais
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="id_first_name" class="form-label">Nome <span class="text-danger">*</span></label>
+                                {{ user_form.first_name }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_last_name" class="form-label">Sobrenome <span class="text-danger">*</span></label>
+                                {{ user_form.last_name }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_email" class="form-label">E-mail <span class="text-danger">*</span></label>
+                                {{ user_form.email }}
+                                <div class="mt-1 small text-muted">
+                                    <i class="fas fa-envelope me-1"></i> Será usado para notificações
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-3">
+                                <button type="button" class="btn btn-outline-secondary btn-prev">
+                                    <i class="fas fa-chevron-left me-2"></i> Anterior
+                                </button>
+                                <button type="button" class="btn btn-primary btn-next px-4">
+                                    Próximo <i class="fas fa-chevron-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Informações Profissionais -->
+                        <div class="form-step d-none" id="step3">
+                            <h6 class="mb-3 text-primary">
+                                <i class="fas fa-briefcase me-2"></i>Informações Profissionais
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="id_tipo" class="form-label">Tipo de Usuário <span class="text-danger">*</span></label>
+                                {{ funcionario_form.tipo }}
+                                <div class="mt-1 small text-muted">
+                                    <i class="fas fa-shield-alt me-1"></i> Define as permissões no sistema
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_cargo" class="form-label">Cargo</label>
+                                {{ funcionario_form.cargo }}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="id_telefone" class="form-label">Telefone</label>
+                                {{ funcionario_form.telefone }}
+                            </div>
+                            
+                            <!-- Campo oculto para empresas -->
+                            <div style="display: none;">
+                                {{ funcionario_form.empresas }}
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Este usuário terá acesso apenas à empresa <strong>{{ empresa.nome }}</strong>.
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="button" class="btn btn-outline-secondary btn-prev">
+                                    <i class="fas fa-chevron-left me-2"></i> Anterior
+                                </button>
+                                <button type="submit" class="btn btn-success px-4">
+                                    <i class="fas fa-user-plus me-2"></i> Criar Usuário
+                                </button>
+                            </div>
                         </div>
                         
-                        <h5 class="mb-3">Informações do Funcionário</h5>
-                        <div class="mb-4 p-3 border rounded bg-light">
-                            {{ funcionario_form|crispy }}
-                        </div>
-                        
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Este usuário terá acesso apenas à sua empresa ({{ empresa.nome }}).
-                        </div>
-                        
-                        <div class="d-flex justify-content-end">
-                            <a href="{% url 'tickets:empresa_admin_usuarios' %}" class="btn btn-secondary me-2">Cancelar</a>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-user-plus me-2"></i> Criar Usuário
-                            </button>
+                        <!-- Loading indicator -->
+                        <div class="d-none text-center py-3" id="loading">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Criando o usuário...</p>
                         </div>
                     </form>
                     {% endif %}
@@ -65,4 +169,205 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Referências aos elementos
+    const form = document.getElementById('userForm');
+    const steps = document.querySelectorAll('.form-step');
+    const nextBtns = document.querySelectorAll('.btn-next');
+    const prevBtns = document.querySelectorAll('.btn-prev');
+    const progressBar = document.getElementById('progress-bar');
+    const loading = document.getElementById('loading');
+    
+    // Aplicar estilos e formatação aos inputs
+    applyInputEnhancements();
+    
+    // Configurar navegação entre etapas
+    let currentStep = 0;
+    updateProgressBar();
+    
+    // Manipular cliques nos botões de próximo
+    nextBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Verificar validação da etapa atual
+            if (validateCurrentStep()) {
+                steps[currentStep].classList.add('d-none');
+                currentStep++;
+                steps[currentStep].classList.remove('d-none');
+                updateProgressBar();
+            }
+        });
+    });
+    
+    // Manipular cliques nos botões de anterior
+    prevBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            steps[currentStep].classList.add('d-none');
+            currentStep--;
+            steps[currentStep].classList.remove('d-none');
+            updateProgressBar();
+        });
+    });
+    
+    // Manipular submissão do formulário
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Verificar validação antes de enviar
+        if (validateCurrentStep()) {
+            // Mostrar loading
+            form.querySelectorAll('.form-step').forEach(step => step.classList.add('d-none'));
+            loading.classList.remove('d-none');
+            
+            // Enviar o formulário
+            setTimeout(() => {
+                this.submit();
+            }, 300);
+        }
+    });
+    
+    // Funções auxiliares
+    function updateProgressBar() {
+        const progress = ((currentStep + 1) / steps.length) * 100;
+        progressBar.style.width = `${progress}%`;
+    }
+    
+    function validateCurrentStep() {
+        let isValid = true;
+        
+        // Validar campos da etapa atual
+        const currentStepElement = steps[currentStep];
+        const requiredFields = currentStepElement.querySelectorAll('[required]');
+        
+        requiredFields.forEach(field => {
+            if (!field.value) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        // Validação especial para o passo 1 (passwords)
+        if (currentStep === 0) {
+            const password1 = document.getElementById('id_password1');
+            const password2 = document.getElementById('id_password2');
+            
+            if (password1.value && password2.value && password1.value !== password2.value) {
+                password2.classList.add('is-invalid');
+                if (!password2.nextElementSibling || !password2.nextElementSibling.classList.contains('invalid-feedback')) {
+                    const feedback = document.createElement('div');
+                    feedback.classList.add('invalid-feedback');
+                    feedback.innerText = 'As senhas não coincidem';
+                    password2.parentNode.insertBefore(feedback, password2.nextSibling);
+                }
+                isValid = false;
+            }
+        }
+        
+        return isValid;
+    }
+    
+    function applyInputEnhancements() {
+        // Aplicar estilos nos selects para melhorar a usabilidade mobile
+        document.querySelectorAll('select').forEach(select => {
+            select.classList.add('form-select');
+            if (select.classList.contains('form-control')) {
+                select.classList.remove('form-control');
+            }
+        });
+        
+        // Aplicar classes nos inputs
+        document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"]').forEach(input => {
+            if (!input.classList.contains('form-control')) {
+                input.classList.add('form-control');
+            }
+            
+            // Adicionar atributo required onde necessário
+            const label = input.closest('.mb-3')?.querySelector('.form-label');
+            if (label && label.innerHTML.includes('<span class="text-danger">*</span>')) {
+                input.setAttribute('required', 'required');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    /* Reset inicial para remover todas as transições/movimentos */
+    * {
+        transition: none !important;
+        transform: none !important;
+    }
+    
+    /* Exceção para o progress bar */
+    .progress-bar {
+        transition: width 0.3s ease !important;
+    }
+    
+    /* Melhorias para dispositivos móveis */
+    @media (max-width: 767.98px) {
+        .container-fluid {
+            padding: 0.5rem !important;
+        }
+        
+        .card {
+            border-radius: 10px;
+        }
+        
+        .card-header {
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+        }
+        
+        .form-label {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .form-control, .form-select {
+            font-size: 1rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            height: auto;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+        }
+    }
+    
+    /* Estilo para inputs e selects */
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+    
+    /* Estilo para o passo a passo */
+    .form-step {
+        animation: fadeIn 0.3s;
+    }
+    
+    /* Animações suaves */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* Ajustes para tema escuro */
+    [data-bs-theme="dark"] .card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    }
+    
+    /* Hide Django's default help text and show our custom ones */
+    .form-text {
+        display: none;
+    }
+</style>
 {% endblock %} 
