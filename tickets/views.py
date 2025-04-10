@@ -31,6 +31,7 @@ from django.db.models import Count
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.db.models import Prefetch
+from .middleware.security_decorators import admin_permission_required
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -2832,9 +2833,11 @@ def excluir_ticket(request, ticket_id):
 # ----- Views para Gerenciar Permissões de Categorias -----
 
 @login_required
+@admin_permission_required
 def gerenciar_permissoes_categoria(request):
     """
     View para gerenciar as permissões de categorias dos funcionários.
+    Apenas usuários administradores podem acessar esta página.
     """
     logger.info("**** INÍCIO FUNÇÃO gerenciar_permissoes_categoria (CORRIGIDA FINAL) ****")
     
@@ -2926,15 +2929,12 @@ def gerenciar_permissoes_categoria(request):
         return redirect('tickets:dashboard')
 
 @login_required
+@admin_permission_required
 def editar_permissoes_usuario(request, funcionario_id):
     """
     View para editar as permissões de categorias de um funcionário específico.
+    Apenas usuários administradores podem acessar esta página.
     """
-    # Verifica se o usuário é admin ou superuser
-    if not request.user.is_staff and not request.user.is_superuser:
-        messages.error(request, 'Você não tem permissão para acessar esta página.')
-        return redirect('tickets:dashboard')
-    
     try:
         # Obter o funcionário
         funcionario = get_object_or_404(Funcionario, id=funcionario_id)
@@ -2953,10 +2953,6 @@ def editar_permissoes_usuario(request, funcionario_id):
         else:
             # Funcionários administrativos veem apenas as empresas associadas a eles
             funcionario_logado = request.user.funcionarios.first()
-            if not funcionario_logado or not funcionario_logado.is_admin():
-                messages.error(request, 'Você não tem permissão para acessar esta página.')
-                return redirect('tickets:dashboard')
-                
             empresas = funcionario_logado.empresas.all()
             try:
                 # Verifica se a empresa selecionada está entre as empresas permitidas
