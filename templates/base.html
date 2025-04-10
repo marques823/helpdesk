@@ -297,7 +297,7 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'tickets:perfis_compartilhamento_list' %}">Perfis de PDF</a>
                         </li>
-                        {% if user.is_staff or user.is_superuser %}
+                        {% if request.user.is_superuser or request.funcionario.is_admin %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'tickets:gerenciar_permissoes_categoria' %}">Gerenciar Permissões</a>
                         </li>
@@ -316,7 +316,7 @@
                                         <i class="fa fa-bell me-2"></i>Configurar Notificações
                                     </a>
                                 </li>
-                                {% if user.is_staff or user.is_superuser %}
+                                {% if request.user.is_superuser or request.funcionario.is_admin %}
                                 <li>
                                     <a class="dropdown-item" href="{% url 'tickets:gerenciar_permissoes_categoria' %}">
                                         <i class="fa fa-key me-2"></i>Gerenciar Permissões
@@ -325,12 +325,9 @@
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form id="logout-form" action="{% url 'logout' %}" method="post" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="dropdown-item">
-                                            <i class="fa fa-sign-out-alt me-2"></i>Sair
-                                        </button>
-                                    </form>
+                                    <a href="{% url 'logout' %}" class="dropdown-item">
+                                        <i class="fa fa-sign-out-alt me-2"></i>Sair
+                                    </a>
                                 </li>
                             </ul>
                         </li>

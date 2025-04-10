@@ -1238,8 +1238,7 @@ def logout_view(request):
         logger.info(f"Logout iniciado para o usuário: {request.user.username}")
         logout(request)
         logger.info("Logout concluído com sucesso")
-        messages.success(request, 'Você foi deslogado com sucesso!')
-        return redirect('home')
+        return redirect('logout_success')
     except Exception as e:
         logger.error(f"Erro durante o logout: {str(e)}", exc_info=True)
         messages.error(request, f'Erro ao fazer logout: {str(e)}')
