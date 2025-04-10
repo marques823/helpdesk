@@ -2139,13 +2139,18 @@ def logout_success(request):
     # HTML direto para evitar quaisquer problemas de template
     html_content = """
     <!DOCTYPE html>
-    <html lang="pt-br">
+    <html lang="pt-br" data-bs-theme="light">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Logout Realizado</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            body {
+                transition: background-color 0.3s ease, color 0.3s ease;
+            }
+        </style>
     </head>
     <body>
         <div class="container mt-5">
@@ -2172,6 +2177,32 @@ def logout_success(request):
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Script para aplicar o tema salvo
+            document.addEventListener('DOMContentLoaded', function() {
+                const htmlElement = document.documentElement;
+                const bodyElement = document.body;
+                
+                // Verificar tema salvo no localStorage
+                const savedTheme = localStorage.getItem('theme');
+                
+                // Aplicar tema salvo ou preferência do sistema
+                if (savedTheme) {
+                    applyTheme(savedTheme);
+                } else {
+                    // Verificar preferência do sistema
+                    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    applyTheme(prefersDark ? 'dark' : 'light');
+                }
+                
+                // Função para aplicar o tema
+                function applyTheme(theme) {
+                    htmlElement.setAttribute('data-bs-theme', theme);
+                    bodyElement.style.backgroundColor = theme === 'dark' ? '#212529' : '#fff';
+                    bodyElement.style.color = theme === 'dark' ? '#dee2e6' : '#212529';
+                }
+            });
+        </script>
     </body>
     </html>
     """
