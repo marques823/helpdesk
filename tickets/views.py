@@ -2139,16 +2139,37 @@ def logout_success(request):
     # HTML direto para evitar quaisquer problemas de template
     html_content = """
     <!DOCTYPE html>
-    <html lang="pt-br" data-bs-theme="light">
+    <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Logout Realizado</title>
+        <!-- Script para aplicar o tema antes do carregamento da página -->
+        <script>
+            // Aplicar tema imediatamente para evitar piscar
+            (function() {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+                
+                // Aplicar ao documento antes mesmo de carregar
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                
+                // Definir estilo inicial para o body
+                if (theme === 'dark') {
+                    document.documentElement.style.backgroundColor = '#212529';
+                    document.documentElement.style.color = '#dee2e6';
+                }
+            })();
+        </script>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
         <style>
             body {
                 transition: background-color 0.3s ease, color 0.3s ease;
+                /* Definir cores iniciais baseadas no tema para evitar piscar */
+                background-color: var(--bs-body-bg);
+                color: var(--bs-body-color);
             }
         </style>
     </head>
@@ -2177,32 +2198,6 @@ def logout_success(request):
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script>
-            // Script para aplicar o tema salvo
-            document.addEventListener('DOMContentLoaded', function() {
-                const htmlElement = document.documentElement;
-                const bodyElement = document.body;
-                
-                // Verificar tema salvo no localStorage
-                const savedTheme = localStorage.getItem('theme');
-                
-                // Aplicar tema salvo ou preferência do sistema
-                if (savedTheme) {
-                    applyTheme(savedTheme);
-                } else {
-                    // Verificar preferência do sistema
-                    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    applyTheme(prefersDark ? 'dark' : 'light');
-                }
-                
-                // Função para aplicar o tema
-                function applyTheme(theme) {
-                    htmlElement.setAttribute('data-bs-theme', theme);
-                    bodyElement.style.backgroundColor = theme === 'dark' ? '#212529' : '#fff';
-                    bodyElement.style.color = theme === 'dark' ? '#dee2e6' : '#212529';
-                }
-            });
-        </script>
     </body>
     </html>
     """
