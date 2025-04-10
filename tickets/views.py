@@ -2217,12 +2217,17 @@ def empresa_admin_criar_usuario(request):
             usuarios_atuais = Funcionario.objects.filter(empresas=empresa).count()
             pode_criar_mais = usuarios_atuais < config.limite_usuarios
             config.pode_criar_mais_usuarios = pode_criar_mais
+            
+            if not pode_criar_mais:
+                messages.warning(request, f'Sua empresa atingiu o limite de {config.limite_usuarios} usuários. Entre em contato com o administrador do sistema para aumentar seu limite.')
+                return redirect('tickets:empresa_admin_usuarios')
         except EmpresaConfig.DoesNotExist:
             config = None
             messages.warning(request, 'Configuração da empresa não encontrada.')
         
         if request.method == 'POST':
-            user_form = UserCreationForm(request.POST)
+            # Use UserCreationForm to handle password validation
+            user_form = UserForm(request.POST)
             funcionario_form = FuncionarioForm(request.POST, user=request.user, criacao_usuario=True)
             
             # Explicitly set the initial queryset to only allow the admin's company
@@ -2233,7 +2238,7 @@ def empresa_admin_criar_usuario(request):
             if user_form.is_valid() and funcionario_form.is_valid():
                 try:
                     # Create the user
-                    novo_usuario = user_form.save()
+                    novo_usuario = user_form.save(commit=True)
                     
                     # Create the employee associating with the company
                     novo_funcionario = funcionario_form.save(commit=False)
@@ -2244,14 +2249,29 @@ def empresa_admin_criar_usuario(request):
                     novo_funcionario.empresas.clear()
                     novo_funcionario.empresas.add(empresa)
                     
-                    messages.success(request, 'Usuário criado com sucesso!')
+                    # Create default notification preferences for the new user
+                    try:
+                        PreferenciasNotificacao.objects.create(usuario=novo_usuario)
+                    except Exception as e:
+                        logger.warning(f"Erro ao criar preferências de notificação para o usuário {novo_usuario.username}: {str(e)}")
+                    
+                    messages.success(request, f'Usuário {novo_usuario.username} criado com sucesso!')
                     return redirect('tickets:empresa_admin_usuarios')
                 except Exception as e:
                     messages.error(request, f'Erro ao criar usuário: {str(e)}')
                     logger.error(f'Error creating user: {str(e)}')
-                    return redirect('tickets:dashboard')
+                    return redirect('tickets:empresa_admin_usuarios')
+            else:
+                # Add form errors to messages for better visibility
+                for field, errors in user_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'Erro em {field}: {error}')
+                
+                for field, errors in funcionario_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'Erro em {field}: {error}')
         else:
-            user_form = UserCreationForm()
+            user_form = UserForm()
             funcionario_form = FuncionarioForm(user=request.user, criacao_usuario=True)
             
             # Explicitly set the queryset to only allow the admin's company
@@ -2301,21 +2321,49 @@ def empresa_admin_editar_usuario(request, funcionario_id):
             
             usuario_form = UserEditForm(request.POST, instance=usuario)
             
-            # Não precisa passar o parâmetro criacao_usuario=True porque estamos editando
-            funcionario_form = FuncionarioForm(request.POST, instance=funcionario, user=request.user)
+            # Usamos criacao_usuario=False para manter o campo usuario no formulário
+            # e passamos o instance para que o campo seja preenchido automaticamente
+            funcionario_form = FuncionarioForm(
+                request.POST, 
+                instance=funcionario, 
+                user=request.user,
+                criacao_usuario=False  # Não é criação, é edição
+            )
+            
+            # Limitar visibilidade apenas à empresa do admin ao processar o formulário
+            funcionario_form.fields['empresas'].queryset = admin_funcionario.empresas.all()
+            funcionario_form.fields['empresas'].disabled = True  # Desativar a edição do campo
+            
+            # Definir explicitamente o usuário no campo, já que conhecemos o usuário associado
+            funcionario_form.fields['usuario'].initial = usuario.id
+            funcionario_form.fields['usuario'].disabled = True  # Desativar edição do usuário
             
             if usuario_form.is_valid() and funcionario_form.is_valid():
-                usuario = usuario_form.save()
+                try:
+                    usuario = usuario_form.save()
+                    
+                    funcionario = funcionario_form.save(commit=False)
+                    funcionario.usuario = usuario  # Garantir que o usuário seja mantido
+                    funcionario.save()
+                    
+                    # Garantir que a empresa do admin esteja associada ao funcionário
+                    if not funcionario.empresas.filter(id=empresa.id).exists():
+                        funcionario.empresas.add(empresa)
+                    
+                    messages.success(request, f"Usuário {usuario.username} atualizado com sucesso!")
+                    return redirect('tickets:empresa_admin_usuarios')
+                except Exception as e:
+                    logger.error(f"Erro ao salvar usuário: {str(e)}")
+                    messages.error(request, f"Erro ao salvar usuário: {str(e)}")
+            else:
+                # Adicionar erros dos formulários às mensagens para melhor visibilidade
+                for field, errors in usuario_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'Erro em {field}: {error}')
                 
-                funcionario = funcionario_form.save(commit=False)
-                funcionario.save()
-                
-                # Garantir que a empresa do admin esteja associada ao funcionário
-                if not funcionario.empresas.filter(id=empresa.id).exists():
-                    funcionario.empresas.add(empresa)
-                
-                messages.success(request, f"Usuário {usuario.username} atualizado com sucesso!")
-                return redirect('tickets:empresa_admin_usuarios')
+                for field, errors in funcionario_form.errors.items():
+                    for error in errors:
+                        messages.error(request, f'Erro em {field}: {error}')
         else:
             # Formulário para edição de usuário
             from django import forms as django_forms
@@ -2327,8 +2375,16 @@ def empresa_admin_editar_usuario(request, funcionario_id):
             
             usuario_form = UserEditForm(instance=usuario)
             
-            # Na edição, não precisa do campo usuário, pois já está associado
-            funcionario_form = FuncionarioForm(instance=funcionario, user=request.user, criacao_usuario=True)
+            # Na edição, precisamos manter o campo usuário e pré-selecioná-lo
+            funcionario_form = FuncionarioForm(
+                instance=funcionario, 
+                user=request.user, 
+                criacao_usuario=False  # Não é criação, é edição
+            )
+            
+            # Definir explicitamente o usuário no campo, já que conhecemos o usuário associado
+            funcionario_form.fields['usuario'].initial = usuario.id
+            funcionario_form.fields['usuario'].disabled = True  # Desativar edição do usuário
             
             # Limitar visibilidade apenas à empresa do admin
             funcionario_form.fields['empresas'].queryset = admin_funcionario.empresas.all()
