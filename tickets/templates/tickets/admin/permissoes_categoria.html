@@ -27,6 +27,7 @@
                 <div class="col-md-4">
                     <label for="empresa" class="form-label">Empresa</label>
                     <select name="empresa" id="empresa" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Selecione uma empresa --</option>
                         {% for emp in empresas %}
                             <option value="{{ emp.id }}" {% if empresa_selecionada.id == emp.id %}selected{% endif %}>{{ emp.nome }}</option>
                         {% endfor %}
@@ -46,24 +47,6 @@
         </div>
         <div class="card-body">
             {% if funcionarios_dados %}
-                <!-- Debug Info -->
-                {% if request.user.is_superuser %}
-                <div class="alert alert-secondary mb-3">
-                    <strong>Informações de diagnóstico:</strong><br>
-                    Total de funcionários na lista: {{ funcionarios_dados|length }}<br>
-                    Empresa selecionada: {{ empresa_selecionada.nome }} (ID: {{ empresa_selecionada.id }})<br>
-                    <strong>Todas as empresas disponíveis:</strong><br>
-                    {% for empresa in empresas %}
-                        - {{ empresa.nome }} (ID: {{ empresa.id }})<br>
-                    {% endfor %}
-                    <strong>Todos os funcionários na lista:</strong><br>
-                    {% for funcionario in funcionarios_dados %}
-                        - {{ funcionario.username }} (ID: {{ funcionario.id }}, Tipo: {{ funcionario.tipo }})<br>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                <!-- End Debug Info -->
-                
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead class="table-light">

@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views, admin_views
-from .views_fix import gerenciar_permissoes_categoria, editar_permissoes_usuario
+from tickets import views as tickets_views
 
 app_name = 'tickets'
 
@@ -76,8 +76,8 @@ urlpatterns = [
     path('empresa-admin/categorias/<int:categoria_id>/excluir/', views.empresa_admin_excluir_categoria, name='empresa_admin_excluir_categoria'),
     
     # Rotas para gerenciamento de permissões de categoria por usuário
-    path('permissoes-categoria/', gerenciar_permissoes_categoria, name='gerenciar_permissoes_categoria'),
-    path('permissoes-categoria/usuario/<int:funcionario_id>/', editar_permissoes_usuario, name='editar_permissoes_usuario'),
+    path('permissoes-categoria/', views.gerenciar_permissoes_categoria, name='gerenciar_permissoes_categoria'),
+    path('permissoes-categoria/usuario/<int:funcionario_id>/', views.editar_permissoes_usuario, name='editar_permissoes_usuario'),
     
     # Gerenciamento de preferências de notificação
     path('notificacoes/', views.gerenciar_notificacoes, name='gerenciar_notificacoes'),
