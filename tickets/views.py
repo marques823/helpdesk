@@ -2129,22 +2129,54 @@ def get_estatisticas_categorias(request):
 
 def logout_success(request):
     """
-    Exibe a página de logout bem-sucedido.
+    Exibe uma página de logout bem-sucedido.
     Esta view não requer autenticação e deve funcionar
     mesmo após o usuário ter feito logout.
     """
     # Log para debug
     logger.info("Página de logout_success acessada")
     
-    try:
-        # Renderizar a página de logout com um contexto simples
-        return render(request, 'registration/logged_out.html', {
-            'title': 'Logout realizado com sucesso'
-        })
-    except Exception as e:
-        logger.error(f"Erro ao renderizar a página de logout: {str(e)}")
-        # Em caso de erro, redirecionar para a raiz
-        return HttpResponseRedirect('/')
+    # HTML direto para evitar quaisquer problemas de template
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Logout Realizado</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body text-center p-5">
+                            <div class="mb-4">
+                                <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                            </div>
+                            <h2 class="mb-4">Você saiu do sistema com sucesso!</h2>
+                            <p class="lead mb-4">Obrigado por utilizar os serviços da Técnico Litoral Central de Suporte.</p>
+                            <div class="d-grid gap-2 col-md-8 mx-auto">
+                                <a href="/" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-home me-2"></i> Página Inicial
+                                </a>
+                                <a href="/login/" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i> Entrar Novamente
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+    </html>
+    """
+    
+    return HttpResponse(html_content)
 
 # ----- Views Painel Administrativo de Empresas -----
 

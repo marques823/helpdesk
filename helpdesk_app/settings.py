@@ -59,6 +59,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'tickets.middleware.security_middleware.UserFuncionarioMiddleware',
+    'tickets.middleware.security_middleware.LoginExemptMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'tickets.middleware.security_middleware.SecurityMiddleware',
@@ -157,9 +158,17 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Login/Logout URLs
-LOGIN_REDIRECT_URL = 'tickets:dashboard'
-LOGOUT_REDIRECT_URL = 'tickets:home'
 LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'tickets:dashboard'
+LOGOUT_REDIRECT_URL = 'home'
+
+# URLs que não precisam de autenticação
+LOGIN_EXEMPT_URLS = [
+    'login',
+    'logout',
+    'logout-success',
+    'home',
+]
 
 # Configurações de autenticação
 AUTHENTICATION_BACKENDS = [
