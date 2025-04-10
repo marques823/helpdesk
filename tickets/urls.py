@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views, admin_views
+from tickets import views as tickets_views
 
 app_name = 'tickets'
 

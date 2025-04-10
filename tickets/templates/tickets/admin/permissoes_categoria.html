@@ -27,6 +27,7 @@
                 <div class="col-md-4">
                     <label for="empresa" class="form-label">Empresa</label>
                     <select name="empresa" id="empresa" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Selecione uma empresa --</option>
                         {% for emp in empresas %}
                             <option value="{{ emp.id }}" {% if empresa_selecionada.id == emp.id %}selected{% endif %}>{{ emp.nome }}</option>
                         {% endfor %}
@@ -41,21 +42,11 @@
         <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Usuários</h5>
             <div>
-                <span class="badge bg-primary">{{ funcionarios|length }} usuário(s)</span>
+                <span class="badge bg-primary">{{ funcionarios_dados|length }} usuário(s)</span>
             </div>
         </div>
         <div class="card-body">
-            {% if funcionarios %}
-                <!-- Debug Info -->
-                {% if request.user.is_superuser %}
-                <div class="alert alert-secondary mb-3">
-                    <strong>Informações de diagnóstico:</strong><br>
-                    Total de funcionários na lista: {{ funcionarios|length }}<br>
-                    Empresa selecionada: {{ empresa_selecionada.nome }} (ID: {{ empresa_selecionada.id }})
-                </div>
-                {% endif %}
-                <!-- End Debug Info -->
-                
+            {% if funcionarios_dados %}
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead class="table-light">
@@ -69,33 +60,18 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for funcionario in funcionarios %}
+                            {% for funcionario in funcionarios_dados %}
                                 <tr>
-                                    <td>{{ funcionario.usuario.username }}</td>
-                                    <td>{{ funcionario.usuario.first_name }} {{ funcionario.usuario.last_name }}</td>
-                                    <td>{{ funcionario.usuario.email }}</td>
+                                    <td>{{ funcionario.username }}</td>
+                                    <td>{{ funcionario.first_name }} {{ funcionario.last_name }}</td>
+                                    <td>{{ funcionario.email }}</td>
+                                    <td>{{ funcionario.tipo_display }}</td>
                                     <td>
-                                        <!-- Várias tentativas de exibir o tipo do funcionário -->
-                                        {% if funcionario.get_tipo_display %}
-                                            {{ funcionario.get_tipo_display }}
-                                        {% elif funcionario.tipo == 'admin' %}
-                                            Administrador
-                                        {% elif funcionario.tipo == 'suporte' %}
-                                            Suporte
-                                        {% elif funcionario.tipo == 'cliente' %}
-                                            Cliente
+                                        {% if funcionario.categorias_count > 0 %}
+                                            <span class="badge bg-success">{{ funcionario.categorias_count }} categoria(s)</span>
                                         {% else %}
-                                            {{ funcionario.tipo }}
+                                            <span class="badge bg-danger">Nenhuma</span>
                                         {% endif %}
-                                    </td>
-                                    <td>
-                                        {% with categorias_count=funcionario.categorias_count %}
-                                            {% if categorias_count > 0 %}
-                                                <span class="badge bg-success">{{ categorias_count }} categoria(s)</span>
-                                            {% else %}
-                                                <span class="badge bg-danger">Nenhuma</span>
-                                            {% endif %}
-                                        {% endwith %}
                                     </td>
                                     <td>
                                         <a href="{% url 'tickets:editar_permissoes_usuario' funcionario.id %}?empresa={{ empresa_selecionada.id }}" class="btn btn-sm btn-primary">

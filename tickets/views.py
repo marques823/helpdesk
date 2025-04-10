@@ -2836,71 +2836,93 @@ def gerenciar_permissoes_categoria(request):
     """
     View para gerenciar as permissões de categorias dos funcionários.
     """
-    # Verifica se o usuário é admin ou superuser, redirecionando caso não seja
-    if not request.user.is_staff and not request.user.is_superuser:
-        messages.error(request, 'Você não tem permissão para acessar esta página.')
-        return redirect('tickets:dashboard')
+    logger.info("**** INÍCIO FUNÇÃO gerenciar_permissoes_categoria (CORRIGIDA FINAL) ****")
     
     try:
         # Obtém apenas as empresas às quais o usuário tem acesso
         if request.user.is_superuser:
             # Superusuários veem todas as empresas
-            empresas = Empresa.objects.all()
-            logger.info(f"Usuário superuser: mostrando todas as {empresas.count()} empresas")
+            empresas = Empresa.objects.all().order_by('nome')
         else:
             # Funcionários administrativos veem apenas as empresas associadas a eles
-            funcionario = request.user.funcionarios.first()
+            funcionario = Funcionario.objects.filter(usuario=request.user).first()
             if funcionario and funcionario.is_admin():
-                empresas = funcionario.empresas.all()
-                logger.info(f"Usuário admin: mostrando {empresas.count()} empresas associadas")
+                empresas = funcionario.empresas.all().order_by('nome')
             else:
-                # Se não for admin nem superuser, não deveria estar aqui (já verificado acima)
-                # mas por segurança, mostramos apenas suas empresas
-                empresas = request.user.funcionarios.first().empresas.all() if hasattr(request.user, 'funcionarios') else Empresa.objects.none()
-                logger.info(f"Usuário regular: mostrando {empresas.count()} empresas associadas")
+                empresas = Empresa.objects.none()
         
         empresa_id = request.GET.get('empresa')
         empresa_selecionada = None
-        funcionarios = []
+        funcionarios_dados = []
+        
+        # Se houver apenas uma empresa, seleciona-a automaticamente
+        if not empresa_id and empresas.count() == 1:
+            empresa_id = str(empresas.first().id)
         
         # Se uma empresa foi selecionada
         if empresa_id:
-            try:
-                # Verificar se a empresa selecionada está entre as empresas permitidas
-                empresa_selecionada = empresas.get(id=empresa_id)
-                logger.info(f"Empresa selecionada: {empresa_selecionada.nome} (ID: {empresa_selecionada.id})")
+            # Para superusuários, permite acessar qualquer empresa
+            if request.user.is_superuser:
+                empresa_selecionada = get_object_or_404(Empresa, id=empresa_id)
+            else:
+                # Para funcionários normais, verifica se tem acesso à empresa
+                empresa_selecionada = get_object_or_404(empresas, id=empresa_id)
+            
+            # Usa SQL direto para garantir que todos os funcionários são carregados
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        f.id, f.tipo, 
+                        u.username, u.first_name, u.last_name, u.email
+                    FROM 
+                        tickets_funcionario f
+                    JOIN 
+                        auth_user u ON f.usuario_id = u.id
+                    JOIN 
+                        tickets_funcionario_empresas fe ON f.id = fe.funcionario_id
+                    WHERE 
+                        fe.empresa_id = %s
+                    ORDER BY
+                        u.username
+                """, [empresa_selecionada.id])
                 
-                # Busca todos os funcionários dessa empresa
-                funcionario_ids = Funcionario.objects.filter(empresas=empresa_selecionada).values_list('id', flat=True)
-                logger.info(f"IDs de funcionários encontrados: {list(funcionario_ids)}")
+                funcionarios_raw = cursor.fetchall()
+            
+            # Para cada funcionário, preparar os dados para exibição
+            for func_row in funcionarios_raw:
+                func_id, tipo, username, first_name, last_name, email = func_row
                 
-                # Busca completa dos funcionários
-                funcionarios = list(Funcionario.objects.filter(id__in=funcionario_ids).select_related('usuario'))
-                logger.info(f"Funcionários encontrados: {len(funcionarios)}")
+                # Contar categorias permitidas
+                categorias_count = CategoriaPermissao.objects.filter(
+                    funcionario_id=func_id,
+                    categoria__empresa=empresa_selecionada
+                ).count()
                 
-                # Adiciona a contagem de categorias para cada funcionário
-                for funcionario in funcionarios:
-                    count = CategoriaPermissao.objects.filter(
-                        funcionario=funcionario,
-                        categoria__empresa=empresa_selecionada
-                    ).count()
-                    funcionario.categorias_count = count
+                # Criar dados do funcionário para exibição
+                funcionario_data = {
+                    'id': func_id,
+                    'tipo': tipo,
+                    'tipo_display': dict(Funcionario.TIPO_CHOICES).get(tipo, tipo),
+                    'username': username,
+                    'first_name': first_name or '',
+                    'last_name': last_name or '',
+                    'email': email or '',
+                    'categorias_count': categorias_count
+                }
                 
-            except Empresa.DoesNotExist:
-                messages.error(request, 'Empresa não encontrada ou você não tem permissão para acessá-la.')
-                return redirect('tickets:gerenciar_permissoes_categoria')
+                funcionarios_dados.append(funcionario_data)
         
         context = {
             'empresas': empresas,
             'empresa_selecionada': empresa_selecionada,
-            'funcionarios': funcionarios,
+            'funcionarios_dados': funcionarios_dados,
         }
         
         return render(request, 'tickets/admin/permissoes_categoria.html', context)
         
     except Exception as e:
-        logger.error(f"Erro ao gerenciar permissões de categoria: {str(e)}")
-        messages.error(request, "Ocorreu um erro ao gerenciar permissões de categoria.")
+        logger.exception(f"Erro ao gerenciar permissões de categoria: {str(e)}")
+        messages.error(request, f"Ocorreu um erro ao gerenciar permissões: {str(e)}")
         return redirect('tickets:dashboard')
 
 @login_required
@@ -2943,6 +2965,11 @@ def editar_permissoes_usuario(request, funcionario_id):
                 messages.error(request, 'Você não tem permissão para gerenciar esta empresa.')
                 return redirect('tickets:gerenciar_permissoes_categoria')
         
+        # Verificar se o funcionário tem acesso à empresa selecionada
+        if not funcionario.empresas.filter(id=empresa_selecionada.id).exists():
+            messages.error(request, 'Este funcionário não pertence à empresa selecionada.')
+            return redirect('tickets:gerenciar_permissoes_categoria')
+        
         # Obter todas as categorias da empresa
         categorias = CategoriaChamado.objects.filter(empresa=empresa_selecionada)
         
@@ -2975,7 +3002,7 @@ def editar_permissoes_usuario(request, funcionario_id):
                     except Exception as e:
                         logger.error(f"Erro ao adicionar categoria {cat_id}: {str(e)}")
             
-            messages.success(request, f'Permissões de {funcionario.usuario.get_full_name()} atualizadas com sucesso.')
+            messages.success(request, f'Permissões de {funcionario.usuario.get_full_name() or funcionario.usuario.username} atualizadas com sucesso.')
             return redirect('tickets:gerenciar_permissoes_categoria')
         
         context = {
@@ -2983,7 +3010,7 @@ def editar_permissoes_usuario(request, funcionario_id):
             'empresas': empresas,
             'empresa_selecionada': empresa_selecionada,
             'categorias': categorias,
-            'categorias_permitidas': categorias_permitidas_ids,
+            'categorias_permitidas_ids': categorias_permitidas_ids,
         }
         
         return render(request, 'tickets/admin/editar_permissoes_usuario.html', context)

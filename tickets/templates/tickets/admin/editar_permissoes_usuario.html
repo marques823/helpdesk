@@ -62,7 +62,7 @@
                                                    name="categorias" 
                                                    value="{{ categoria.id }}" 
                                                    id="categoria_{{ categoria.id }}"
-                                                   {% if categoria.id in categorias_permitidas %}checked{% endif %}>
+                                                   {% if categoria.id in categorias_permitidas_ids %}checked{% endif %}>
                                             <label class="form-check-label w-100" for="categoria_{{ categoria.id }}">
                                                 <div class="d-flex align-items-center">
                                                     <div class="categoria-icon bg-{{ categoria.cor }} me-2" style="width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
