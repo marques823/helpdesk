@@ -44,6 +44,10 @@ class SecurityMiddleware(MiddlewareMixin):
     
     def process_request(self, request):
         """Processa a requisição e verifica permissões"""
+        # Se o request estiver marcado como isento pelo LoginExemptMiddleware, ignoramos a verificação
+        if hasattr(request, 'exempt') and request.exempt:
+            return None
+            
         # Ignorar URLs isentas
         if self.is_exempt(request.path):
             return None
@@ -232,5 +236,36 @@ class UserFuncionarioMiddleware(MiddlewareMixin):
             except:
                 # Se houver algum erro, apenas continua sem adicionar o funcionário
                 pass
+        
+        return None 
+
+
+class LoginExemptMiddleware(MiddlewareMixin):
+    """
+    Middleware para isentar URLs específicas da necessidade de autenticação.
+    Usa a configuração LOGIN_EXEMPT_URLS definida em settings.py.
+    """
+    
+    def process_request(self, request):
+        """
+        Verifica se o caminho atual está na lista de URLs isentas.
+        """
+        # Obter a lista de URLs isentas
+        exempt_urls = getattr(settings, 'LOGIN_EXEMPT_URLS', [])
+        
+        # Cria padrões regex para cada URL isenta
+        exempt_patterns = [re.compile(r'^/' + url + '/?$') for url in exempt_urls]
+        
+        # Adiciona sempre a raiz do site como isenta
+        exempt_patterns.append(re.compile(r'^/$'))
+        
+        # Registra o caminho para depuração
+        path = request.path_info
+        
+        # Se o caminho corresponder a um padrão isento, marca request.exempt = True
+        for pattern in exempt_patterns:
+            if pattern.match(path):
+                request.exempt = True
+                break
         
         return None 

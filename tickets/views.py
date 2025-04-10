@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse, HttpResponseRedirect
 from django.contrib.auth import logout
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
@@ -1234,19 +1234,32 @@ def multi_atribuir_ticket(request, ticket_id):
 
 @never_cache
 def logout_view(request):
+    """
+    Realiza o logout do usuário e direciona para a página de logout bem-sucedido.
+    Implementação simplificada que não depende do sistema de redirecionamento do Django.
+    """
     try:
-        logger.info(f"Logout iniciado para o usuário: {request.user.username}")
+        # Registrar o nome do usuário antes de fazer logout
+        username = request.user.username if request.user.is_authenticated else 'Usuário não autenticado'
+        logger.info(f"Logout iniciado para o usuário: {username}")
+        
+        # Realizar o logout
         logout(request)
+        
+        # Mensagem de sucesso no log
         logger.info("Logout concluído com sucesso")
-        messages.success(request, 'Você foi deslogado com sucesso!')
-        return redirect('home')
+        
+        # Redirecionar diretamente para a página de logout success
+        # Usando o caminho absoluto em vez do nome da URL
+        return HttpResponseRedirect('/logout-success/')
     except Exception as e:
+        # Logar qualquer erro que ocorra
         logger.error(f"Erro durante o logout: {str(e)}", exc_info=True)
-        messages.error(request, f'Erro ao fazer logout: {str(e)}')
-        return redirect('home')
+        # Redirecionar para home em caso de erro
+        return HttpResponseRedirect('/')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def gerenciar_campos_personalizados(request, empresa_id):
     try:
         empresa = get_object_or_404(Empresa, id=empresa_id)
@@ -1275,7 +1288,7 @@ def gerenciar_campos_personalizados(request, empresa_id):
         return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def editar_campo_personalizado(request, campo_id):
     try:
         campo = get_object_or_404(CampoPersonalizado, id=campo_id)
@@ -1299,7 +1312,7 @@ def editar_campo_personalizado(request, campo_id):
         return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def excluir_campo_personalizado(request, campo_id):
     try:
         campo = get_object_or_404(CampoPersonalizado, id=campo_id)
@@ -2115,8 +2128,81 @@ def get_estatisticas_categorias(request):
     return JsonResponse({"estatisticas": estatisticas})
 
 def logout_success(request):
-    """Exibe a página de logout bem-sucedido"""
-    return render(request, 'registration/logged_out.html')
+    """
+    Exibe uma página de logout bem-sucedido.
+    Esta view não requer autenticação e deve funcionar
+    mesmo após o usuário ter feito logout.
+    """
+    # Log para debug
+    logger.info("Página de logout_success acessada")
+    
+    # HTML direto para evitar quaisquer problemas de template
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Logout Realizado</title>
+        <!-- Script para aplicar o tema antes do carregamento da página -->
+        <script>
+            // Aplicar tema imediatamente para evitar piscar
+            (function() {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+                
+                // Aplicar ao documento antes mesmo de carregar
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                
+                // Definir estilo inicial para o body
+                if (theme === 'dark') {
+                    document.documentElement.style.backgroundColor = '#212529';
+                    document.documentElement.style.color = '#dee2e6';
+                }
+            })();
+        </script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            body {
+                transition: background-color 0.3s ease, color 0.3s ease;
+                /* Definir cores iniciais baseadas no tema para evitar piscar */
+                background-color: var(--bs-body-bg);
+                color: var(--bs-body-color);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body text-center p-5">
+                            <div class="mb-4">
+                                <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                            </div>
+                            <h2 class="mb-4">Você saiu do sistema com sucesso!</h2>
+                            <p class="lead mb-4">Obrigado por utilizar os serviços da Técnico Litoral Central de Suporte.</p>
+                            <div class="d-grid gap-2 col-md-8 mx-auto">
+                                <a href="/" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-home me-2"></i> Página Inicial
+                                </a>
+                                <a href="/login/" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i> Entrar Novamente
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+    </html>
+    """
+    
+    return HttpResponse(html_content)
 
 # ----- Views Painel Administrativo de Empresas -----
 
