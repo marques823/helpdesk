@@ -211,4 +211,26 @@ class SecurityMiddleware(MiddlewareMixin):
             except:
                 pass
             
+        return None
+
+
+class UserFuncionarioMiddleware(MiddlewareMixin):
+    """
+    Middleware para adicionar o objeto funcionário ao request para todos os usuários autenticados.
+    Isso permite acessar funcionario diretamente nos templates via request.funcionario.
+    """
+    
+    def process_request(self, request):
+        """
+        Adiciona o objeto funcionário ao request se o usuário estiver autenticado
+        """
+        if request.user.is_authenticated:
+            try:
+                funcionario = Funcionario.objects.filter(usuario=request.user).first()
+                if funcionario:
+                    request.funcionario = funcionario
+            except:
+                # Se houver algum erro, apenas continua sem adicionar o funcionário
+                pass
+        
         return None 
