@@ -2870,22 +2870,39 @@ def gerenciar_permissoes_categoria(request):
                 empresa_selecionada = empresas.get(id=empresa_id)
                 logger.info(f"Empresa selecionada: {empresa_selecionada.nome} (ID: {empresa_selecionada.id})")
                 
-                # Busca todos os funcionários dessa empresa
-                funcionario_ids = Funcionario.objects.filter(empresas=empresa_selecionada).values_list('id', flat=True)
-                logger.info(f"IDs de funcionários encontrados: {list(funcionario_ids)}")
+                # Busca TODOS os funcionários dessa empresa, sem nenhum filtro
+                # Usamos a tabela de relacionamento diretamente para garantir que todos sejam incluídos
+                funcionario_ids = []
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT funcionario_id
+                        FROM tickets_funcionario_empresas
+                        WHERE empresa_id = %s
+                    """, [empresa_selecionada.id])
+                    for row in cursor.fetchall():
+                        funcionario_ids.append(row[0])
+                
+                logger.info(f"IDs de funcionários encontrados via SQL: {funcionario_ids}")
                 
                 # Busca completa dos funcionários
-                funcionarios = list(Funcionario.objects.filter(id__in=funcionario_ids).select_related('usuario'))
-                logger.info(f"Funcionários encontrados: {len(funcionarios)}")
-                
-                # Adiciona a contagem de categorias para cada funcionário
-                for funcionario in funcionarios:
-                    count = CategoriaPermissao.objects.filter(
-                        funcionario=funcionario,
-                        categoria__empresa=empresa_selecionada
-                    ).count()
-                    funcionario.categorias_count = count
-                
+                if funcionario_ids:
+                    funcionarios = list(Funcionario.objects.filter(id__in=funcionario_ids).select_related('usuario'))
+                    logger.info(f"Funcionários encontrados: {len(funcionarios)}")
+                    
+                    # Mostra detalhes de cada funcionário para depuração
+                    for func in funcionarios:
+                        logger.info(f"Funcionário: {func.id} - {func.usuario.username} - Tipo: {func.tipo}")
+                    
+                    # Adiciona a contagem de categorias para cada funcionário
+                    for funcionario in funcionarios:
+                        count = CategoriaPermissao.objects.filter(
+                            funcionario=funcionario,
+                            categoria__empresa=empresa_selecionada
+                        ).count()
+                        funcionario.categorias_count = count
+                else:
+                    logger.warning(f"Nenhum funcionário encontrado para a empresa {empresa_selecionada.id}")
+                    funcionarios = []
             except Empresa.DoesNotExist:
                 messages.error(request, 'Empresa não encontrada ou você não tem permissão para acessá-la.')
                 return redirect('tickets:gerenciar_permissoes_categoria')
