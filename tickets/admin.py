@@ -3,7 +3,8 @@ from .models import (
     Empresa, Funcionario, Ticket, Comentario, HistoricoTicket,
     CategoriaChamado, CampoPersonalizado, ValorCampoPersonalizado,
     EmpresaConfig, AtribuicaoTicket, PerfilCompartilhamento, 
-    CampoPerfilCompartilhamento, NotaTecnica, PreferenciasNotificacao
+    CampoPerfilCompartilhamento, NotaTecnica, PreferenciasNotificacao,
+    CategoriaPermissao
 )
 from django.utils import timezone
 from django.urls import path
@@ -245,3 +246,10 @@ class PreferenciasNotificacaoAdmin(admin.ModelAdmin):
     list_filter = ('notificar_todas', 'notificar_atribuicao', 'notificar_alteracao_status')
     search_fields = ('usuario__username', 'usuario__email')
     raw_id_fields = ('usuario',)
+
+@admin.register(CategoriaPermissao)
+class CategoriaPermissaoAdmin(admin.ModelAdmin):
+    list_display = ('funcionario', 'categoria', 'criado_em')
+    list_filter = ('categoria__empresa', 'categoria')
+    search_fields = ('funcionario__usuario__username', 'categoria__nome')
+    raw_id_fields = ('funcionario', 'categoria')
