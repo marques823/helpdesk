@@ -2836,6 +2836,9 @@ def gerenciar_permissoes_categoria(request):
     """
     View para gerenciar as permissões de categorias dos funcionários.
     """
+    # DEBUG
+    logger.info("**** INÍCIO FUNÇÃO gerenciar_permissoes_categoria (NOVA) ****")
+    
     # Verifica se o usuário é admin ou superuser, redirecionando caso não seja
     if not request.user.is_staff and not request.user.is_superuser:
         messages.error(request, 'Você não tem permissão para acessar esta página.')
@@ -2852,9 +2855,13 @@ def gerenciar_permissoes_categoria(request):
             if funcionario and funcionario.is_admin():
                 empresas = funcionario.empresas.all()
             else:
-                # Se não for admin nem superuser, não deveria estar aqui (já verificado acima)
-                # mas por segurança, mostramos apenas suas empresas
-                empresas = request.user.funcionarios.first().empresas.all() if hasattr(request.user, 'funcionarios') else Empresa.objects.none()
+                empresas = Empresa.objects.none()
+        
+        # Ordenar empresas por nome
+        empresas = empresas.order_by('nome')
+        
+        # Log de empresas disponíveis
+        logger.info(f"Empresas disponíveis: {', '.join([f'{e.nome} (ID:{e.id})' for e in empresas])}")
         
         empresa_id = request.GET.get('empresa')
         empresa_selecionada = None
@@ -2865,72 +2872,66 @@ def gerenciar_permissoes_categoria(request):
             try:
                 # Verificar se a empresa selecionada está entre as empresas permitidas
                 empresa_selecionada = empresas.get(id=empresa_id)
+                logger.info(f"Empresa selecionada: {empresa_selecionada.nome} (ID:{empresa_selecionada.id})")
                 
-                # SOLUÇÃO DEFINITIVA:
-                # Em vez de usar o ORM para buscar os funcionários, vamos
-                # usar uma consulta SQL direta para garantir que todos
-                # os funcionários sejam retornados.
+                # Obter todos os funcionários para esta empresa usando o relacionamento reverso
+                funcionarios_query = """
+                SELECT 
+                    f.id, f.tipo, 
+                    u.username, u.first_name, u.last_name, u.email
+                FROM 
+                    tickets_funcionario f
+                JOIN 
+                    auth_user u ON f.usuario_id = u.id
+                JOIN 
+                    tickets_funcionario_empresas fe ON f.id = fe.funcionario_id
+                WHERE 
+                    fe.empresa_id = %s
+                """
+                
+                # Executar a consulta SQL diretamente para garantir resultados consistentes
                 with connection.cursor() as cursor:
-                    cursor.execute("""
-                        SELECT 
-                            f.id, 
-                            f.tipo, 
-                            u.username, 
-                            u.first_name, 
-                            u.last_name, 
-                            u.email
-                        FROM 
-                            tickets_funcionario f
-                        JOIN 
-                            auth_user u ON f.usuario_id = u.id
-                        JOIN 
-                            tickets_funcionario_empresas fe ON f.id = fe.funcionario_id
-                        WHERE 
-                            fe.empresa_id = %s
-                        ORDER BY 
-                            u.username
-                    """, [empresa_selecionada.id])
-                    
+                    cursor.execute(funcionarios_query, [empresa_selecionada.id])
                     funcionarios_raw = cursor.fetchall()
+                
+                logger.info(f"Total de funcionários encontrados: {len(funcionarios_raw)}")
+                
+                # Para cada funcionário, preparar os dados para exibição
+                for func_row in funcionarios_raw:
+                    func_id, tipo, username, first_name, last_name, email = func_row
                     
-                # Construir objetos de dados para cada funcionário
-                for row in funcionarios_raw:
-                    func_id, tipo, username, first_name, last_name, email = row
+                    # Obter o funcionário do banco de dados para usar as funções do modelo
+                    funcionario = Funcionario.objects.get(id=func_id)
                     
-                    # Contar categorias permitidas para este funcionário
-                    with connection.cursor() as cursor:
-                        cursor.execute("""
-                            SELECT COUNT(*)
-                            FROM tickets_categoriapermissao cp
-                            JOIN tickets_categoriachamado cc ON cp.categoria_id = cc.id
-                            WHERE cp.funcionario_id = %s AND cc.empresa_id = %s
-                        """, [func_id, empresa_selecionada.id])
-                        
-                        categorias_count = cursor.fetchone()[0]
+                    # Contar categorias permitidas
+                    categorias_permitidas = CategoriaPermissao.objects.filter(
+                        funcionario=funcionario,
+                        categoria__empresa=empresa_selecionada
+                    )
                     
-                    # Criar um dicionário com todos os dados necessários
+                    # Criar dados do funcionário para exibição
                     funcionario_data = {
                         'id': func_id,
                         'tipo': tipo,
                         'tipo_display': dict(Funcionario.TIPO_CHOICES).get(tipo, tipo),
                         'username': username,
-                        'first_name': first_name,
-                        'last_name': last_name,
-                        'email': email,
-                        'categorias_count': categorias_count
+                        'first_name': first_name or '',
+                        'last_name': last_name or '',
+                        'email': email or '',
+                        'categorias_count': categorias_permitidas.count()
                     }
                     
                     funcionarios_dados.append(funcionario_data)
-                    
-                # Log para debug
-                logger.info(f"Total de funcionários encontrados: {len(funcionarios_dados)}")
-                for func in funcionarios_dados:
-                    logger.info(f"Funcionário: {func['id']} - {func['username']} - Tipo: {func['tipo']}")
+                    logger.info(f"Adicionado funcionário: {username} (ID:{func_id})")
                 
             except Empresa.DoesNotExist:
                 messages.error(request, 'Empresa não encontrada ou você não tem permissão para acessá-la.')
                 return redirect('tickets:gerenciar_permissoes_categoria')
-        
+            
+            # Ordenar funcionários por nome de usuário
+            funcionarios_dados = sorted(funcionarios_dados, key=lambda x: x['username'])
+            logger.info(f"Total de funcionários processados: {len(funcionarios_dados)}")
+            
         context = {
             'empresas': empresas,
             'empresa_selecionada': empresa_selecionada,
@@ -2940,8 +2941,8 @@ def gerenciar_permissoes_categoria(request):
         return render(request, 'tickets/admin/permissoes_categoria.html', context)
         
     except Exception as e:
-        logger.error(f"Erro ao editar permissões de usuário: {str(e)}")
-        messages.error(request, f"Ocorreu um erro ao editar permissões: {str(e)}")
+        logger.exception(f"Erro ao gerenciar permissões de categoria: {str(e)}")
+        messages.error(request, f"Ocorreu um erro ao gerenciar permissões: {str(e)}")
         return redirect('tickets:gerenciar_permissoes_categoria')
 
 @login_required
@@ -2984,6 +2985,11 @@ def editar_permissoes_usuario(request, funcionario_id):
                 messages.error(request, 'Você não tem permissão para gerenciar esta empresa.')
                 return redirect('tickets:gerenciar_permissoes_categoria')
         
+        # Verificar se o funcionário tem acesso à empresa selecionada
+        if not funcionario.empresas.filter(id=empresa_selecionada.id).exists():
+            messages.error(request, 'Este funcionário não pertence à empresa selecionada.')
+            return redirect('tickets:gerenciar_permissoes_categoria')
+        
         # Obter todas as categorias da empresa
         categorias = CategoriaChamado.objects.filter(empresa=empresa_selecionada)
         
@@ -3016,7 +3022,7 @@ def editar_permissoes_usuario(request, funcionario_id):
                     except Exception as e:
                         logger.error(f"Erro ao adicionar categoria {cat_id}: {str(e)}")
             
-            messages.success(request, f'Permissões de {funcionario.usuario.get_full_name()} atualizadas com sucesso.')
+            messages.success(request, f'Permissões de {funcionario.usuario.get_full_name() or funcionario.usuario.username} atualizadas com sucesso.')
             return redirect('tickets:gerenciar_permissoes_categoria')
         
         context = {
@@ -3024,7 +3030,7 @@ def editar_permissoes_usuario(request, funcionario_id):
             'empresas': empresas,
             'empresa_selecionada': empresa_selecionada,
             'categorias': categorias,
-            'categorias_permitidas': categorias_permitidas_ids,
+            'categorias_permitidas_ids': categorias_permitidas_ids,
         }
         
         return render(request, 'tickets/admin/editar_permissoes_usuario.html', context)
