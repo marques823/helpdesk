@@ -219,40 +219,38 @@ class Funcionario(models.Model):
     def get_categorias_permitidas(self, empresa=None):
         """
         Retorna as categorias que o funcionário tem acesso.
-        Para admin e suporte, retorna todas as categorias da empresa.
-        Para clientes, retorna apenas as categorias explicitamente permitidas.
+        Para admin, retorna todas as categorias da empresa.
+        Para suporte e clientes, retorna apenas as categorias explicitamente permitidas.
         """
         if empresa:
             # Verifica se o funcionário tem acesso à empresa
             if not self.tem_acesso_empresa(empresa):
                 return CategoriaChamado.objects.none()
                 
-            # Para admin e suporte, retorna todas as categorias da empresa
-            if self.is_admin() or self.is_suporte():
+            # Para admin, retorna todas as categorias da empresa
+            if self.is_admin():
                 return CategoriaChamado.objects.filter(empresa=empresa, ativo=True)
             
-            # Para clientes, retorna apenas categorias permitidas
-            if self.is_cliente():
-                return CategoriaChamado.objects.filter(
-                    permissoes__funcionario=self,
-                    empresa=empresa,
-                    ativo=True
-                ).distinct()
+            # Para suporte e clientes, retorna apenas categorias permitidas
+            return CategoriaChamado.objects.filter(
+                permissoes__funcionario=self,
+                empresa=empresa,
+                ativo=True
+            ).distinct()
         else:
             # Se empresa não for especificada, considerar todas as empresas que o funcionário tem acesso
             empresas = self.empresas.all()
             
-            # Para admin e suporte, retorna todas as categorias das empresas
-            if self.is_admin() or self.is_suporte():
+            # Para admin, retorna todas as categorias das empresas
+            if self.is_admin():
                 return CategoriaChamado.objects.filter(empresa__in=empresas, ativo=True)
             
-            # Para clientes, retorna apenas categorias permitidas
-            if self.is_cliente():
-                return CategoriaChamado.objects.filter(
-                    permissoes__funcionario=self,
-                    empresa__in=empresas,
-                    ativo=True
-                ).distinct()
+            # Para suporte e clientes, retorna apenas categorias permitidas
+            return CategoriaChamado.objects.filter(
+                permissoes__funcionario=self,
+                empresa__in=empresas,
+                ativo=True
+            ).distinct()
         
         return CategoriaChamado.objects.none()
     

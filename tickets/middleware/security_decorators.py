@@ -265,4 +265,34 @@ def empresa_access_required(view_func):
             messages.error(request, "Seu usuário não tem um perfil de funcionário associado.")
             return HttpResponseRedirect(reverse('logout'))
             
+    return _wrapped_view
+
+
+def admin_permission_required(view_func):
+    """
+    Decorador que verifica se o usuário é um administrador (superusuário ou tipo admin).
+    Redireciona para o dashboard caso não tenha permissão.
+    """
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        # Superusuários sempre têm acesso
+        if request.user.is_superuser:
+            return view_func(request, *args, **kwargs)
+            
+        try:
+            # Verifica se o usuário é um funcionário administrador
+            funcionario = Funcionario.objects.get(usuario=request.user)
+            
+            # Verificar se é admin
+            if funcionario.is_admin():
+                return view_func(request, *args, **kwargs)
+            
+            # Se não é admin, redireciona com mensagem
+            messages.error(request, "Apenas administradores podem acessar esta página.")
+            return HttpResponseRedirect(reverse('tickets:dashboard'))
+            
+        except Funcionario.DoesNotExist:
+            messages.error(request, "Seu usuário não tem um perfil de funcionário associado.")
+            return HttpResponseRedirect(reverse('tickets:dashboard'))
+            
     return _wrapped_view 
