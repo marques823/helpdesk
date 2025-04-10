@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse, HttpResponseRedirect
 from django.contrib.auth import logout
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
@@ -1234,15 +1234,29 @@ def multi_atribuir_ticket(request, ticket_id):
 
 @never_cache
 def logout_view(request):
+    """
+    Realiza o logout do usuário e direciona para a página de logout bem-sucedido.
+    Implementação simplificada que não depende do sistema de redirecionamento do Django.
+    """
     try:
-        logger.info(f"Logout iniciado para o usuário: {request.user.username}")
+        # Registrar o nome do usuário antes de fazer logout
+        username = request.user.username if request.user.is_authenticated else 'Usuário não autenticado'
+        logger.info(f"Logout iniciado para o usuário: {username}")
+        
+        # Realizar o logout
         logout(request)
+        
+        # Mensagem de sucesso no log
         logger.info("Logout concluído com sucesso")
-        return redirect('logout_success')
+        
+        # Redirecionar diretamente para a página de logout success
+        # Usando o caminho absoluto em vez do nome da URL
+        return HttpResponseRedirect('/logout-success/')
     except Exception as e:
+        # Logar qualquer erro que ocorra
         logger.error(f"Erro durante o logout: {str(e)}", exc_info=True)
-        messages.error(request, f'Erro ao fazer logout: {str(e)}')
-        return redirect('home')
+        # Redirecionar para home em caso de erro
+        return HttpResponseRedirect('/')
 
 @login_required
 @admin_permission_required
@@ -2114,8 +2128,23 @@ def get_estatisticas_categorias(request):
     return JsonResponse({"estatisticas": estatisticas})
 
 def logout_success(request):
-    """Exibe a página de logout bem-sucedido, sem requisito de autenticação"""
-    return render(request, 'registration/logged_out.html')
+    """
+    Exibe a página de logout bem-sucedido.
+    Esta view não requer autenticação e deve funcionar
+    mesmo após o usuário ter feito logout.
+    """
+    # Log para debug
+    logger.info("Página de logout_success acessada")
+    
+    try:
+        # Renderizar a página de logout com um contexto simples
+        return render(request, 'registration/logged_out.html', {
+            'title': 'Logout realizado com sucesso'
+        })
+    except Exception as e:
+        logger.error(f"Erro ao renderizar a página de logout: {str(e)}")
+        # Em caso de erro, redirecionar para a raiz
+        return HttpResponseRedirect('/')
 
 # ----- Views Painel Administrativo de Empresas -----
 
