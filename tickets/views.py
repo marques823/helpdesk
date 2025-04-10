@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse, HttpResponseRedirect
 from django.contrib.auth import logout
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
@@ -10,7 +10,7 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao
 from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
                    AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
                    NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
@@ -30,6 +30,8 @@ from io import BytesIO
 from django.db.models import Count
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.db.models import Prefetch
+from .middleware.security_decorators import admin_permission_required
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -130,15 +132,25 @@ def dashboard(request):
         # Prepara as categorias para a visualização de categorias
         # Se a empresa estiver filtrada, mostra apenas categorias dessa empresa
         if empresa_filter:
-            categorias = CategoriaChamado.objects.filter(
-                empresa_id=empresa_filter,
-                ativo=True
-            ).order_by('ordem', 'nome')
+            empresa_obj = get_object_or_404(Empresa, id=empresa_filter)
+            # Verifica se o funcionário tem permissão para ver categorias específicas
+            if request.user.is_superuser or funcionario.is_admin() or funcionario.is_suporte():
+                categorias = CategoriaChamado.objects.filter(
+                    empresa=empresa_obj,
+                    ativo=True
+                ).order_by('ordem', 'nome')
+            else:
+                # Clientes só veem categorias permitidas
+                categorias = funcionario.get_categorias_permitidas(empresa=empresa_obj)
         else:
-            categorias = CategoriaChamado.objects.filter(
-                empresa__in=empresas,
-                ativo=True
-            ).order_by('ordem', 'nome')
+            # Sem filtro de empresa, considera todas as empresas a que o funcionário tem acesso
+            if request.user.is_superuser:
+                categorias = CategoriaChamado.objects.filter(
+                    empresa__in=empresas,
+                    ativo=True
+                ).order_by('ordem', 'nome')
+            else:
+                categorias = funcionario.get_categorias_permitidas()
         
         # Prepara a contagem de tickets por categoria
         categoria_counts = {}
@@ -1222,19 +1234,32 @@ def multi_atribuir_ticket(request, ticket_id):
 
 @never_cache
 def logout_view(request):
+    """
+    Realiza o logout do usuário e direciona para a página de logout bem-sucedido.
+    Implementação simplificada que não depende do sistema de redirecionamento do Django.
+    """
     try:
-        logger.info(f"Logout iniciado para o usuário: {request.user.username}")
+        # Registrar o nome do usuário antes de fazer logout
+        username = request.user.username if request.user.is_authenticated else 'Usuário não autenticado'
+        logger.info(f"Logout iniciado para o usuário: {username}")
+        
+        # Realizar o logout
         logout(request)
+        
+        # Mensagem de sucesso no log
         logger.info("Logout concluído com sucesso")
-        messages.success(request, 'Você foi deslogado com sucesso!')
-        return redirect('home')
+        
+        # Redirecionar diretamente para a página de logout success
+        # Usando o caminho absoluto em vez do nome da URL
+        return HttpResponseRedirect('/logout-success/')
     except Exception as e:
+        # Logar qualquer erro que ocorra
         logger.error(f"Erro durante o logout: {str(e)}", exc_info=True)
-        messages.error(request, f'Erro ao fazer logout: {str(e)}')
-        return redirect('home')
+        # Redirecionar para home em caso de erro
+        return HttpResponseRedirect('/')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def gerenciar_campos_personalizados(request, empresa_id):
     try:
         empresa = get_object_or_404(Empresa, id=empresa_id)
@@ -1263,7 +1288,7 @@ def gerenciar_campos_personalizados(request, empresa_id):
         return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def editar_campo_personalizado(request, campo_id):
     try:
         campo = get_object_or_404(CampoPersonalizado, id=campo_id)
@@ -1287,7 +1312,7 @@ def editar_campo_personalizado(request, campo_id):
         return redirect('tickets:lista_empresas')
 
 @login_required
-@user_passes_test(is_admin)
+@admin_permission_required
 def excluir_campo_personalizado(request, campo_id):
     try:
         campo = get_object_or_404(CampoPersonalizado, id=campo_id)
@@ -1997,16 +2022,25 @@ def get_categorias_por_empresa(request):
     if empresa_id:
         try:
             # Verifica permissão
-            if not request.user.is_superuser:
+            if request.user.is_superuser:
+                # Superusuários veem todas as categorias
+                categorias = list(CategoriaChamado.objects.filter(
+                    empresa_id=empresa_id,
+                    ativo=True
+                ).order_by('ordem', 'nome').values('id', 'nome', 'descricao', 'cor', 'icone'))
+            else:
                 funcionario = request.user.funcionarios.first()
                 if not funcionario or not funcionario.empresas.filter(id=empresa_id).exists():
                     return JsonResponse({"error": "Você não tem acesso a esta empresa"}, status=403)
-            
-            categorias = list(CategoriaChamado.objects.filter(
-                empresa_id=empresa_id,
-                ativo=True
-            ).order_by('ordem', 'nome').values('id', 'nome', 'descricao', 'cor', 'icone'))
-            
+                
+                # Obtém a empresa
+                empresa = get_object_or_404(Empresa, id=empresa_id)
+                
+                # Obtém categorias permitidas de acordo com o tipo de funcionário
+                categorias_permitidas = funcionario.get_categorias_permitidas(empresa=empresa)
+                
+                categorias = list(categorias_permitidas.values('id', 'nome', 'descricao', 'cor', 'icone'))
+                
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     
@@ -2094,8 +2128,81 @@ def get_estatisticas_categorias(request):
     return JsonResponse({"estatisticas": estatisticas})
 
 def logout_success(request):
-    """Exibe a página de logout bem-sucedido"""
-    return render(request, 'registration/logged_out.html')
+    """
+    Exibe uma página de logout bem-sucedido.
+    Esta view não requer autenticação e deve funcionar
+    mesmo após o usuário ter feito logout.
+    """
+    # Log para debug
+    logger.info("Página de logout_success acessada")
+    
+    # HTML direto para evitar quaisquer problemas de template
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Logout Realizado</title>
+        <!-- Script para aplicar o tema antes do carregamento da página -->
+        <script>
+            // Aplicar tema imediatamente para evitar piscar
+            (function() {
+                const savedTheme = localStorage.getItem('theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+                
+                // Aplicar ao documento antes mesmo de carregar
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                
+                // Definir estilo inicial para o body
+                if (theme === 'dark') {
+                    document.documentElement.style.backgroundColor = '#212529';
+                    document.documentElement.style.color = '#dee2e6';
+                }
+            })();
+        </script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+            body {
+                transition: background-color 0.3s ease, color 0.3s ease;
+                /* Definir cores iniciais baseadas no tema para evitar piscar */
+                background-color: var(--bs-body-bg);
+                color: var(--bs-body-color);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-body text-center p-5">
+                            <div class="mb-4">
+                                <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                            </div>
+                            <h2 class="mb-4">Você saiu do sistema com sucesso!</h2>
+                            <p class="lead mb-4">Obrigado por utilizar os serviços da Técnico Litoral Central de Suporte.</p>
+                            <div class="d-grid gap-2 col-md-8 mx-auto">
+                                <a href="/" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-home me-2"></i> Página Inicial
+                                </a>
+                                <a href="/login/" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i> Entrar Novamente
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+    </html>
+    """
+    
+    return HttpResponse(html_content)
 
 # ----- Views Painel Administrativo de Empresas -----
 
@@ -2808,3 +2915,189 @@ def excluir_ticket(request, ticket_id):
         logger.error(f"Erro ao acessar exclusão de ticket: {str(e)}")
         messages.error(request, 'Ocorreu um erro ao tentar excluir o chamado.')
         return redirect('tickets:dashboard')
+
+# ----- Views para Gerenciar Permissões de Categorias -----
+
+@login_required
+@admin_permission_required
+def gerenciar_permissoes_categoria(request):
+    """
+    View para gerenciar as permissões de categorias dos funcionários.
+    Apenas usuários administradores podem acessar esta página.
+    """
+    logger.info("**** INÍCIO FUNÇÃO gerenciar_permissoes_categoria (CORRIGIDA FINAL) ****")
+    
+    try:
+        # Obtém apenas as empresas às quais o usuário tem acesso
+        if request.user.is_superuser:
+            # Superusuários veem todas as empresas
+            empresas = Empresa.objects.all().order_by('nome')
+        else:
+            # Funcionários administrativos veem apenas as empresas associadas a eles
+            funcionario = Funcionario.objects.filter(usuario=request.user).first()
+            if funcionario and funcionario.is_admin():
+                empresas = funcionario.empresas.all().order_by('nome')
+            else:
+                empresas = Empresa.objects.none()
+        
+        empresa_id = request.GET.get('empresa')
+        empresa_selecionada = None
+        funcionarios_dados = []
+        
+        # Se houver apenas uma empresa, seleciona-a automaticamente
+        if not empresa_id and empresas.count() == 1:
+            empresa_id = str(empresas.first().id)
+        
+        # Se uma empresa foi selecionada
+        if empresa_id:
+            # Para superusuários, permite acessar qualquer empresa
+            if request.user.is_superuser:
+                empresa_selecionada = get_object_or_404(Empresa, id=empresa_id)
+            else:
+                # Para funcionários normais, verifica se tem acesso à empresa
+                empresa_selecionada = get_object_or_404(empresas, id=empresa_id)
+            
+            # Usa SQL direto para garantir que todos os funcionários são carregados
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        f.id, f.tipo, 
+                        u.username, u.first_name, u.last_name, u.email
+                    FROM 
+                        tickets_funcionario f
+                    JOIN 
+                        auth_user u ON f.usuario_id = u.id
+                    JOIN 
+                        tickets_funcionario_empresas fe ON f.id = fe.funcionario_id
+                    WHERE 
+                        fe.empresa_id = %s
+                    ORDER BY
+                        u.username
+                """, [empresa_selecionada.id])
+                
+                funcionarios_raw = cursor.fetchall()
+            
+            # Para cada funcionário, preparar os dados para exibição
+            for func_row in funcionarios_raw:
+                func_id, tipo, username, first_name, last_name, email = func_row
+                
+                # Contar categorias permitidas
+                categorias_count = CategoriaPermissao.objects.filter(
+                    funcionario_id=func_id,
+                    categoria__empresa=empresa_selecionada
+                ).count()
+                
+                # Criar dados do funcionário para exibição
+                funcionario_data = {
+                    'id': func_id,
+                    'tipo': tipo,
+                    'tipo_display': dict(Funcionario.TIPO_CHOICES).get(tipo, tipo),
+                    'username': username,
+                    'first_name': first_name or '',
+                    'last_name': last_name or '',
+                    'email': email or '',
+                    'categorias_count': categorias_count
+                }
+                
+                funcionarios_dados.append(funcionario_data)
+        
+        context = {
+            'empresas': empresas,
+            'empresa_selecionada': empresa_selecionada,
+            'funcionarios_dados': funcionarios_dados,
+        }
+        
+        return render(request, 'tickets/admin/permissoes_categoria.html', context)
+        
+    except Exception as e:
+        logger.exception(f"Erro ao gerenciar permissões de categoria: {str(e)}")
+        messages.error(request, f"Ocorreu um erro ao gerenciar permissões: {str(e)}")
+        return redirect('tickets:dashboard')
+
+@login_required
+@admin_permission_required
+def editar_permissoes_usuario(request, funcionario_id):
+    """
+    View para editar as permissões de categorias de um funcionário específico.
+    Apenas usuários administradores podem acessar esta página.
+    """
+    try:
+        # Obter o funcionário
+        funcionario = get_object_or_404(Funcionario, id=funcionario_id)
+        
+        # Obter a empresa selecionada
+        empresa_id = request.GET.get('empresa')
+        if not empresa_id:
+            messages.error(request, 'É necessário selecionar uma empresa.')
+            return redirect('tickets:gerenciar_permissoes_categoria')
+        
+        # Obtém apenas as empresas às quais o usuário tem acesso
+        if request.user.is_superuser:
+            # Superusuários veem todas as empresas
+            empresas = Empresa.objects.all()
+            empresa_selecionada = get_object_or_404(Empresa, id=empresa_id)
+        else:
+            # Funcionários administrativos veem apenas as empresas associadas a eles
+            funcionario_logado = request.user.funcionarios.first()
+            empresas = funcionario_logado.empresas.all()
+            try:
+                # Verifica se a empresa selecionada está entre as empresas permitidas
+                empresa_selecionada = empresas.get(id=empresa_id)
+            except Empresa.DoesNotExist:
+                messages.error(request, 'Você não tem permissão para gerenciar esta empresa.')
+                return redirect('tickets:gerenciar_permissoes_categoria')
+        
+        # Verificar se o funcionário tem acesso à empresa selecionada
+        if not funcionario.empresas.filter(id=empresa_selecionada.id).exists():
+            messages.error(request, 'Este funcionário não pertence à empresa selecionada.')
+            return redirect('tickets:gerenciar_permissoes_categoria')
+        
+        # Obter todas as categorias da empresa
+        categorias = CategoriaChamado.objects.filter(empresa=empresa_selecionada)
+        
+        # Obter as categorias permitidas para o funcionário nesta empresa
+        categorias_permitidas = CategoriaPermissao.objects.filter(
+            funcionario=funcionario,
+            categoria__empresa=empresa_selecionada
+        )
+        categorias_permitidas_ids = [cp.categoria.id for cp in categorias_permitidas]
+        
+        if request.method == 'POST':
+            # Recebe os IDs das categorias enviadas no formulário
+            categoria_ids = request.POST.getlist('categorias')
+            
+            # Remove todas as permissões existentes para esta empresa
+            CategoriaPermissao.objects.filter(
+                funcionario=funcionario,
+                categoria__empresa=empresa_selecionada
+            ).delete()
+            
+            # Adiciona as novas permissões selecionadas
+            if categoria_ids:
+                for cat_id in categoria_ids:
+                    try:
+                        categoria = CategoriaChamado.objects.get(id=cat_id, empresa=empresa_selecionada)
+                        CategoriaPermissao.objects.create(
+                            funcionario=funcionario,
+                            categoria=categoria
+                        )
+                    except Exception as e:
+                        logger.error(f"Erro ao adicionar categoria {cat_id}: {str(e)}")
+            
+            messages.success(request, f'Permissões de {funcionario.usuario.get_full_name() or funcionario.usuario.username} atualizadas com sucesso.')
+            return redirect('tickets:gerenciar_permissoes_categoria')
+        
+        context = {
+            'funcionario': funcionario,
+            'empresas': empresas,
+            'empresa_selecionada': empresa_selecionada,
+            'categorias': categorias,
+            'categorias_permitidas_ids': categorias_permitidas_ids,
+        }
+        
+        return render(request, 'tickets/admin/editar_permissoes_usuario.html', context)
+        
+    except Exception as e:
+        logger.error(f"Erro ao editar permissões de usuário: {str(e)}")
+        messages.error(request, f"Ocorreu um erro ao editar permissões: {str(e)}")
+        return redirect('tickets:gerenciar_permissoes_categoria')
