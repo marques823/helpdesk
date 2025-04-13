@@ -132,7 +132,7 @@ class TicketForm(forms.ModelForm):
                 if funcionario.empresas.count() == 1:
                     self.initial['empresa'] = funcionario.empresas.first()
                 
-                # Se for cliente, oculta o campo de atribuição
+                # Se o usuário for cliente, esconde o campo de atribuição
                 if funcionario.is_cliente():
                     self.fields.pop('atribuido_a', None)
                 else:
@@ -163,12 +163,24 @@ class TicketForm(forms.ModelForm):
         
         # Inicialmente, não mostra categorias até que uma empresa seja selecionada
         empresa_id = self.initial.get('empresa') or self.data.get('empresa')
-        if empresa_id:
-            # Se uma empresa for selecionada, mostra apenas categorias daquela empresa
-            self.fields['categoria'].queryset = CategoriaChamado.objects.filter(
-                empresa_id=empresa_id,
-                ativo=True
-            ).order_by('ordem', 'nome')
+        if empresa_id and self.usuario:
+            try:
+                empresa = Empresa.objects.get(id=empresa_id)
+                funcionario = Funcionario.objects.filter(usuario=self.usuario).first()
+                
+                if funcionario:
+                    # Mostrar apenas categorias permitidas para o usuário
+                    self.fields['categoria'].queryset = funcionario.get_categorias_permitidas(empresa)
+                elif self.usuario.is_superuser:
+                    # Para superusuários, mostrar todas as categorias ativas
+                    self.fields['categoria'].queryset = CategoriaChamado.objects.filter(
+                        empresa=empresa,
+                        ativo=True
+                    ).order_by('ordem', 'nome')
+                else:
+                    self.fields['categoria'].queryset = CategoriaChamado.objects.none()
+            except Empresa.DoesNotExist:
+                self.fields['categoria'].queryset = CategoriaChamado.objects.none()
         else:
             # Se nenhuma empresa for selecionada, não mostra categorias
             self.fields['categoria'].queryset = CategoriaChamado.objects.none()

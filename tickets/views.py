@@ -566,16 +566,18 @@ def criar_ticket(request):
                 ticket = form.save(commit=False)
                 ticket.criado_por = request.user
                 
-                # Se o usuário for cliente, atribuir automaticamente o ticket a um admin/suporte disponível
-                if funcionario and funcionario.is_cliente() and not ticket.atribuido_a:
-                    # Buscar um funcionário admin ou suporte da mesma empresa para atribuir o ticket
-                    admin_suporte = Funcionario.objects.filter(
-                        empresas=ticket.empresa,
-                        tipo__in=['admin', 'suporte']
-                    ).first()
-                    
-                    if admin_suporte:
-                        ticket.atribuido_a = admin_suporte
+                # Verifica se é um cliente criando o ticket e não foi atribuído a ninguém
+                if not ticket.atribuido_a:
+                    funcionario_atual = Funcionario.objects.filter(usuario=request.user).first()
+                    if funcionario_atual and funcionario_atual.is_cliente():
+                        # Procura por um funcionário admin ou suporte da mesma empresa para atribuir o ticket
+                        atribuido_a = Funcionario.objects.filter(
+                            empresas=ticket.empresa,
+                            tipo__in=['admin', 'suporte']
+                        ).order_by('?').first()  # Ordem aleatória para distribuir os tickets
+                        
+                        if atribuido_a:
+                            ticket.atribuido_a = atribuido_a
                 
                 ticket.save()
 
