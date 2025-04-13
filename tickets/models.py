@@ -371,6 +371,7 @@ class HistoricoTicket(models.Model):
         ('edicao', 'Edição de Informações'),
         ('comentario', 'Comentário'),
         ('campo_personalizado', 'Campo Personalizado'),
+        ('nota_tecnica', 'Nota Técnica'),
     )
     
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='historico')
@@ -378,6 +379,9 @@ class HistoricoTicket(models.Model):
     tipo_alteracao = models.CharField(max_length=20, choices=TIPO_ALTERACAO_CHOICES)
     valor_anterior = models.TextField(blank=True, null=True)
     valor_novo = models.TextField(blank=True, null=True)
+    descricao = models.TextField(blank=True, null=True, help_text="Descrição textual da alteração")
+    dados_anteriores = models.JSONField(blank=True, null=True, help_text="Dados anteriores em formato JSON")
+    dados_novos = models.JSONField(blank=True, null=True, help_text="Dados novos em formato JSON")
     data_alteracao = models.DateTimeField(auto_now_add=True)
     
     class Meta:
