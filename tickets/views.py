@@ -866,8 +866,11 @@ def editar_ticket(request, ticket_id):
                     'status': ticket.status,
                     'prioridade': ticket.prioridade,
                     'empresa': ticket.empresa.nome,
-                    'atribuido_a': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
                 }
+                
+                # Adiciona atribuido_a aos dados anteriores se existir
+                if ticket.atribuido_a:
+                    dados_anteriores['atribuido_a'] = ticket.atribuido_a.usuario.username
                 
                 ticket_salvo = form.save()
                 
@@ -905,8 +908,11 @@ def editar_ticket(request, ticket_id):
                     'status': ticket_salvo.status,
                     'prioridade': ticket_salvo.prioridade,
                     'empresa': ticket_salvo.empresa.nome,
-                    'atribuido_a': ticket_salvo.atribuido_a.usuario.username if ticket_salvo.atribuido_a else None
                 }
+                
+                # Adiciona atribuido_a aos dados novos se existir
+                if ticket_salvo.atribuido_a:
+                    dados_novos['atribuido_a'] = ticket_salvo.atribuido_a.usuario.username
                 
                 # Adiciona os campos personalizados alterados aos dados do histórico
                 if campos_alterados:
@@ -929,7 +935,9 @@ def editar_ticket(request, ticket_id):
         
         # Atualiza as opções do formulário
         form.fields['empresa'].queryset = empresas
-        form.fields['atribuido_a'].queryset = funcionarios
+        # Verifica se o campo atribuido_a existe antes de tentar atualizá-lo
+        if 'atribuido_a' in form.fields:
+            form.fields['atribuido_a'].queryset = funcionarios
         
         return render(request, 'tickets/editar_ticket.html', {
             'form': form,
