@@ -285,6 +285,9 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
             descricao=descricao
         )
         
+        # Log para debug
+        logger.debug(f"Registrando histórico tipo {tipo_alteracao} para ticket {ticket.id}")
+        
         # Adicionar os detalhes anteriores, se existirem
         if dados_anteriores:
             for chave, valor in dados_anteriores.items():
@@ -302,6 +305,7 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
                     chave=chave,
                     valor=valor
                 )
+                logger.debug(f"Registrado dado anterior: {chave} = {valor[:50]}...")
         
         # Adicionar os detalhes novos, se existirem
         if dados_novos:
@@ -320,6 +324,7 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
                     chave=chave,
                     valor=valor
                 )
+                logger.debug(f"Registrado dado novo: {chave} = {valor[:50]}...")
         
         return historico
     except Exception as e:
@@ -894,22 +899,31 @@ def editar_ticket(request, ticket_id):
             empresas = funcionario.empresas.all()
             funcionarios = Funcionario.objects.filter(empresas__in=empresas).distinct()
         
+        # IMPORTANTE: Salvar dados anteriores ANTES de processar o formulário
+        dados_anteriores = {
+            'titulo': ticket.titulo,
+            'descricao': ticket.descricao,
+            'status': ticket.get_status_display(),
+            'prioridade': ticket.get_prioridade_display(),
+            'empresa': ticket.empresa.nome,
+        }
+        
+        # Adiciona atribuido_a aos dados anteriores se existir
+        if ticket.atribuido_a:
+            dados_anteriores['atribuido_a'] = ticket.atribuido_a.usuario.get_full_name() or ticket.atribuido_a.usuario.username
+        
+        # Armazenar valores anteriores dos campos personalizados
+        campos_personalizados_anteriores = {}
+        for valor in valores_campos:
+            campos_personalizados_anteriores[valor.campo.nome] = valor.valor
+        
+        if campos_personalizados_anteriores:
+            dados_anteriores['campos_personalizados'] = campos_personalizados_anteriores
+        
         if request.method == 'POST':
             form = TicketForm(request.POST, instance=ticket, usuario=request.user)
             if form.is_valid():
-                # Salva os dados anteriores para o histórico
-                dados_anteriores = {
-                    'titulo': ticket.titulo,
-                    'descricao': ticket.descricao,
-                    'status': ticket.status,
-                    'prioridade': ticket.prioridade,
-                    'empresa': ticket.empresa.nome,
-                }
-                
-                # Adiciona atribuido_a aos dados anteriores se existir
-                if ticket.atribuido_a:
-                    dados_anteriores['atribuido_a'] = ticket.atribuido_a.usuario.username
-                
+                # Salvando o ticket para aplicar as alterações
                 ticket_salvo = form.save()
                 
                 # Processa os valores dos campos personalizados
@@ -926,7 +940,7 @@ def editar_ticket(request, ticket_id):
                         else:
                             novo_valor = campo_valor or ''
                         
-                        # Se o valor mudou, atualiza e registra no histórico
+                        # Se o valor mudou, atualiza
                         if novo_valor != valor.valor:
                             # Registra a alteração para o histórico
                             campos_alterados.append({
@@ -943,28 +957,35 @@ def editar_ticket(request, ticket_id):
                 dados_novos = {
                     'titulo': ticket_salvo.titulo,
                     'descricao': ticket_salvo.descricao,
-                    'status': ticket_salvo.status,
-                    'prioridade': ticket_salvo.prioridade,
+                    'status': ticket_salvo.get_status_display(),
+                    'prioridade': ticket_salvo.get_prioridade_display(),
                     'empresa': ticket_salvo.empresa.nome,
                 }
                 
                 # Adiciona atribuido_a aos dados novos se existir
                 if ticket_salvo.atribuido_a:
-                    dados_novos['atribuido_a'] = ticket_salvo.atribuido_a.usuario.username
+                    dados_novos['atribuido_a'] = ticket_salvo.atribuido_a.usuario.get_full_name() or ticket_salvo.atribuido_a.usuario.username
                 
                 # Adiciona os campos personalizados alterados aos dados do histórico
                 if campos_alterados:
-                    dados_anteriores['campos_personalizados'] = {item['campo']: item['valor_anterior'] for item in campos_alterados}
                     dados_novos['campos_personalizados'] = {item['campo']: item['valor_novo'] for item in campos_alterados}
+                elif 'campos_personalizados' in dados_anteriores:
+                    # Inclui os campos personalizados mesmo que não tenham sido alterados
+                    campos_personalizados_atuais = {}
+                    for valor in valores_campos:
+                        campos_personalizados_atuais[valor.campo.nome] = valor.valor
+                    dados_novos['campos_personalizados'] = campos_personalizados_atuais
                 
-                registrar_historico(
+                # Sempre registrar o histórico quando o formulário é salvo
+                historico = registrar_historico(
                     ticket=ticket_salvo,
                     tipo_alteracao='edicao',
                     usuario=request.user,
-                    descricao=f'Chamado editado por {request.user.get_full_name()}',
+                    descricao=f'Chamado editado por {request.user.get_full_name() or request.user.username}',
                     dados_anteriores=dados_anteriores,
                     dados_novos=dados_novos
                 )
+                logger.info(f"Histórico registrado com ID {historico.id if historico else 'None'} para o ticket {ticket_salvo.id}")
                 
                 messages.success(request, 'Chamado atualizado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)

@@ -182,7 +182,7 @@
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
-                                                                    {% if dados_anteriores.titulo != dados_novos.titulo %}
+                                                                    {% if dados_anteriores.titulo|values_differ:dados_novos.titulo %}
                                                                     <tr>
                                                                         <td><strong>Título</strong></td>
                                                                         <td>{{ dados_anteriores.titulo }}</td>
@@ -190,7 +190,7 @@
                                                                     </tr>
                                                                     {% endif %}
                                                                     
-                                                                    {% if dados_anteriores.descricao != dados_novos.descricao %}
+                                                                    {% if dados_anteriores.descricao|values_differ:dados_novos.descricao %}
                                                                     <tr>
                                                                         <td><strong>Descrição</strong></td>
                                                                         <td>{{ dados_anteriores.descricao|truncate_text:150|linebreaks }}</td>
@@ -198,7 +198,7 @@
                                                                     </tr>
                                                                     {% endif %}
                                                                     
-                                                                    {% if dados_anteriores.status != dados_novos.status %}
+                                                                    {% if dados_anteriores.status|values_differ:dados_novos.status %}
                                                                     <tr>
                                                                         <td><strong>Status</strong></td>
                                                                         <td>{{ dados_anteriores.status }}</td>
@@ -206,7 +206,7 @@
                                                                     </tr>
                                                                     {% endif %}
                                                                     
-                                                                    {% if dados_anteriores.prioridade != dados_novos.prioridade %}
+                                                                    {% if dados_anteriores.prioridade|values_differ:dados_novos.prioridade %}
                                                                     <tr>
                                                                         <td><strong>Prioridade</strong></td>
                                                                         <td>{{ dados_anteriores.prioridade }}</td>
@@ -214,7 +214,7 @@
                                                                     </tr>
                                                                     {% endif %}
                                                                     
-                                                                    {% if dados_anteriores.atribuido_a != dados_novos.atribuido_a %}
+                                                                    {% if dados_anteriores.atribuido_a|values_differ:dados_novos.atribuido_a %}
                                                                     <tr>
                                                                         <td><strong>Atribuído a</strong></td>
                                                                         <td>{{ dados_anteriores.atribuido_a|default:"Não atribuído" }}</td>
@@ -224,13 +224,15 @@
                                                                     
                                                                     {% if dados_anteriores.campos_personalizados and dados_novos.campos_personalizados %}
                                                                         {% for campo, valor_anterior in dados_anteriores.campos_personalizados.items %}
-                                                                            {% if valor_anterior != dados_novos.campos_personalizados|get_item:campo %}
+                                                                            {% with valor_novo=dados_novos.campos_personalizados|get_item:campo %}
+                                                                            {% if valor_anterior|values_differ:valor_novo %}
                                                                             <tr>
                                                                                 <td><strong>{{ campo }}</strong></td>
                                                                                 <td>{{ valor_anterior }}</td>
-                                                                                <td>{{ dados_novos.campos_personalizados|get_item:campo }}</td>
+                                                                                <td>{{ valor_novo }}</td>
                                                                             </tr>
                                                                             {% endif %}
+                                                                            {% endwith %}
                                                                         {% endfor %}
                                                                     {% endif %}
                                                                 </tbody>
