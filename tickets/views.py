@@ -857,7 +857,7 @@ def editar_ticket(request, ticket_id):
             funcionarios = Funcionario.objects.filter(empresas__in=empresas).distinct()
         
         if request.method == 'POST':
-            form = TicketForm(request.POST, instance=ticket, user=request.user)
+            form = TicketForm(request.POST, instance=ticket, usuario=request.user)
             if form.is_valid():
                 # Salva os dados anteriores para o histórico
                 dados_anteriores = {
@@ -925,7 +925,7 @@ def editar_ticket(request, ticket_id):
                 messages.success(request, 'Chamado atualizado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
         else:
-            form = TicketForm(instance=ticket, user=request.user)
+            form = TicketForm(instance=ticket, usuario=request.user)
         
         # Atualiza as opções do formulário
         form.fields['empresa'].queryset = empresas

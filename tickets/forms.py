@@ -130,7 +130,7 @@ class TicketForm(forms.ModelForm):
                 
                 # Se tiver apenas uma empresa, seleciona automaticamente
                 if funcionario.empresas.count() == 1:
-                    self.initial['empresa'] = funcionario.empresas.first()
+                    self.initial['empresa'] = funcionario.empresas.first().id
                 
                 # Se o usuário for cliente, esconde o campo de atribuição
                 if funcionario.is_cliente():
