@@ -3,7 +3,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.db import transaction
 
-from .models import Ticket, HistoricoTicket, AtribuicaoTicket, PreferenciasNotificacao
+from .models import Ticket, Comentario, HistoricoTicket, AtribuicaoTicket, PreferenciasNotificacao
 from .email_notifications import EmailNotificationService, ConfiguracaoNotificacao
 
 import logging
@@ -60,9 +60,14 @@ def notificar_alteracoes_ticket(sender, instance, created, **kwargs):
     """
     Envia notificações de e-mail quando o status de um ticket é alterado ou quando é atribuído
     """
-    # Se foi um novo ticket criado, não precisamos verificar alterações
+    # Se foi um novo ticket criado, notifica os administradores e suporte
     if created:
-        return
+        try:
+            # Espera um pouco para garantir que o ticket foi completamente salvo
+            transaction.on_commit(lambda: enviar_notificacao_novo_ticket(instance))
+            return
+        except Exception as e:
+            logger.error(f"Erro ao agendar notificação de novo ticket #{instance.id}: {str(e)}")
         
     # Processar alteração de status    
     if hasattr(instance, '_status_alterado') and instance._status_alterado:
@@ -102,6 +107,16 @@ def notificar_alteracoes_ticket(sender, instance, created, **kwargs):
         except Exception as e:
             logger.error(f"Erro ao enviar notificação de atribuição para o ticket #{instance.id}: {str(e)}")
 
+def enviar_notificacao_novo_ticket(ticket):
+    """
+    Função auxiliar para enviar notificação de novo ticket
+    """
+    try:
+        EmailNotificationService.notificar_criacao_ticket(ticket)
+        logger.info(f"Notificação de novo ticket enviada para o ticket #{ticket.id}")
+    except Exception as e:
+        logger.error(f"Erro ao enviar notificação de novo ticket #{ticket.id}: {str(e)}")
+
 @receiver(post_save, sender=AtribuicaoTicket)
 def notificar_atribuicao_multipla(sender, instance, created, **kwargs):
     """
@@ -123,4 +138,26 @@ def notificar_atribuicao_multipla(sender, instance, created, **kwargs):
             else:
                 logger.info(f"Notificação de atribuição múltipla desativada para o usuário {usuario_atribuido.username}")
         except Exception as e:
-            logger.error(f"Erro ao enviar notificação de atribuição múltipla: {str(e)}") 
+            logger.error(f"Erro ao enviar notificação de atribuição múltipla: {str(e)}")
+
+@receiver(post_save, sender=Comentario)
+def notificar_novo_comentario(sender, instance, created, **kwargs):
+    """
+    Envia notificações quando um novo comentário é adicionado a um ticket
+    """
+    if created:  # Apenas para novos comentários
+        try:
+            # Agenda o envio da notificação para após o commit da transação
+            transaction.on_commit(lambda: enviar_notificacao_comentario(instance))
+        except Exception as e:
+            logger.error(f"Erro ao agendar notificação de novo comentário: {str(e)}")
+
+def enviar_notificacao_comentario(comentario):
+    """
+    Função auxiliar para enviar notificação de novo comentário
+    """
+    try:
+        EmailNotificationService.notificar_novo_comentario(comentario)
+        logger.info(f"Notificação de novo comentário enviada para o ticket #{comentario.ticket.id}")
+    except Exception as e:
+        logger.error(f"Erro ao enviar notificação de novo comentário no ticket #{comentario.ticket.id}: {str(e)}") 

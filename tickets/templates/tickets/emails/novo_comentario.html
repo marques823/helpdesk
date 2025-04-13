@@ -1,0 +1,23 @@
+{% extends "tickets/emails/base_email.html" %}
+
+{% block title %}Novo Comentário em Ticket{% endblock %}
+
+{% block header_title %}Novo Comentário em Ticket{% endblock %}
+
+{% block content %}
+<p>Olá,</p>
+
+<p>
+    Um novo comentário foi adicionado ao ticket <strong>#{{ ticket.id }} - {{ ticket.titulo }}</strong>
+    por <strong>{{ autor.get_full_name|default:autor.username }}</strong>.
+</p>
+
+<div style="background-color: #fff; border-left: 4px solid #3498db; padding: 10px; margin: 15px 0;">
+    <p>{{ comentario.texto|linebreaksbr }}</p>
+    <p style="color: #888; font-size: 12px;">Comentado em {{ comentario.criado_em|date:"d/m/Y H:i" }}</p>
+</div>
+
+<p>
+    Acesse o sistema para visualizar o ticket completo ou responder ao comentário.
+</p>
+{% endblock %} 
