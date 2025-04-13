@@ -534,10 +534,16 @@ def criar_ticket(request):
         if empresa_id and not categoria_id and request.method != 'POST':
             try:
                 empresa = Empresa.objects.get(id=empresa_id)
-                categorias = CategoriaChamado.objects.filter(
-                    empresa=empresa,
-                    ativo=True
-                ).order_by('ordem', 'nome')
+                
+                # Obter as categorias permitidas para o funcionário atual
+                if funcionario:
+                    categorias = funcionario.get_categorias_permitidas(empresa)
+                else:
+                    # Se for um superusuário, mostrar todas as categorias ativas
+                    categorias = CategoriaChamado.objects.filter(
+                        empresa=empresa,
+                        ativo=True
+                    ).order_by('ordem', 'nome')
                 
                 # Se temos apenas uma categoria ou nenhuma, continue para o formulário
                 if categorias.count() <= 1:
@@ -555,7 +561,7 @@ def criar_ticket(request):
                 pass
 
         if request.method == 'POST':
-            form = TicketForm(request.POST, user=request.user, initial=initial_data)
+            form = TicketForm(request.POST, usuario=request.user, initial=initial_data)
             if form.is_valid():
                 ticket = form.save(commit=False)
                 ticket.criado_por = request.user
@@ -583,7 +589,7 @@ def criar_ticket(request):
                 messages.success(request, 'Chamado criado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket.id)
         else:
-            form = TicketForm(user=request.user, initial=initial_data)
+            form = TicketForm(usuario=request.user, initial=initial_data)
 
         context = {
             'form': form,

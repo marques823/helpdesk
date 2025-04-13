@@ -111,7 +111,7 @@ class TicketForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
+        self.usuario = kwargs.pop('usuario', None)
         super().__init__(*args, **kwargs)
         
         # Define a ordem dos campos
@@ -122,8 +122,8 @@ class TicketForm(forms.ModelForm):
         self.fields = {k: original_fields[k] for k in self.fields_order if k in original_fields}
         
         # Se o usuário não for admin, filtra as empresas e funcionários
-        if self.user and not self.user.is_superuser:
-            funcionario = Funcionario.objects.filter(usuario=self.user).first()
+        if self.usuario and not self.usuario.is_superuser:
+            funcionario = Funcionario.objects.filter(usuario=self.usuario).first()
             if funcionario:
                 # Filtra apenas as empresas do funcionário
                 self.fields['empresa'].queryset = funcionario.empresas.all()
@@ -175,8 +175,8 @@ class TicketForm(forms.ModelForm):
         atribuido_a = cleaned_data.get('atribuido_a')
         
         # Verifica se o usuário tem acesso à empresa selecionada
-        if self.user and not self.user.is_superuser:
-            funcionario = Funcionario.objects.filter(usuario=self.user).first()
+        if self.usuario and not self.usuario.is_superuser:
+            funcionario = Funcionario.objects.filter(usuario=self.usuario).first()
             if funcionario and empresa:
                 if not funcionario.tem_acesso_empresa(empresa):
                     raise forms.ValidationError("Você não tem acesso a esta empresa.")

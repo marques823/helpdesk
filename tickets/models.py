@@ -154,8 +154,8 @@ class Funcionario(models.Model):
         if not self.tem_acesso_empresa(empresa):
             return False
         
-        # Admin e suporte podem criar tickets para empresas que têm acesso
-        return self.is_admin() or self.is_suporte()
+        # Todos os tipos de usuários (admin, suporte e cliente) podem criar tickets
+        return True
     
     def pode_editar_ticket(self, ticket):
         # Verifica se o funcionário tem acesso à empresa do ticket
