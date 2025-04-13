@@ -122,4 +122,25 @@ def get_item(dictionary, key):
         try:
             return dictionary[key]
         except (KeyError, TypeError, AttributeError):
-            return None 
+            return None
+
+@register.filter
+def truncate_text(text, length=100):
+    """Truncar texto para o comprimento especificado, adicionando '...' se necessário"""
+    if not text:
+        return ""
+    
+    if len(text) <= length:
+        return text
+    
+    return text[:length] + "..."
+
+@register.filter
+def values_differ(value1, value2):
+    """Verifica se dois valores são diferentes, considerando tipos e representações em string"""
+    # Converter para string para comparação uniforme
+    str_value1 = str(value1).strip() if value1 is not None else ""
+    str_value2 = str(value2).strip() if value2 is not None else ""
+    
+    # Verifica se as strings são diferentes
+    return str_value1 != str_value2 
