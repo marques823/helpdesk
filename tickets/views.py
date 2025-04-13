@@ -1426,8 +1426,16 @@ def relatorio_tickets(request):
     filtro_data_final = request.GET.get('data_final')
     filtro_search = request.GET.get('search')
     
-    # Base query
-    tickets_query = Ticket.objects.filter(empresa__in=empresas)
+    # Base query - agora com verificação de permissões
+    if funcionario.is_admin() or funcionario.is_suporte():
+        # Admins e suporte podem ver todos os tickets das empresas que têm acesso
+        tickets_query = Ticket.objects.filter(empresa__in=empresas)
+    else:
+        # Clientes só podem ver seus próprios tickets
+        tickets_query = Ticket.objects.filter(
+            Q(empresa__in=empresas) & 
+            (Q(criado_por=request.user) | Q(atribuido_a=funcionario) | Q(atribuicoes__funcionario=funcionario))
+        ).distinct()
     
     # Aplicar filtros se fornecidos
     if filtro_empresa:
@@ -1581,8 +1589,16 @@ def exportar_relatorio(request, tipo):
             # Lista de empresas que o funcionário tem acesso
             empresas = funcionario.empresas.all()
             
-            # Base query
-            tickets_query = Ticket.objects.filter(empresa__in=empresas)
+            # Base query com restrições de permissão
+            if funcionario.is_admin() or funcionario.is_suporte():
+                # Admins e suporte podem ver todos os tickets das empresas que têm acesso
+                tickets_query = Ticket.objects.filter(empresa__in=empresas)
+            else:
+                # Clientes só podem ver seus próprios tickets
+                tickets_query = Ticket.objects.filter(
+                    Q(empresa__in=empresas) & 
+                    (Q(criado_por=request.user) | Q(atribuido_a=funcionario) | Q(atribuicoes__funcionario=funcionario))
+                ).distinct()
             
             # Aplicar filtros se fornecidos
             if filtro_empresa:
