@@ -51,10 +51,12 @@
                                         {% endif %}
                                     {% endwith %}
                                 </a>
-                                <a href="{% url 'tickets:compartilhar_ticket_pdf' ticket_id=ticket.id %}" class="btn btn-sm btn-danger">
-                                    <i class="fas fa-file-pdf"></i> <span class="d-none d-sm-inline">PDF</span>
-                                </a>
                             {% endif %}
+                            
+                            <!-- Botão de PDF disponível para todos os usuários que podem ver o ticket -->
+                            <a href="{% url 'tickets:compartilhar_ticket_pdf' ticket_id=ticket.id %}" class="btn btn-sm btn-danger">
+                                <i class="fas fa-file-pdf"></i> <span class="d-none d-sm-inline">PDF</span>
+                            </a>
                             
                             <a href="{% url 'tickets:dashboard' %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-sm btn-secondary">
                                 <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Voltar</span>
