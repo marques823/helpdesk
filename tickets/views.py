@@ -10,7 +10,7 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket
 from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
                    AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
                    NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
@@ -277,16 +277,54 @@ def dashboard(request):
 def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteriores=None, dados_novos=None):
     """Função auxiliar para registrar alterações no histórico do ticket"""
     try:
-        HistoricoTicket.objects.create(
+        # Criar o registro de histórico principal
+        historico = HistoricoTicket.objects.create(
             ticket=ticket,
             tipo_alteracao=tipo_alteracao,
             usuario=usuario,
-            descricao=descricao,
-            dados_anteriores=dados_anteriores,
-            dados_novos=dados_novos
+            descricao=descricao
         )
+        
+        # Adicionar os detalhes anteriores, se existirem
+        if dados_anteriores:
+            for chave, valor in dados_anteriores.items():
+                # Se o valor for um dicionário ou lista, converte para string
+                if isinstance(valor, (dict, list)):
+                    valor = json.dumps(valor)
+                elif valor is None:
+                    valor = "None"
+                else:
+                    valor = str(valor)
+                
+                DetalheHistoricoTicket.objects.create(
+                    historico=historico,
+                    tipo='anterior',
+                    chave=chave,
+                    valor=valor
+                )
+        
+        # Adicionar os detalhes novos, se existirem
+        if dados_novos:
+            for chave, valor in dados_novos.items():
+                # Se o valor for um dicionário ou lista, converte para string
+                if isinstance(valor, (dict, list)):
+                    valor = json.dumps(valor)
+                elif valor is None:
+                    valor = "None"
+                else:
+                    valor = str(valor)
+                    
+                DetalheHistoricoTicket.objects.create(
+                    historico=historico,
+                    tipo='novo',
+                    chave=chave,
+                    valor=valor
+                )
+        
+        return historico
     except Exception as e:
         logger.error(f"Erro ao registrar histórico: {str(e)}")
+        return None
 
 @login_required
 def historico_ticket(request, ticket_id):
@@ -534,10 +572,16 @@ def criar_ticket(request):
         if empresa_id and not categoria_id and request.method != 'POST':
             try:
                 empresa = Empresa.objects.get(id=empresa_id)
-                categorias = CategoriaChamado.objects.filter(
-                    empresa=empresa,
-                    ativo=True
-                ).order_by('ordem', 'nome')
+                
+                # Obter as categorias permitidas para o funcionário atual
+                if funcionario:
+                    categorias = funcionario.get_categorias_permitidas(empresa)
+                else:
+                    # Se for um superusuário, mostrar todas as categorias ativas
+                    categorias = CategoriaChamado.objects.filter(
+                        empresa=empresa,
+                        ativo=True
+                    ).order_by('ordem', 'nome')
                 
                 # Se temos apenas uma categoria ou nenhuma, continue para o formulário
                 if categorias.count() <= 1:
@@ -555,10 +599,24 @@ def criar_ticket(request):
                 pass
 
         if request.method == 'POST':
-            form = TicketForm(request.POST, user=request.user, initial=initial_data)
+            form = TicketForm(request.POST, usuario=request.user, initial=initial_data)
             if form.is_valid():
                 ticket = form.save(commit=False)
                 ticket.criado_por = request.user
+                
+                # Verifica se é um cliente criando o ticket e não foi atribuído a ninguém
+                if not ticket.atribuido_a:
+                    funcionario_atual = Funcionario.objects.filter(usuario=request.user).first()
+                    if funcionario_atual and funcionario_atual.is_cliente():
+                        # Procura por um funcionário admin ou suporte da mesma empresa para atribuir o ticket
+                        atribuido_a = Funcionario.objects.filter(
+                            empresas=ticket.empresa,
+                            tipo__in=['admin', 'suporte']
+                        ).order_by('?').first()  # Ordem aleatória para distribuir os tickets
+                        
+                        if atribuido_a:
+                            ticket.atribuido_a = atribuido_a
+                
                 ticket.save()
 
                 # Salva os valores dos campos personalizados
@@ -583,7 +641,7 @@ def criar_ticket(request):
                 messages.success(request, 'Chamado criado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket.id)
         else:
-            form = TicketForm(user=request.user, initial=initial_data)
+            form = TicketForm(usuario=request.user, initial=initial_data)
 
         context = {
             'form': form,
@@ -837,7 +895,7 @@ def editar_ticket(request, ticket_id):
             funcionarios = Funcionario.objects.filter(empresas__in=empresas).distinct()
         
         if request.method == 'POST':
-            form = TicketForm(request.POST, instance=ticket, user=request.user)
+            form = TicketForm(request.POST, instance=ticket, usuario=request.user)
             if form.is_valid():
                 # Salva os dados anteriores para o histórico
                 dados_anteriores = {
@@ -846,8 +904,11 @@ def editar_ticket(request, ticket_id):
                     'status': ticket.status,
                     'prioridade': ticket.prioridade,
                     'empresa': ticket.empresa.nome,
-                    'atribuido_a': ticket.atribuido_a.usuario.username if ticket.atribuido_a else None
                 }
+                
+                # Adiciona atribuido_a aos dados anteriores se existir
+                if ticket.atribuido_a:
+                    dados_anteriores['atribuido_a'] = ticket.atribuido_a.usuario.username
                 
                 ticket_salvo = form.save()
                 
@@ -885,8 +946,11 @@ def editar_ticket(request, ticket_id):
                     'status': ticket_salvo.status,
                     'prioridade': ticket_salvo.prioridade,
                     'empresa': ticket_salvo.empresa.nome,
-                    'atribuido_a': ticket_salvo.atribuido_a.usuario.username if ticket_salvo.atribuido_a else None
                 }
+                
+                # Adiciona atribuido_a aos dados novos se existir
+                if ticket_salvo.atribuido_a:
+                    dados_novos['atribuido_a'] = ticket_salvo.atribuido_a.usuario.username
                 
                 # Adiciona os campos personalizados alterados aos dados do histórico
                 if campos_alterados:
@@ -905,11 +969,13 @@ def editar_ticket(request, ticket_id):
                 messages.success(request, 'Chamado atualizado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
         else:
-            form = TicketForm(instance=ticket, user=request.user)
+            form = TicketForm(instance=ticket, usuario=request.user)
         
         # Atualiza as opções do formulário
         form.fields['empresa'].queryset = empresas
-        form.fields['atribuido_a'].queryset = funcionarios
+        # Verifica se o campo atribuido_a existe antes de tentar atualizá-lo
+        if 'atribuido_a' in form.fields:
+            form.fields['atribuido_a'].queryset = funcionarios
         
         return render(request, 'tickets/editar_ticket.html', {
             'form': form,

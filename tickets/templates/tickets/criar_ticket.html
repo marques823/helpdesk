@@ -118,10 +118,12 @@
                                 </div>
                             </div>
                             
+                            {% if form.atribuido_a %}
                             <div class="mb-3">
                                 <label for="id_atribuido_a" class="form-label">Atribuir para</label>
                                 {{ form.atribuido_a }}
                             </div>
+                            {% endif %}
                             
                             {% if campos_personalizados %}
                             <h6 class="my-3 text-primary">

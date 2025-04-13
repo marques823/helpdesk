@@ -1,39 +1,62 @@
 {% extends 'base.html' %}
 
+{% block title %}Selecione uma Categoria{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2 class="card-title mb-0">Selecione uma categoria</h2>
-                <a href="{% url 'tickets:dashboard' %}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-arrow-left"></i> Voltar
-                </a>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i> Selecione uma categoria para o novo chamado na empresa <strong>{{ empresa.nome }}</strong>.
-            </div>
-            
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mt-2">
-                {% for categoria in categorias %}
-                <div class="col">
-                    <a href="{% url 'tickets:criar_ticket' %}?empresa={{ empresa.id }}&categoria={{ categoria.id }}" class="text-decoration-none">
-                        <div class="card h-100 categoria-card">
-                            <div class="card-body text-center py-4">
-                                <div class="categoria-icon bg-{{ categoria.cor }} mb-3">
-                                    <i class="fas {{ categoria.icone }} fa-2x"></i>
+<div class="container-fluid mt-2 px-2">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10 col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Selecione uma Categoria</h5>
+                        <a href="{% url 'tickets:dashboard' %}" class="btn btn-sm btn-light">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body px-3 py-3">
+                    <p class="text-muted mb-4">
+                        <i class="fas fa-info-circle me-1"></i> Selecione a categoria mais adequada para seu chamado:
+                    </p>
+                    
+                    <div class="row g-3">
+                        {% for categoria in categorias %}
+                        <div class="col-lg-4 col-md-6 col-12">
+                            <a href="{% url 'tickets:criar_ticket' %}?empresa={{ empresa.id }}&categoria={{ categoria.id }}" 
+                                class="category-card text-decoration-none">
+                                <div class="card h-100 shadow-sm border-0 hover-card">
+                                    <div class="card-body text-center p-3">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <div class="category-icon mb-3 p-3 rounded-circle bg-{{ categoria.cor }} text-white">
+                                                <i class="fas {{ categoria.icone }} fa-2x"></i>
+                                            </div>
+                                            <h6 class="card-title mb-1">{{ categoria.nome }}</h6>
+                                            {% if categoria.descricao %}
+                                            <p class="card-text small text-muted mb-0">{{ categoria.descricao|truncatechars:50 }}</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
                                 </div>
-                                <h5 class="card-title">{{ categoria.nome }}</h5>
-                                {% if categoria.descricao %}
-                                <p class="card-text text-muted small">{{ categoria.descricao }}</p>
-                                {% endif %}
+                            </a>
+                        </div>
+                        {% empty %}
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i> Não há categorias disponíveis para você. 
+                                Entre em contato com o administrador.
                             </div>
                         </div>
-                    </a>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'tickets:dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i> Voltar
+                        </a>
+                    </div>
                 </div>
-                {% endfor %}
             </div>
         </div>
     </div>
@@ -42,32 +65,32 @@
 
 {% block styles %}
 <style>
-    /* Reset inicial para remover todas as transições/movimentos */
-    * {
-        transition: none !important;
-        transform: none !important;
+    .hover-card {
+        transition: transform 0.2s, box-shadow 0.2s;
     }
     
-    .categoria-card {
-        transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
-        border: 1px solid #dee2e6;
-    }
-    .categoria-card:hover {
-        transform: translateY(-5px) !important;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-        border-color: var(--bs-primary) !important;
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
     }
     
-    /* O restante do CSS permanece igual */
-    .categoria-icon {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
+    .category-icon {
+        width: 60px;
+        height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto;
-        color: white;
+    }
+    
+    @media (max-width: 767.98px) {
+        .category-icon {
+            width: 50px;
+            height: 50px;
+        }
+        
+        .category-icon i {
+            font-size: 1.5rem !important;
+        }
     }
 </style>
 {% endblock %} 

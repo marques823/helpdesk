@@ -111,7 +111,7 @@ class TicketForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
+        self.usuario = kwargs.pop('usuario', None)
         super().__init__(*args, **kwargs)
         
         # Define a ordem dos campos
@@ -122,21 +122,25 @@ class TicketForm(forms.ModelForm):
         self.fields = {k: original_fields[k] for k in self.fields_order if k in original_fields}
         
         # Se o usuário não for admin, filtra as empresas e funcionários
-        if self.user and not self.user.is_superuser:
-            funcionario = Funcionario.objects.filter(usuario=self.user).first()
+        if self.usuario and not self.usuario.is_superuser:
+            funcionario = Funcionario.objects.filter(usuario=self.usuario).first()
             if funcionario:
                 # Filtra apenas as empresas do funcionário
                 self.fields['empresa'].queryset = funcionario.empresas.all()
                 
                 # Se tiver apenas uma empresa, seleciona automaticamente
                 if funcionario.empresas.count() == 1:
-                    self.initial['empresa'] = funcionario.empresas.first()
+                    self.initial['empresa'] = funcionario.empresas.first().id
                 
-                # Filtra os funcionários que podem ser atribuídos
-                self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
-                    empresas__in=funcionario.empresas.all(),
-                    tipo__in=['admin', 'suporte']
-                ).distinct()
+                # Se o usuário for cliente, esconde o campo de atribuição
+                if funcionario.is_cliente():
+                    self.fields.pop('atribuido_a', None)
+                else:
+                    # Filtra os funcionários que podem ser atribuídos
+                    self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
+                        empresas__in=funcionario.empresas.all(),
+                        tipo__in=['admin', 'suporte']
+                    ).distinct()
             else:
                 # Se não for funcionário, remove os campos de empresa e atribuição
                 self.fields.pop('empresa', None)
@@ -159,12 +163,24 @@ class TicketForm(forms.ModelForm):
         
         # Inicialmente, não mostra categorias até que uma empresa seja selecionada
         empresa_id = self.initial.get('empresa') or self.data.get('empresa')
-        if empresa_id:
-            # Se uma empresa for selecionada, mostra apenas categorias daquela empresa
-            self.fields['categoria'].queryset = CategoriaChamado.objects.filter(
-                empresa_id=empresa_id,
-                ativo=True
-            ).order_by('ordem', 'nome')
+        if empresa_id and self.usuario:
+            try:
+                empresa = Empresa.objects.get(id=empresa_id)
+                funcionario = Funcionario.objects.filter(usuario=self.usuario).first()
+                
+                if funcionario:
+                    # Mostrar apenas categorias permitidas para o usuário
+                    self.fields['categoria'].queryset = funcionario.get_categorias_permitidas(empresa)
+                elif self.usuario.is_superuser:
+                    # Para superusuários, mostrar todas as categorias ativas
+                    self.fields['categoria'].queryset = CategoriaChamado.objects.filter(
+                        empresa=empresa,
+                        ativo=True
+                    ).order_by('ordem', 'nome')
+                else:
+                    self.fields['categoria'].queryset = CategoriaChamado.objects.none()
+            except Empresa.DoesNotExist:
+                self.fields['categoria'].queryset = CategoriaChamado.objects.none()
         else:
             # Se nenhuma empresa for selecionada, não mostra categorias
             self.fields['categoria'].queryset = CategoriaChamado.objects.none()
@@ -175,8 +191,8 @@ class TicketForm(forms.ModelForm):
         atribuido_a = cleaned_data.get('atribuido_a')
         
         # Verifica se o usuário tem acesso à empresa selecionada
-        if self.user and not self.user.is_superuser:
-            funcionario = Funcionario.objects.filter(usuario=self.user).first()
+        if self.usuario and not self.usuario.is_superuser:
+            funcionario = Funcionario.objects.filter(usuario=self.usuario).first()
             if funcionario and empresa:
                 if not funcionario.tem_acesso_empresa(empresa):
                     raise forms.ValidationError("Você não tem acesso a esta empresa.")
