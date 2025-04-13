@@ -593,3 +593,15 @@ class PreferenciasNotificacao(models.Model):
     class Meta:
         verbose_name = 'Preferência de Notificação'
         verbose_name_plural = 'Preferências de Notificação'
+
+class EmailVerificado(models.Model):
+    email = models.EmailField(unique=True)
+    verificado = models.BooleanField(default=False)
+    data_verificacao = models.DateTimeField(blank=True, null=True)
+    
+    class Meta:
+        verbose_name = 'E-mail verificado'
+        verbose_name_plural = 'E-mails verificados'
+    
+    def __str__(self):
+        return self.email
