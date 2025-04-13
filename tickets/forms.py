@@ -132,11 +132,15 @@ class TicketForm(forms.ModelForm):
                 if funcionario.empresas.count() == 1:
                     self.initial['empresa'] = funcionario.empresas.first()
                 
-                # Filtra os funcionários que podem ser atribuídos
-                self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
-                    empresas__in=funcionario.empresas.all(),
-                    tipo__in=['admin', 'suporte']
-                ).distinct()
+                # Se for cliente, oculta o campo de atribuição
+                if funcionario.is_cliente():
+                    self.fields.pop('atribuido_a', None)
+                else:
+                    # Filtra os funcionários que podem ser atribuídos
+                    self.fields['atribuido_a'].queryset = Funcionario.objects.filter(
+                        empresas__in=funcionario.empresas.all(),
+                        tipo__in=['admin', 'suporte']
+                    ).distinct()
             else:
                 # Se não for funcionário, remove os campos de empresa e atribuição
                 self.fields.pop('empresa', None)

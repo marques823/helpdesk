@@ -565,6 +565,18 @@ def criar_ticket(request):
             if form.is_valid():
                 ticket = form.save(commit=False)
                 ticket.criado_por = request.user
+                
+                # Se o usuário for cliente, atribuir automaticamente o ticket a um admin/suporte disponível
+                if funcionario and funcionario.is_cliente() and not ticket.atribuido_a:
+                    # Buscar um funcionário admin ou suporte da mesma empresa para atribuir o ticket
+                    admin_suporte = Funcionario.objects.filter(
+                        empresas=ticket.empresa,
+                        tipo__in=['admin', 'suporte']
+                    ).first()
+                    
+                    if admin_suporte:
+                        ticket.atribuido_a = admin_suporte
+                
                 ticket.save()
 
                 # Salva os valores dos campos personalizados
