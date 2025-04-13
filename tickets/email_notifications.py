@@ -26,6 +26,18 @@ class EmailNotificationService:
             reply_to: E-mail para resposta (opcional)
         """
         try:
+            # Verificar se os destinatários são válidos
+            if not destinatarios:
+                logger.warning("Tentativa de envio de e-mail sem destinatários.")
+                return False
+            
+            # Verifica se o e-mail está configurado e habilitado
+            if not settings.EMAIL_ENABLED:
+                logger.info(f"E-mail desabilitado nas configurações. Não enviando para: {', '.join(destinatarios)}")
+                # Se usando o console backend, o método ainda será chamado, mas os e-mails serão exibidos no console
+                if settings.EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend':
+                    logger.info(f"Enviando para o console: Assunto: {assunto}")
+                
             # Renderiza o template HTML com o contexto
             html_content = render_to_string(template_html, contexto)
             # Cria uma versão de texto puro removendo as tags HTML

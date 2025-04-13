@@ -153,6 +153,11 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='suporte@tecnicolitoral.com.br')
+EMAIL_ENABLED = config('EMAIL_ENABLED', default=True, cast=bool)
+
+# Se o envio de e-mails estiver desativado, usar o backend de console
+if not EMAIL_ENABLED:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Crispy Forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
