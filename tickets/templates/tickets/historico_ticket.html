@@ -190,6 +190,14 @@
                                                                     </tr>
                                                                     {% endif %}
                                                                     
+                                                                    {% if dados_anteriores.descricao != dados_novos.descricao %}
+                                                                    <tr>
+                                                                        <td><strong>Descrição</strong></td>
+                                                                        <td>{{ dados_anteriores.descricao|truncate_text:150|linebreaks }}</td>
+                                                                        <td>{{ dados_novos.descricao|truncate_text:150|linebreaks }}</td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    
                                                                     {% if dados_anteriores.status != dados_novos.status %}
                                                                     <tr>
                                                                         <td><strong>Status</strong></td>
