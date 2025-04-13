@@ -10,7 +10,7 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket, EmailVerificado
 from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
                    AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
                    NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
@@ -18,7 +18,7 @@ from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, Us
                    PreferenciasNotificacaoForm)
 from django.core.exceptions import ObjectDoesNotExist
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from django.urls import reverse
 from django.template.loader import render_to_string
 import weasyprint
@@ -32,6 +32,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.db.models import Prefetch
 from .middleware.security_decorators import admin_permission_required
+from .services import EmailNotificationService
+from urllib.parse import quote
 
 # Configuração do logger
 logger = logging.getLogger(__name__)
@@ -2100,7 +2102,8 @@ def gerar_pdf_ticket(request, ticket_id, perfil_id=None):
         
         # Retorna o PDF como resposta HTTP
         response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="chamado_{ticket.id}.pdf"'
+        filename = f'chamado_{ticket.id}.pdf'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"; filename*=UTF-8\'\'{quote(filename)}'
         return response
     
     except Exception as e:
@@ -3204,3 +3207,133 @@ def editar_permissoes_usuario(request, funcionario_id):
         logger.error(f"Erro ao editar permissões de usuário: {str(e)}")
         messages.error(request, f"Ocorreu um erro ao editar permissões: {str(e)}")
         return redirect('tickets:gerenciar_permissoes_categoria')
+
+@login_required
+def gerenciar_emails_verificados(request):
+    """View para gerenciar emails verificados no sistema"""
+    try:
+        # Verificar se o usuário é administrador
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para acessar esta página.")
+                return redirect('tickets:dashboard')
+        
+        # Obter todos os emails verificados
+        emails_verificados = EmailVerificado.objects.all().order_by('-verificado', 'email')
+        
+        # Processar ações em massa
+        if request.method == 'POST':
+            action = request.POST.get('action')
+            email_ids = request.POST.getlist('email_ids')
+            
+            if not email_ids:
+                messages.warning(request, "Nenhum email selecionado.")
+            else:
+                emails_selecionados = EmailVerificado.objects.filter(id__in=email_ids)
+                
+                if action == 'verificar':
+                    count = 0
+                    for email in emails_selecionados:
+                        # Verifica se o email está em um domínio verificado
+                        email_valido = (
+                            EmailNotificationService.verificar_email_especifico(email.email) or 
+                            EmailNotificationService.verificar_dominio_email(email.email)
+                        )
+                        
+                        if email_valido and not email.verificado:
+                            email.verificado = True
+                            email.data_verificacao = timezone.now()
+                            email.save()
+                            count += 1
+                    
+                    messages.success(request, f"{count} emails foram verificados automaticamente.")
+                
+                elif action == 'marcar_verificado':
+                    count = emails_selecionados.update(verificado=True, data_verificacao=timezone.now())
+                    messages.success(request, f"{count} emails foram marcados como verificados.")
+                
+                elif action == 'marcar_nao_verificado':
+                    count = emails_selecionados.update(verificado=False, data_verificacao=None)
+                    messages.success(request, f"{count} emails foram marcados como não verificados.")
+                
+                elif action == 'excluir':
+                    count = emails_selecionados.delete()[0]
+                    messages.success(request, f"{count} emails foram excluídos.")
+        
+        # Filtrar e pesquisar emails
+        search_query = request.GET.get('search', '')
+        status_filter = request.GET.get('status', '')
+        
+        if search_query:
+            emails_verificados = emails_verificados.filter(email__icontains=search_query)
+        
+        if status_filter:
+            if status_filter == 'verificado':
+                emails_verificados = emails_verificados.filter(verificado=True)
+            elif status_filter == 'nao_verificado':
+                emails_verificados = emails_verificados.filter(verificado=False)
+        
+        # Estatísticas
+        total_emails = emails_verificados.count()
+        total_verificados = emails_verificados.filter(verificado=True).count()
+        total_nao_verificados = total_emails - total_verificados
+        
+        # Domínios verificados
+        dominios_verificados = EmailNotificationService.DOMINIOS_VERIFICADOS
+        emails_especificos_verificados = EmailNotificationService.EMAILS_VERIFICADOS
+        
+        return render(request, 'tickets/gerenciar_emails_verificados.html', {
+            'emails_verificados': emails_verificados,
+            'total_emails': total_emails,
+            'total_verificados': total_verificados,
+            'total_nao_verificados': total_nao_verificados,
+            'dominios_verificados': dominios_verificados,
+            'emails_especificos_verificados': emails_especificos_verificados,
+            'search_query': search_query,
+            'status_filter': status_filter
+        })
+    except Exception as e:
+        logger.error(f"Erro ao gerenciar emails verificados: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao gerenciar emails verificados.")
+        return redirect('tickets:dashboard')
+
+@login_required
+def configuracoes(request):
+    """View para a página de configurações do sistema"""
+    try:
+        # Verificar se o usuário tem permissão de admin
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para acessar esta área.")
+                return redirect('tickets:dashboard')
+        
+        # Obter configurações e preferências do usuário
+        try:
+            preferencias = PreferenciasNotificacao.objects.get(usuario=request.user)
+        except PreferenciasNotificacao.DoesNotExist:
+            preferencias = PreferenciasNotificacao.objects.create(usuario=request.user)
+        
+        # Processar formulário de preferências
+        if request.method == 'POST':
+            form = PreferenciasNotificacaoForm(request.POST, instance=preferencias)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Configurações atualizadas com sucesso!")
+                return redirect('tickets:configuracoes')
+        else:
+            form = PreferenciasNotificacaoForm(instance=preferencias)
+        
+        # Contexto da página
+        context = {
+            'form': form,
+            'preferencias': preferencias,
+        }
+        
+        return render(request, 'tickets/configuracoes.html', context)
+    
+    except Exception as e:
+        logger.error(f"Erro ao acessar configurações: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar as configurações.")
+        return redirect('tickets:dashboard')
