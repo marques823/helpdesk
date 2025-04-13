@@ -595,6 +595,9 @@ class PreferenciasNotificacao(models.Model):
         verbose_name_plural = 'Preferências de Notificação'
 
 class EmailVerificado(models.Model):
+    """
+    Modelo para armazenar emails verificados no sistema
+    """
     email = models.EmailField(unique=True)
     verificado = models.BooleanField(default=False)
     data_verificacao = models.DateTimeField(blank=True, null=True)
@@ -605,3 +608,34 @@ class EmailVerificado(models.Model):
     
     def __str__(self):
         return self.email
+
+class SolicitacaoVerificacaoEmail(models.Model):
+    """
+    Modelo para gerenciar solicitações de verificação de email para cadastro
+    """
+    email = models.EmailField(unique=True)
+    nome = models.CharField(max_length=100)
+    empresa = models.CharField(max_length=100)
+    telefone = models.CharField(max_length=20, blank=True, null=True)
+    mensagem = models.TextField(blank=True, null=True, help_text="Mensagem opcional do solicitante")
+    verificado_ses = models.BooleanField(default=False, help_text="Indica se o email foi verificado no Amazon SES")
+    notificado = models.BooleanField(default=False, help_text="Indica se o usuário foi notificado que pode continuar o cadastro")
+    data_solicitacao = models.DateTimeField(auto_now_add=True)
+    data_verificacao = models.DateTimeField(blank=True, null=True)
+    data_notificacao = models.DateTimeField(blank=True, null=True)
+    token_cadastro = models.CharField(max_length=64, null=True, blank=True)
+    
+    def gerar_token_cadastro(self):
+        """Gera um token único para continuar o cadastro"""
+        import secrets
+        self.token_cadastro = secrets.token_urlsafe(32)
+        self.save()
+        return self.token_cadastro
+    
+    class Meta:
+        verbose_name = 'Solicitação de Verificação de Email'
+        verbose_name_plural = 'Solicitações de Verificação de Email'
+        ordering = ['-data_solicitacao']
+    
+    def __str__(self):
+        return f"{self.nome} - {self.email}"
