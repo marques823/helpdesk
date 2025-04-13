@@ -380,8 +380,6 @@ class HistoricoTicket(models.Model):
     valor_anterior = models.TextField(blank=True, null=True)
     valor_novo = models.TextField(blank=True, null=True)
     descricao = models.TextField(blank=True, null=True, help_text="Descrição textual da alteração")
-    dados_anteriores = models.JSONField(blank=True, null=True, help_text="Dados anteriores em formato JSON")
-    dados_novos = models.JSONField(blank=True, null=True, help_text="Dados novos em formato JSON")
     data_alteracao = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -389,6 +387,35 @@ class HistoricoTicket(models.Model):
         
     def __str__(self):
         return f"Alteração em {self.ticket.titulo} por {self.usuario.username} em {self.data_alteracao}"
+    
+    def get_dados_anteriores(self):
+        """Retorna um dicionário com todos os detalhes anteriores"""
+        return {d.chave: d.valor for d in self.detalhes.filter(tipo='anterior')}
+    
+    def get_dados_novos(self):
+        """Retorna um dicionário com todos os detalhes novos"""
+        return {d.chave: d.valor for d in self.detalhes.filter(tipo='novo')}
+
+class DetalheHistoricoTicket(models.Model):
+    TIPO_CHOICES = (
+        ('anterior', 'Dado Anterior'),
+        ('novo', 'Dado Novo'),
+    )
+    
+    historico = models.ForeignKey(HistoricoTicket, on_delete=models.CASCADE, related_name='detalhes')
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    chave = models.CharField(max_length=100)
+    valor = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        verbose_name = 'Detalhe de Histórico'
+        verbose_name_plural = 'Detalhes de Histórico'
+        indexes = [
+            models.Index(fields=['historico', 'tipo']),  # Índice para consultas por tipo
+        ]
+        
+    def __str__(self):
+        return f"{self.chave}: {self.valor}"
 
 class CampoPersonalizado(models.Model):
     TIPO_CHOICES = [

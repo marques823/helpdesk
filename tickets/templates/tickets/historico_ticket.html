@@ -39,64 +39,253 @@
                                                 <strong>Usuário:</strong> {{ registro.usuario.get_full_name|default:registro.usuario.username }}
                                             </p>
                                             
-                                            {% if user.is_superuser and registro.dados_anteriores %}
+                                            {% if user.is_superuser %}
                                                 <div class="mt-2">
                                                     <h6>Dados Anteriores:</h6>
-                                                    <pre class="pre-themed p-2 rounded small overflow-auto">{{ registro.dados_anteriores|pprint }}</pre>
+                                                    <pre class="pre-themed p-2 rounded small overflow-auto">{{ registro.get_dados_anteriores }}</pre>
                                                 </div>
                                             {% endif %}
                                             
                                             {% if registro.tipo_alteracao == 'atribuicao' %}
                                                 <div class="mt-2">
-                                                    <strong>De:</strong> {% if registro.valor_anterior %}{{ registro.valor_anterior }}{% else %}Não atribuído{% endif %}<br>
-                                                    <strong>Para:</strong> {% if registro.valor_novo %}{{ registro.valor_novo }}{% else %}Não atribuído{% endif %}
+                                                    <strong>De:</strong> 
+                                                    {% with dados_anteriores=registro.get_dados_anteriores %}
+                                                        {% if dados_anteriores.atribuido_a %}
+                                                            {{ dados_anteriores.atribuido_a }}
+                                                        {% elif registro.valor_anterior %}
+                                                            {{ registro.valor_anterior }}
+                                                        {% else %}
+                                                            Não atribuído
+                                                        {% endif %}
+                                                    {% endwith %}<br>
+                                                    <strong>Para:</strong> 
+                                                    {% with dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_novos.atribuido_a %}
+                                                            {{ dados_novos.atribuido_a }}
+                                                        {% elif registro.valor_novo %}
+                                                            {{ registro.valor_novo }}
+                                                        {% else %}
+                                                            Não atribuído
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 </div>
                                             {% elif registro.tipo_alteracao == 'atribuicao_multipla' %}
                                                 <div class="mt-2">
                                                     <strong>Atribuições atualizadas:</strong><br>
-                                                    {% if registro.valor_anterior %}
-                                                        <div class="mb-2">
-                                                            <strong>Anteriormente:</strong><br>
-                                                            {{ registro.valor_anterior|linebreaks }}
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if registro.valor_novo %}
-                                                        <div>
-                                                            <strong>Agora:</strong><br>
-                                                            {{ registro.valor_novo|linebreaks }}
-                                                        </div>
-                                                    {% endif %}
+                                                    {% with dados_anteriores=registro.get_dados_anteriores %}
+                                                        {% if dados_anteriores %}
+                                                            <div class="mb-2">
+                                                                <strong>Anteriormente:</strong><br>
+                                                                {% if dados_anteriores.atribuidos_a %}
+                                                                    {% for atribuido in dados_anteriores.atribuidos_a %}
+                                                                        {{ atribuido }}<br>
+                                                                    {% endfor %}
+                                                                {% endif %}
+                                                                {% if dados_anteriores.atribuido_principal %}
+                                                                    <strong>Principal:</strong> {{ dados_anteriores.atribuido_principal }}
+                                                                {% endif %}
+                                                            </div>
+                                                        {% elif registro.valor_anterior %}
+                                                            <div class="mb-2">
+                                                                <strong>Anteriormente:</strong><br>
+                                                                {{ registro.valor_anterior|linebreaks }}
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                    
+                                                    {% with dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_novos %}
+                                                            <div>
+                                                                <strong>Agora:</strong><br>
+                                                                {% if dados_novos.atribuidos_a %}
+                                                                    {% for atribuido in dados_novos.atribuidos_a %}
+                                                                        {{ atribuido }}<br>
+                                                                    {% endfor %}
+                                                                {% endif %}
+                                                                {% if dados_novos.atribuido_principal %}
+                                                                    <strong>Principal:</strong> {{ dados_novos.atribuido_principal }}
+                                                                {% endif %}
+                                                            </div>
+                                                        {% elif registro.valor_novo %}
+                                                            <div>
+                                                                <strong>Agora:</strong><br>
+                                                                {{ registro.valor_novo|linebreaks }}
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 </div>
                                             {% elif registro.tipo_alteracao == 'status' %}
                                                 <div class="mt-2">
-                                                    <strong>De:</strong> {{ registro.valor_anterior }}<br>
-                                                    <strong>Para:</strong> {{ registro.valor_novo }}
+                                                    <strong>De:</strong> 
+                                                    {% with dados_anteriores=registro.get_dados_anteriores %}
+                                                        {% if dados_anteriores.status %}
+                                                            {{ dados_anteriores.status }}
+                                                        {% elif registro.valor_anterior %}
+                                                            {{ registro.valor_anterior }}
+                                                        {% endif %}
+                                                    {% endwith %}<br>
+                                                    <strong>Para:</strong> 
+                                                    {% with dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_novos.status %}
+                                                            {{ dados_novos.status }}
+                                                        {% elif registro.valor_novo %}
+                                                            {{ registro.valor_novo }}
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 </div>
                                             {% elif registro.tipo_alteracao == 'prioridade' %}
                                                 <div class="mt-2">
-                                                    <strong>De:</strong> {{ registro.valor_anterior }}<br>
-                                                    <strong>Para:</strong> {{ registro.valor_novo }}
+                                                    <strong>De:</strong> 
+                                                    {% with dados_anteriores=registro.get_dados_anteriores %}
+                                                        {% if dados_anteriores.prioridade %}
+                                                            {{ dados_anteriores.prioridade }}
+                                                        {% elif registro.valor_anterior %}
+                                                            {{ registro.valor_anterior }}
+                                                        {% endif %}
+                                                    {% endwith %}<br>
+                                                    <strong>Para:</strong> 
+                                                    {% with dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_novos.prioridade %}
+                                                            {{ dados_novos.prioridade }}
+                                                        {% elif registro.valor_novo %}
+                                                            {{ registro.valor_novo }}
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 </div>
                                             {% elif registro.tipo_alteracao == 'comentario' %}
                                                 <div class="mt-2">
                                                     <strong>Comentário:</strong><br>
-                                                    {{ registro.valor_novo|linebreaks }}
+                                                    {% with dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_novos.comentario %}
+                                                            {{ dados_novos.comentario|linebreaks }}
+                                                        {% elif registro.valor_novo %}
+                                                            {{ registro.valor_novo|linebreaks }}
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 </div>
                                             {% elif registro.tipo_alteracao == 'edicao' %}
                                                 <div class="mt-2">
                                                     <strong>Informações atualizadas</strong><br>
-                                                    {{ registro.valor_novo|linebreaks }}
+                                                    {% if registro.descricao %}
+                                                        <p>{{ registro.descricao }}</p>
+                                                    {% endif %}
+                                                    
+                                                    {% with dados_anteriores=registro.get_dados_anteriores dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_anteriores and dados_novos %}
+                                                            <table class="table table-sm small">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Campo</th>
+                                                                        <th>De</th>
+                                                                        <th>Para</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {% if dados_anteriores.titulo != dados_novos.titulo %}
+                                                                    <tr>
+                                                                        <td><strong>Título</strong></td>
+                                                                        <td>{{ dados_anteriores.titulo }}</td>
+                                                                        <td>{{ dados_novos.titulo }}</td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    
+                                                                    {% if dados_anteriores.status != dados_novos.status %}
+                                                                    <tr>
+                                                                        <td><strong>Status</strong></td>
+                                                                        <td>{{ dados_anteriores.status }}</td>
+                                                                        <td>{{ dados_novos.status }}</td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    
+                                                                    {% if dados_anteriores.prioridade != dados_novos.prioridade %}
+                                                                    <tr>
+                                                                        <td><strong>Prioridade</strong></td>
+                                                                        <td>{{ dados_anteriores.prioridade }}</td>
+                                                                        <td>{{ dados_novos.prioridade }}</td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    
+                                                                    {% if dados_anteriores.atribuido_a != dados_novos.atribuido_a %}
+                                                                    <tr>
+                                                                        <td><strong>Atribuído a</strong></td>
+                                                                        <td>{{ dados_anteriores.atribuido_a|default:"Não atribuído" }}</td>
+                                                                        <td>{{ dados_novos.atribuido_a|default:"Não atribuído" }}</td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    
+                                                                    {% if dados_anteriores.campos_personalizados and dados_novos.campos_personalizados %}
+                                                                        {% for campo, valor_anterior in dados_anteriores.campos_personalizados.items %}
+                                                                            {% if valor_anterior != dados_novos.campos_personalizados|get_item:campo %}
+                                                                            <tr>
+                                                                                <td><strong>{{ campo }}</strong></td>
+                                                                                <td>{{ valor_anterior }}</td>
+                                                                                <td>{{ dados_novos.campos_personalizados|get_item:campo }}</td>
+                                                                            </tr>
+                                                                            {% endif %}
+                                                                        {% endfor %}
+                                                                    {% endif %}
+                                                                </tbody>
+                                                            </table>
+                                                        {% elif registro.valor_novo %}
+                                                            {{ registro.valor_novo|linebreaks }}
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 </div>
                                             {% elif registro.tipo_alteracao == 'campo_personalizado' %}
                                                 <div class="mt-2">
-                                                    {{ registro.valor_novo|linebreaks }}
+                                                    {% with dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_novos %}
+                                                            {% for campo, valor in dados_novos.items %}
+                                                                <strong>{{ campo }}:</strong> {{ valor }}<br>
+                                                            {% endfor %}
+                                                        {% elif registro.valor_novo %}
+                                                            {{ registro.valor_novo|linebreaks }}
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                </div>
+                                            {% elif registro.tipo_alteracao == 'nota_tecnica' %}
+                                                <div class="mt-2">
+                                                    {% if registro.descricao %}
+                                                        <p>{{ registro.descricao }}</p>
+                                                    {% endif %}
+                                                    
+                                                    {% with dados_novos=registro.get_dados_novos %}
+                                                        {% if dados_novos %}
+                                                            {% if dados_novos.acao == 'adicao' %}
+                                                                <strong>Nota técnica adicionada</strong><br>
+                                                                {% if dados_novos.equipamento %}
+                                                                    <strong>Equipamento:</strong> {{ dados_novos.equipamento }}<br>
+                                                                {% endif %}
+                                                            {% elif dados_novos.acao == 'edicao' %}
+                                                                <strong>Nota técnica #{{ dados_novos.nota_id }} editada</strong><br>
+                                                                {% if dados_novos.equipamento %}
+                                                                    <strong>Equipamento:</strong> {{ dados_novos.equipamento }}<br>
+                                                                {% endif %}
+                                                            {% elif dados_novos.acao == 'exclusao' %}
+                                                                <strong>Nota técnica #{{ dados_novos.nota_id }} excluída</strong>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 </div>
                                             {% else %}
-                                                {% if registro.valor_novo %}
+                                                {% if registro.descricao %}
                                                     <div class="mt-2">
-                                                        {{ registro.valor_novo|linebreaks }}
+                                                        <p>{{ registro.descricao }}</p>
                                                     </div>
                                                 {% endif %}
+                                                {% with dados_novos=registro.get_dados_novos %}
+                                                    {% if dados_novos %}
+                                                        <div class="mt-2">
+                                                            {% for campo, valor in dados_novos.items %}
+                                                                <strong>{{ campo }}:</strong> {{ valor }}<br>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% elif registro.valor_novo %}
+                                                        <div class="mt-2">
+                                                            {{ registro.valor_novo|linebreaks }}
+                                                        </div>
+                                                    {% endif %}
+                                                {% endwith %}
                                             {% endif %}
                                         </div>
                                     </div>

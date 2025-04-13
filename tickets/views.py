@@ -10,7 +10,7 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket
 from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
                    AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
                    NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
@@ -277,16 +277,54 @@ def dashboard(request):
 def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteriores=None, dados_novos=None):
     """Função auxiliar para registrar alterações no histórico do ticket"""
     try:
-        HistoricoTicket.objects.create(
+        # Criar o registro de histórico principal
+        historico = HistoricoTicket.objects.create(
             ticket=ticket,
             tipo_alteracao=tipo_alteracao,
             usuario=usuario,
-            descricao=descricao,
-            dados_anteriores=dados_anteriores,
-            dados_novos=dados_novos
+            descricao=descricao
         )
+        
+        # Adicionar os detalhes anteriores, se existirem
+        if dados_anteriores:
+            for chave, valor in dados_anteriores.items():
+                # Se o valor for um dicionário ou lista, converte para string
+                if isinstance(valor, (dict, list)):
+                    valor = json.dumps(valor)
+                elif valor is None:
+                    valor = "None"
+                else:
+                    valor = str(valor)
+                
+                DetalheHistoricoTicket.objects.create(
+                    historico=historico,
+                    tipo='anterior',
+                    chave=chave,
+                    valor=valor
+                )
+        
+        # Adicionar os detalhes novos, se existirem
+        if dados_novos:
+            for chave, valor in dados_novos.items():
+                # Se o valor for um dicionário ou lista, converte para string
+                if isinstance(valor, (dict, list)):
+                    valor = json.dumps(valor)
+                elif valor is None:
+                    valor = "None"
+                else:
+                    valor = str(valor)
+                    
+                DetalheHistoricoTicket.objects.create(
+                    historico=historico,
+                    tipo='novo',
+                    chave=chave,
+                    valor=valor
+                )
+        
+        return historico
     except Exception as e:
         logger.error(f"Erro ao registrar histórico: {str(e)}")
+        return None
 
 @login_required
 def historico_ticket(request, ticket_id):
