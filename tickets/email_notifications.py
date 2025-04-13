@@ -32,7 +32,7 @@ class EmailNotificationService:
             text_content = strip_tags(html_content)
             
             # Prepara o e-mail
-            from_email = settings.EMAIL_HOST_USER
+            from_email = settings.DEFAULT_FROM_EMAIL
             email = EmailMultiAlternatives(
                 subject=assunto,
                 body=text_content,
