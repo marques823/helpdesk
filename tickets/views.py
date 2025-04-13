@@ -565,6 +565,20 @@ def criar_ticket(request):
             if form.is_valid():
                 ticket = form.save(commit=False)
                 ticket.criado_por = request.user
+                
+                # Verifica se é um cliente criando o ticket e não foi atribuído a ninguém
+                if not ticket.atribuido_a:
+                    funcionario_atual = Funcionario.objects.filter(usuario=request.user).first()
+                    if funcionario_atual and funcionario_atual.is_cliente():
+                        # Procura por um funcionário admin ou suporte da mesma empresa para atribuir o ticket
+                        atribuido_a = Funcionario.objects.filter(
+                            empresas=ticket.empresa,
+                            tipo__in=['admin', 'suporte']
+                        ).order_by('?').first()  # Ordem aleatória para distribuir os tickets
+                        
+                        if atribuido_a:
+                            ticket.atribuido_a = atribuido_a
+                
                 ticket.save()
 
                 # Salva os valores dos campos personalizados
@@ -843,7 +857,7 @@ def editar_ticket(request, ticket_id):
             funcionarios = Funcionario.objects.filter(empresas__in=empresas).distinct()
         
         if request.method == 'POST':
-            form = TicketForm(request.POST, instance=ticket, user=request.user)
+            form = TicketForm(request.POST, instance=ticket, usuario=request.user)
             if form.is_valid():
                 # Salva os dados anteriores para o histórico
                 dados_anteriores = {
@@ -911,7 +925,7 @@ def editar_ticket(request, ticket_id):
                 messages.success(request, 'Chamado atualizado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
         else:
-            form = TicketForm(instance=ticket, user=request.user)
+            form = TicketForm(instance=ticket, usuario=request.user)
         
         # Atualiza as opções do formulário
         form.fields['empresa'].queryset = empresas
