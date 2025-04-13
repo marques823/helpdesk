@@ -112,17 +112,10 @@ def get_categoria_nome(categoria_id):
 
 @register.filter
 def get_item(dictionary, key):
-    """Obter um item de um dicionário pela chave"""
-    if dictionary is None:
+    """Retorna o valor de um dicionário a partir de uma chave"""
+    if not dictionary:
         return None
-    
-    try:
-        return dictionary.get(key)
-    except (AttributeError, TypeError, KeyError):
-        try:
-            return dictionary[key]
-        except (KeyError, TypeError, AttributeError):
-            return None
+    return dictionary.get(str(key))
 
 @register.filter
 def truncate_text(text, length=100):
@@ -143,4 +136,18 @@ def values_differ(value1, value2):
     str_value2 = str(value2).strip() if value2 is not None else ""
     
     # Verifica se as strings são diferentes
-    return str_value1 != str_value2 
+    return str_value1 != str_value2
+
+@register.filter
+def split(value, delimiter):
+    """Divide uma string usando o delimitador e retorna a lista resultante"""
+    if not value:
+        return []
+    return value.split(delimiter)
+
+@register.filter
+def get_domain(email):
+    """Extrai e retorna o domínio de um endereço de email"""
+    if not email or '@' not in email:
+        return ""
+    return email.split('@')[-1] 

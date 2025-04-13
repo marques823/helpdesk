@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load ticket_tags %}
+{% load custom_filters %}
+{% load ticket_filters %}
+
+{% block title %}Gerenciar Emails Verificados{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">Gerenciar Emails Verificados</h3>
+                <a href="{% url 'tickets:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Informações e Estatísticas -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">Estatísticas</h5>
+                            <p><strong>Total de emails:</strong> {{ total_emails }}</p>
+                            <p><strong>Emails verificados:</strong> {{ total_verificados }}</p>
+                            <p><strong>Emails não verificados:</strong> {{ total_nao_verificados }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title">Domínios e Emails Verificados Automaticamente</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Domínios Verificados:</h6>
+                                    <ul>
+                                        {% for dominio in dominios_verificados %}
+                                            <li>{{ dominio }}</li>
+                                        {% empty %}
+                                            <li>Nenhum domínio verificado</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Emails Específicos Verificados:</h6>
+                                    <ul>
+                                        {% for email in emails_especificos_verificados %}
+                                            <li>{{ email }}</li>
+                                        {% empty %}
+                                            <li>Nenhum email específico verificado</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filtros e Pesquisa -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <input type="text" name="search" class="form-control" placeholder="Pesquisar por email" value="{{ search_query }}">
+                                <button class="btn btn-outline-secondary" type="submit">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <select name="status" class="form-select" onchange="this.form.submit()">
+                                <option value="" {% if not status_filter %}selected{% endif %}>Todos os status</option>
+                                <option value="verificado" {% if status_filter == 'verificado' %}selected{% endif %}>Verificados</option>
+                                <option value="nao_verificado" {% if status_filter == 'nao_verificado' %}selected{% endif %}>Não Verificados</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'tickets:gerenciar_emails_verificados' %}" class="btn btn-outline-secondary w-100">
+                                Limpar Filtros
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Tabela de Emails -->
+            <form method="POST" id="email-form">
+                {% csrf_token %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th width="40">
+                                    <input type="checkbox" id="select-all" class="form-check-input">
+                                </th>
+                                <th>Email</th>
+                                <th>Domínio</th>
+                                <th>Status</th>
+                                <th>Data de Verificação</th>
+                                <th>Verificação Automática</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for email in emails_verificados %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="email_ids" value="{{ email.id }}" class="form-check-input email-checkbox">
+                                    </td>
+                                    <td>{{ email.email }}</td>
+                                    <td>{{ email.email|get_domain }}</td>
+                                    <td>
+                                        {% if email.verificado %}
+                                            <span class="badge bg-success">Verificado</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Não Verificado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if email.data_verificacao %}
+                                            {{ email.data_verificacao|date:"d/m/Y H:i" }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if email.email in emails_especificos_verificados %}
+                                            <span class="badge bg-primary">Email Específico</span>
+                                        {% elif email.email|get_domain in dominios_verificados %}
+                                            <span class="badge bg-info">Domínio Verificado</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Não Automático</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">Nenhum email encontrado</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Ações em Massa -->
+                <div class="d-flex mt-3">
+                    <div class="me-2">
+                        <select name="action" class="form-select" id="bulk-action">
+                            <option value="">Selecione uma ação</option>
+                            <option value="verificar">Verificar Automaticamente</option>
+                            <option value="marcar_verificado">Marcar como Verificado</option>
+                            <option value="marcar_nao_verificado">Marcar como Não Verificado</option>
+                            <option value="excluir">Excluir</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="apply-action" disabled>Aplicar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Selecionar todos os checkboxes
+        const selectAllCheckbox = document.getElementById('select-all');
+        const emailCheckboxes = document.querySelectorAll('.email-checkbox');
+        const bulkActionSelect = document.getElementById('bulk-action');
+        const applyActionButton = document.getElementById('apply-action');
+        
+        // Habilitar/desabilitar botão de ação com base na seleção
+        function updateActionButton() {
+            const hasChecked = [...emailCheckboxes].some(cb => cb.checked);
+            const hasAction = bulkActionSelect.value !== '';
+            applyActionButton.disabled = !hasChecked || !hasAction;
+        }
+        
+        // Selecionar/deselecionar todos
+        selectAllCheckbox.addEventListener('change', function() {
+            emailCheckboxes.forEach(cb => cb.checked = this.checked);
+            updateActionButton();
+        });
+        
+        // Atualizar estado do botão quando checkboxes individuais mudam
+        emailCheckboxes.forEach(cb => {
+            cb.addEventListener('change', updateActionButton);
+        });
+        
+        // Atualizar estado do botão quando a ação muda
+        bulkActionSelect.addEventListener('change', updateActionButton);
+        
+        // Confirmar antes de aplicar ações destrutivas
+        document.getElementById('email-form').addEventListener('submit', function(e) {
+            const action = bulkActionSelect.value;
+            if (action === 'excluir' || action === 'marcar_nao_verificado') {
+                if (!confirm('Tem certeza que deseja realizar esta ação? Esta ação não pode ser desfeita.')) {
+                    e.preventDefault();
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 
