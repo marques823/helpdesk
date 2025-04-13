@@ -285,6 +285,9 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
             descricao=descricao
         )
         
+        # Log para debug
+        logger.debug(f"Registrando histórico tipo {tipo_alteracao} para ticket {ticket.id}")
+        
         # Adicionar os detalhes anteriores, se existirem
         if dados_anteriores:
             for chave, valor in dados_anteriores.items():
@@ -302,6 +305,7 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
                     chave=chave,
                     valor=valor
                 )
+                logger.debug(f"Registrado dado anterior: {chave} = {valor[:50]}...")
         
         # Adicionar os detalhes novos, se existirem
         if dados_novos:
@@ -320,6 +324,7 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
                     chave=chave,
                     valor=valor
                 )
+                logger.debug(f"Registrado dado novo: {chave} = {valor[:50]}...")
         
         return historico
     except Exception as e:
@@ -957,14 +962,16 @@ def editar_ticket(request, ticket_id):
                     dados_anteriores['campos_personalizados'] = {item['campo']: item['valor_anterior'] for item in campos_alterados}
                     dados_novos['campos_personalizados'] = {item['campo']: item['valor_novo'] for item in campos_alterados}
                 
-                registrar_historico(
+                # Sempre registrar o histórico quando o formulário é salvo
+                historico = registrar_historico(
                     ticket=ticket_salvo,
                     tipo_alteracao='edicao',
                     usuario=request.user,
-                    descricao=f'Chamado editado por {request.user.get_full_name()}',
+                    descricao=f'Chamado editado por {request.user.get_full_name() or request.user.username}',
                     dados_anteriores=dados_anteriores,
                     dados_novos=dados_novos
                 )
+                logger.info(f"Histórico registrado com ID {historico.id if historico else 'None'} para o ticket {ticket_salvo.id}")
                 
                 messages.success(request, 'Chamado atualizado com sucesso!')
                 return redirect('tickets:detalhe_ticket', ticket_id=ticket.id)
