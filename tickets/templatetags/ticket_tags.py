@@ -122,4 +122,15 @@ def get_item(dictionary, key):
         try:
             return dictionary[key]
         except (KeyError, TypeError, AttributeError):
-            return None 
+            return None
+
+@register.filter
+def truncate_text(text, length=100):
+    """Truncar texto para o comprimento especificado, adicionando '...' se necessário"""
+    if not text:
+        return ""
+    
+    if len(text) <= length:
+        return text
+    
+    return text[:length] + "..." 
