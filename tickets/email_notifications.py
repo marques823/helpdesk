@@ -13,6 +13,34 @@ class EmailNotificationService:
     Serviço responsável por enviar notificações por e-mail para usuários
     """
     
+    # Lista de domínios verificados no Amazon SES
+    DOMINIOS_VERIFICADOS = ['tecnicolitoral.com.br']
+    
+    # Lista de emails específicos verificados no Amazon SES
+    EMAILS_VERIFICADOS = ['suportetecnicolitoral@gmail.com']
+    
+    @classmethod
+    def email_verificado(cls, email):
+        """
+        Verifica se um email está verificado no Amazon SES
+        
+        Args:
+            email: Endereço de email a verificar
+            
+        Returns:
+            bool: True se o email está verificado, False caso contrário
+        """
+        if not email:
+            return False
+            
+        # Verifica se é um email específico verificado
+        if email in cls.EMAILS_VERIFICADOS:
+            return True
+            
+        # Verifica se o domínio está verificado
+        dominio = email.split('@')[-1]
+        return dominio in cls.DOMINIOS_VERIFICADOS
+    
     @staticmethod
     def enviar_email(assunto, destinatarios, template_html, contexto, reply_to=None):
         """
@@ -26,13 +54,34 @@ class EmailNotificationService:
             reply_to: E-mail para resposta (opcional)
         """
         try:
+            # Verificar se os destinatários são válidos
+            if not destinatarios:
+                logger.warning("Tentativa de envio de e-mail sem destinatários.")
+                return False
+            
+            # Verifica se o e-mail está configurado e habilitado
+            if not settings.EMAIL_ENABLED:
+                logger.info(f"E-mail desabilitado nas configurações. Não enviando para: {', '.join(destinatarios)}")
+                # Se usando o console backend, o método ainda será chamado, mas os e-mails serão exibidos no console
+                if settings.EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend':
+                    logger.info(f"Enviando para o console: Assunto: {assunto}")
+                
             # Renderiza o template HTML com o contexto
             html_content = render_to_string(template_html, contexto)
             # Cria uma versão de texto puro removendo as tags HTML
             text_content = strip_tags(html_content)
             
             # Prepara o e-mail
-            from_email = settings.EMAIL_HOST_USER
+            from_email = settings.DEFAULT_FROM_EMAIL
+            
+            # Filtra apenas os destinatários verificados quando usando AWS SES
+            if settings.EMAIL_ENABLED and settings.EMAIL_HOST == 'email-smtp.sa-east-1.amazonaws.com':
+                destinatarios_verificados = [d for d in destinatarios if EmailNotificationService.email_verificado(d)]
+                if not destinatarios_verificados:
+                    logger.warning(f"Nenhum destinatário verificado no SES. Pulando envio: {', '.join(destinatarios)}")
+                    return False
+                destinatarios = destinatarios_verificados
+            
             email = EmailMultiAlternatives(
                 subject=assunto,
                 body=text_content,
