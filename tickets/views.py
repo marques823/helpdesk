@@ -3519,8 +3519,7 @@ def enviar_notificacao(request, solicitacao_id):
             
             # Enviar email (implementar lógica de envio)
             try:
-                # Implementar o envio do email aqui
-                # Exemplo usando serviço de email
+                # Importar o serviço de email
                 from tickets.services import EmailService
                 
                 assunto = 'Seu email foi verificado - Continue seu cadastro'
@@ -3536,18 +3535,22 @@ def enviar_notificacao(request, solicitacao_id):
                 Equipe de Suporte
                 """
                 
-                EmailService.enviar_email(
+                email_enviado = EmailService.enviar_email(
                     destinatario=solicitacao.email,
                     assunto=assunto,
                     mensagem=mensagem
                 )
                 
-                # Atualizar status da solicitação
-                solicitacao.notificado = True
-                solicitacao.data_notificacao = timezone.now()
-                solicitacao.save()
-                
-                messages.success(request, f"Notificação enviada para {solicitacao.email} com sucesso.")
+                if email_enviado:
+                    # Atualizar status da solicitação
+                    solicitacao.notificado = True
+                    solicitacao.data_notificacao = timezone.now()
+                    solicitacao.save()
+                    
+                    messages.success(request, f"Notificação enviada para {solicitacao.email} com sucesso.")
+                else:
+                    messages.error(request, f"Não foi possível enviar o email para {solicitacao.email}.")
+                    logger.error(f"Falha ao enviar email para {solicitacao.email}")
             except Exception as e:
                 logger.error(f"Erro ao enviar email: {str(e)}")
                 messages.error(request, f"Erro ao enviar email: {str(e)}")

@@ -15,10 +15,10 @@ class EmailNotificationService:
     """
     
     # Lista de domínios verificados no Amazon SES
-    DOMINIOS_VERIFICADOS = ['tecnicolitoral.com.br']
+    DOMINIOS_VERIFICADOS = ['tecnicolitoral.com']
     
     # Lista de emails específicos verificados no Amazon SES
-    EMAILS_VERIFICADOS = ['suportetecnicolitoral@gmail.com']
+    EMAILS_VERIFICADOS = ['suportetecnicolitoral@gmail.com', 'suporte@tecnicolitoral.com']
     
     @classmethod
     def email_verificado(cls, email):
