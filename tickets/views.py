@@ -10,12 +10,12 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket, EmailVerificado
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket, EmailVerificado, SolicitacaoVerificacaoEmail
 from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
                    AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
                    NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
                    CampoPerfilCompartilhamentoForm, CompartilharTicketForm, CategoriaChamadoForm, 
-                   PreferenciasNotificacaoForm)
+                   PreferenciasNotificacaoForm, SolicitacaoVerificacaoEmailForm)
 from django.core.exceptions import ObjectDoesNotExist
 import json
 from datetime import datetime, timezone
@@ -3336,4 +3336,97 @@ def configuracoes(request):
     except Exception as e:
         logger.error(f"Erro ao acessar configurações: {str(e)}")
         messages.error(request, "Ocorreu um erro ao carregar as configurações.")
+        return redirect('tickets:dashboard')
+
+def solicitar_verificacao_email(request):
+    """
+    View pública para solicitar verificação de email para cadastro no sistema
+    """
+    try:
+        if request.method == 'POST':
+            form = SolicitacaoVerificacaoEmailForm(request.POST)
+            if form.is_valid():
+                solicitacao = form.save()
+                
+                # Notificar administradores sobre nova solicitação
+                # (implementação opcional - pode ser feita posteriormente)
+                
+                # Redirecionar para página de sucesso
+                return redirect('tickets:solicitacao_enviada', solicitacao_id=solicitacao.id)
+        else:
+            form = SolicitacaoVerificacaoEmailForm()
+        
+        return render(request, 'tickets/solicitar_verificacao_email.html', {'form': form})
+    except Exception as e:
+        logger.error(f"Erro ao solicitar verificação de email: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
+        return redirect('login')
+
+def solicitacao_enviada(request, solicitacao_id):
+    """
+    View pública para confirmação de solicitação enviada
+    """
+    try:
+        solicitacao = get_object_or_404(SolicitacaoVerificacaoEmail, id=solicitacao_id)
+        return render(request, 'tickets/solicitacao_enviada.html', {'solicitacao': solicitacao})
+    except Exception as e:
+        logger.error(f"Erro ao exibir página de solicitação enviada: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao processar sua solicitação.")
+        return redirect('login')
+
+@login_required
+def gerenciar_verificacoes_email(request):
+    """
+    View administrativa para gerenciar solicitações de verificação de email
+    """
+    try:
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para acessar esta página.")
+                return redirect('tickets:dashboard')
+        
+        # Filtros
+        query = request.GET.get('q', '')
+        status = request.GET.get('status', '')
+        
+        # Query base
+        solicitacoes = SolicitacaoVerificacaoEmail.objects.all()
+        
+        # Aplicar filtros
+        if query:
+            solicitacoes = solicitacoes.filter(
+                Q(nome__icontains=query) | Q(email__icontains=query) | Q(empresa__icontains=query)
+            )
+        
+        if status:
+            if status == 'pendente':
+                solicitacoes = solicitacoes.filter(verificado_ses=False)
+            elif status == 'verificado':
+                solicitacoes = solicitacoes.filter(verificado_ses=True, notificado=False)
+            elif status == 'notificado':
+                solicitacoes = solicitacoes.filter(notificado=True)
+        
+        # Paginação
+        paginator = Paginator(solicitacoes, 25)  # 25 tickets por página
+        page = request.GET.get('page')
+        
+        try:
+            solicitacoes = paginator.page(page)
+        except PageNotAnInteger:
+            solicitacoes = paginator.page(1)
+        except EmptyPage:
+            solicitacoes = paginator.page(paginator.num_pages)
+        
+        context = {
+            'solicitacoes': solicitacoes,
+            'query': query,
+            'status': status,
+        }
+        
+        return render(request, 'tickets/gerenciar_verificacoes_email.html', context)
+    except Exception as e:
+        logger.error(f"Erro ao gerenciar verificações de email: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar as solicitações.")
         return redirect('tickets:dashboard')
