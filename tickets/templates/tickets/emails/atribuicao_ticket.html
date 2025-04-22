@@ -5,11 +5,21 @@
 {% block header_title %}Chamado Atribuído a Você{% endblock %}
 
 {% block content %}
-<p>Olá {{ destinatario.get_full_name|default:destinatario.username }},</p>
+<p>Olá{% if nome_destinatario %} {{ nome_destinatario }}{% endif %},</p>
 
 <p>Um chamado foi atribuído a você no sistema de Helpdesk.</p>
 
-<p>Para visualizar os detalhes completos e tomar as ações necessárias, acesse o sistema clicando no botão abaixo.</p>
+<p>
+    {% if tipo_usuario == 'cliente' %}
+    Foi solicitada sua atenção para este chamado. Por favor, acesse o sistema para verificar os detalhes e responder quando necessário.
+    {% elif tipo_usuario == 'suporte' %}
+    Este chamado foi atribuído para você atender. Por favor, acesse o sistema para verificar os detalhes e iniciar o atendimento.
+    {% elif tipo_usuario == 'admin' %}
+    Este chamado foi atribuído para você. Por favor, acesse o sistema para verificar os detalhes e coordenar o atendimento.
+    {% else %}
+    Para visualizar os detalhes completos e tomar as ações necessárias, acesse o sistema clicando no botão abaixo.
+    {% endif %}
+</p>
 
 <p>Se você tiver alguma dúvida, entre em contato com o administrador do sistema.</p>
 {% endblock %} 

@@ -5,7 +5,7 @@
 {% block header_title %}Novo Chamado Criado{% endblock %}
 
 {% block content %}
-<p>Olá,</p>
+<p>Olá{% if nome_destinatario %} {{ nome_destinatario }}{% endif %},</p>
 
 <p>
     Um novo chamado foi criado por <strong>{{ criador.get_full_name|default:criador.username }}</strong> 
@@ -18,7 +18,15 @@
 </div>
 
 <p>
+    {% if tipo_usuario == 'cliente' %}
+    Este chamado foi registrado no sistema. Você pode acompanhar o progresso dele clicando no botão abaixo.
+    {% elif tipo_usuario == 'suporte' %}
+    Este chamado necessita de sua atenção. Por favor, acesse o sistema para verificar os detalhes e atendê-lo.
+    {% elif tipo_usuario == 'admin' %}
     Este chamado necessita de sua atenção. Por favor, acesse o sistema para verificar os detalhes e atribuí-lo a um técnico.
+    {% else %}
+    Este chamado necessita de sua atenção. Por favor, acesse o sistema para verificar os detalhes.
+    {% endif %}
 </p>
 
 {% if url_ticket %}
