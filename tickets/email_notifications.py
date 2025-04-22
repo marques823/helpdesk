@@ -178,7 +178,17 @@ class EmailNotificationService:
             logger.warning(f"Usuário {destinatario_user.username} não possui e-mail configurado.")
             return False
         
-        assunto = f"[Helpdesk] Ticket #{ticket.id} - {ticket.titulo} foi atribuído a você"
+        # Determinar tipo de usuário
+        from .models import Funcionario
+        tipo_usuario = 'cliente'  # Default
+        try:
+            if Funcionario.objects.filter(usuario=destinatario_user).exists():
+                funcionario = Funcionario.objects.get(usuario=destinatario_user)
+                tipo_usuario = funcionario.tipo
+        except Exception as e:
+            logger.warning(f"Erro ao determinar tipo de usuário para {destinatario_user.username}: {str(e)}")
+        
+        assunto = f"[Helpdesk] Chamado #{ticket.id} - {ticket.titulo} foi atribuído a você"
         destinatarios = [destinatario_user.email]
         template_html = "tickets/emails/atribuicao_ticket.html"
         
@@ -186,7 +196,9 @@ class EmailNotificationService:
             'ticket': ticket,
             'destinatario': destinatario_user,
             'empresa': ticket.empresa,
-            'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
+            'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None,
+            'tipo_usuario': tipo_usuario,
+            'nome_destinatario': destinatario_user.get_full_name() or destinatario_user.username
         }
         
         return cls.enviar_email(assunto, destinatarios, template_html, contexto)
@@ -202,36 +214,71 @@ class EmailNotificationService:
             usuario_alteracao: Usuário que alterou o status
         """
         # Determinar os destinatários
-        destinatarios = []
+        destinatarios_info = []
         
-        # Sempre notificar o criador do ticket
+        # Tipo de usuário cliente para o criador do ticket
         if ticket.criado_por.email:
-            destinatarios.append(ticket.criado_por.email)
+            # Verificar preferências de notificação
+            if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.criado_por, 'alteracao_status'):
+                # Verificar se é cliente ou funcionário
+                from .models import Funcionario
+                tipo_usuario = 'cliente'
+                try:
+                    if Funcionario.objects.filter(usuario=ticket.criado_por).exists():
+                        funcionario = Funcionario.objects.get(usuario=ticket.criado_por)
+                        tipo_usuario = funcionario.tipo
+                except Exception as e:
+                    logger.warning(f"Erro ao determinar tipo de usuário para {ticket.criado_por.username}: {str(e)}")
+                
+                destinatarios_info.append({
+                    'email': ticket.criado_por.email,
+                    'tipo_usuario': tipo_usuario,
+                    'nome': ticket.criado_por.get_full_name() or ticket.criado_por.username
+                })
         
         # Notificar o atribuído se houver e for diferente do criador
         if ticket.atribuido_a and ticket.atribuido_a.usuario.email:
             if ticket.atribuido_a.usuario.email != ticket.criado_por.email:
-                destinatarios.append(ticket.atribuido_a.usuario.email)
+                if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.atribuido_a.usuario, 'alteracao_status'):
+                    destinatarios_info.append({
+                        'email': ticket.atribuido_a.usuario.email,
+                        'tipo_usuario': ticket.atribuido_a.tipo,
+                        'nome': ticket.atribuido_a.usuario.get_full_name() or ticket.atribuido_a.usuario.username
+                    })
         
-        if not destinatarios:
-            logger.warning(f"Nenhum destinatário encontrado para notificação de alteração de status do ticket #{ticket.id}")
+        if not destinatarios_info:
+            logger.warning(f"Nenhum destinatário encontrado para notificação de alteração de status do chamado #{ticket.id}")
             return False
         
-        assunto = f"[Helpdesk] Status do Ticket #{ticket.id} alterado para {ticket.get_status_display()}"
+        assunto = f"[Helpdesk] Status do Chamado #{ticket.id} alterado para {ticket.get_status_display()}"
         template_html = "tickets/emails/alteracao_status.html"
         
         status_dict = dict(Ticket.STATUS_CHOICES)
         
-        contexto = {
-            'ticket': ticket,
-            'status_anterior': status_dict.get(status_anterior, status_anterior),
-            'status_novo': ticket.get_status_display(),
-            'usuario_alteracao': usuario_alteracao,
-            'empresa': ticket.empresa,
-            'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
-        }
+        # Envio individual para cada destinatário com contexto personalizado
+        sucessos = 0
+        for destinatario in destinatarios_info:
+            contexto = {
+                'ticket': ticket,
+                'status_anterior': status_dict.get(status_anterior, status_anterior),
+                'status_novo': ticket.get_status_display(),
+                'alterador': usuario_alteracao,
+                'empresa': ticket.empresa,
+                'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None,
+                'tipo_usuario': destinatario['tipo_usuario'],
+                'nome_destinatario': destinatario['nome']
+            }
+            
+            success = cls.enviar_email(
+                assunto=assunto,
+                destinatarios=[destinatario['email']],
+                template_html=template_html,
+                contexto=contexto
+            )
+            if success:
+                sucessos += 1
         
-        return cls.enviar_email(assunto, destinatarios, template_html, contexto)
+        return sucessos > 0  # Retorna True se pelo menos um email foi enviado com sucesso
     
     @classmethod
     def notificar_novo_comentario(cls, comentario):
@@ -245,19 +292,39 @@ class EmailNotificationService:
         autor = comentario.autor
         
         # Determinar os destinatários
-        destinatarios = []
+        destinatarios_info = []
+        
+        # Verificar tipo de cada destinatário
+        from .models import Funcionario
         
         # Notificar o criador do ticket (se não for o autor do comentário)
         if ticket.criado_por.email and ticket.criado_por != autor:
             # Verificar preferências de notificação
             if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.criado_por, 'novo_comentario'):
-                destinatarios.append(ticket.criado_por.email)
+                # Verificar se é cliente ou funcionário
+                tipo_usuario = 'cliente'
+                try:
+                    if Funcionario.objects.filter(usuario=ticket.criado_por).exists():
+                        funcionario = Funcionario.objects.get(usuario=ticket.criado_por)
+                        tipo_usuario = funcionario.tipo
+                except Exception as e:
+                    logger.warning(f"Erro ao determinar tipo de usuário para {ticket.criado_por.username}: {str(e)}")
+                
+                destinatarios_info.append({
+                    'email': ticket.criado_por.email,
+                    'tipo_usuario': tipo_usuario,
+                    'nome': ticket.criado_por.get_full_name() or ticket.criado_por.username
+                })
         
         # Notificar o técnico atribuído (se houver e não for o autor do comentário)
         if ticket.atribuido_a and ticket.atribuido_a.usuario.email and ticket.atribuido_a.usuario != autor:
             # Verificar preferências de notificação
             if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.atribuido_a.usuario, 'novo_comentario'):
-                destinatarios.append(ticket.atribuido_a.usuario.email)
+                destinatarios_info.append({
+                    'email': ticket.atribuido_a.usuario.email,
+                    'tipo_usuario': ticket.atribuido_a.tipo,
+                    'nome': ticket.atribuido_a.usuario.get_full_name() or ticket.atribuido_a.usuario.username
+                })
         
         # Notificar outros técnicos atribuídos
         for atribuicao in ticket.atribuicoes.all():
@@ -266,24 +333,42 @@ class EmailNotificationService:
                 atribuicao.funcionario.usuario != autor):
                 # Verificar preferências de notificação
                 if ConfiguracaoNotificacao.deve_enviar_notificacao(atribuicao.funcionario.usuario, 'novo_comentario'):
-                    destinatarios.append(atribuicao.funcionario.usuario.email)
+                    destinatarios_info.append({
+                        'email': atribuicao.funcionario.usuario.email,
+                        'tipo_usuario': atribuicao.funcionario.tipo,
+                        'nome': atribuicao.funcionario.usuario.get_full_name() or atribuicao.funcionario.usuario.username
+                    })
         
-        if not destinatarios:
-            logger.info(f"Nenhum destinatário para notificação de novo comentário no ticket #{ticket.id}")
+        if not destinatarios_info:
+            logger.info(f"Nenhum destinatário para notificação de novo comentário no chamado #{ticket.id}")
             return False
         
-        assunto = f"[Helpdesk] Novo comentário no Ticket #{ticket.id} - {ticket.titulo}"
+        assunto = f"[Helpdesk] Novo comentário no Chamado #{ticket.id} - {ticket.titulo}"
         template_html = "tickets/emails/novo_comentario.html"
         
-        contexto = {
-            'ticket': ticket,
-            'comentario': comentario,
-            'autor': autor,
-            'empresa': ticket.empresa,
-            'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
-        }
-        
-        return cls.enviar_email(assunto, destinatarios, template_html, contexto)
+        # Envio individual para cada destinatário com contexto personalizado
+        sucessos = 0
+        for destinatario in destinatarios_info:
+            contexto = {
+                'ticket': ticket,
+                'comentario': comentario,
+                'autor': autor,
+                'empresa': ticket.empresa,
+                'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None,
+                'tipo_usuario': destinatario['tipo_usuario'],
+                'nome_destinatario': destinatario['nome']
+            }
+            
+            success = cls.enviar_email(
+                assunto=assunto,
+                destinatarios=[destinatario['email']],
+                template_html=template_html,
+                contexto=contexto
+            )
+            if success:
+                sucessos += 1
+                
+        return sucessos > 0  # Retorna True se pelo menos um email foi enviado com sucesso
     
     @classmethod
     def notificar_criacao_ticket(cls, ticket):
@@ -296,6 +381,7 @@ class EmailNotificationService:
         # Determinar os destinatários (administradores e suporte da empresa)
         from .models import Funcionario
         destinatarios = []
+        destinatarios_info = []  # Lista com info de destinatários e seus tipos
         
         # Localizar administradores e suporte da empresa
         funcionarios = Funcionario.objects.filter(
@@ -308,22 +394,41 @@ class EmailNotificationService:
                 # Verificar preferências de notificação
                 if ConfiguracaoNotificacao.deve_enviar_notificacao(funcionario.usuario, 'criacao_ticket'):
                     destinatarios.append(funcionario.usuario.email)
+                    destinatarios_info.append({
+                        'email': funcionario.usuario.email,
+                        'tipo_usuario': funcionario.tipo,
+                        'nome': funcionario.usuario.get_full_name() or funcionario.usuario.username,
+                    })
         
         if not destinatarios:
             logger.info(f"Nenhum destinatário para notificação de criação do ticket #{ticket.id}")
             return False
         
-        assunto = f"[Helpdesk] Novo ticket criado: #{ticket.id} - {ticket.titulo}"
+        assunto = f"[Helpdesk] Novo chamado criado: #{ticket.id} - {ticket.titulo}"
         template_html = "tickets/emails/novo_ticket.html"
         
-        contexto = {
-            'ticket': ticket,
-            'criador': ticket.criado_por,
-            'empresa': ticket.empresa,
-            'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
-        }
-        
-        return cls.enviar_email(assunto, destinatarios, template_html, contexto)
+        # Envio individual para cada destinatário com contexto personalizado
+        sucessos = 0
+        for destinatario in destinatarios_info:
+            contexto = {
+                'ticket': ticket,
+                'criador': ticket.criado_por,
+                'empresa': ticket.empresa,
+                'url_ticket': f"{settings.SITE_URL}/tickets/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None,
+                'tipo_usuario': destinatario['tipo_usuario'],
+                'nome_destinatario': destinatario['nome']
+            }
+            
+            success = cls.enviar_email(
+                assunto=assunto,
+                destinatarios=[destinatario['email']],
+                template_html=template_html,
+                contexto=contexto
+            )
+            if success:
+                sucessos += 1
+                
+        return sucessos > 0  # Retorna True se pelo menos um email foi enviado com sucesso
 
 # Configurações de usuário para notificações
 class ConfiguracaoNotificacao:
