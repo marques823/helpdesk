@@ -1,0 +1,42 @@
+{% extends "tickets/emails/base_email.html" %}
+
+{% block title %}Chamado Encerrado - #{{ ticket.id }}{% endblock %}
+
+{% block header_title %}Chamado Encerrado{% endblock %}
+
+{% block content %}
+<p>Olá{% if nome_destinatario %} {{ nome_destinatario }}{% endif %},</p>
+
+<p>
+    O chamado <strong>#{{ ticket.id }} - {{ ticket.titulo }}</strong> foi encerrado 
+    por <strong>{{ encerrador.get_full_name|default:encerrador.username }}</strong>.
+</p>
+
+<div style="background-color: #fff; border-left: 4px solid #e74c3c; padding: 10px; margin: 15px 0;">
+    <h3>Informações do Encerramento</h3>
+    <p>Data de encerramento: <strong>{{ data_encerramento }}</strong></p>
+    {% if comentario_encerramento %}
+    <p>Comentário: {{ comentario_encerramento|linebreaksbr }}</p>
+    {% endif %}
+</div>
+
+<p>
+    {% if tipo_usuario == 'cliente' %}
+    Seu chamado foi encerrado. Se precisar de mais ajuda sobre este assunto, você pode reabrir o chamado respondendo a este email ou criar um novo chamado em nossa plataforma.
+    {% elif tipo_usuario == 'suporte' %}
+    Um chamado que estava sob sua responsabilidade foi encerrado. Não são necessárias mais ações para este ticket.
+    {% elif tipo_usuario == 'admin' %}
+    Um chamado foi encerrado. Você pode verificar os detalhes clicando no botão abaixo.
+    {% else %}
+    Este chamado foi encerrado. Não são necessárias mais ações.
+    {% endif %}
+</p>
+
+<p>Agradecemos sua colaboração.</p>
+
+{% if url_ticket %}
+<p>
+    <a href="{{ url_ticket }}" style="display: inline-block; background-color: #e74c3c; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 15px;">Ver Chamado</a>
+</p>
+{% endif %}
+{% endblock %} 
