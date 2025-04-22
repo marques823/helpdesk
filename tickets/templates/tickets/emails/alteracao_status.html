@@ -8,7 +8,7 @@
 <p>Olá{% if nome_destinatario %} {{ nome_destinatario }}{% endif %},</p>
 
 <p>
-    O status do chamado <strong>{{ ticket.titulo }}</strong> foi alterado 
+    O status do chamado <strong>#{{ ticket.numero_empresa }} - {{ ticket.titulo }}</strong> foi alterado 
     por <strong>{{ alterador.get_full_name|default:alterador.username }}</strong>.
 </p>
 

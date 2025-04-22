@@ -270,6 +270,27 @@ class Funcionario(models.Model):
             self.usuario.is_superuser = False
             self.usuario.save()
 
+class SequenciaTicketEmpresa(models.Model):
+    """
+    Modelo para armazenar o último número sequencial de ticket por empresa
+    Isso permite que cada empresa tenha sua própria sequência de numeração de tickets
+    """
+    empresa = models.OneToOneField(Empresa, on_delete=models.CASCADE, related_name='sequencia_ticket')
+    ultimo_numero = models.PositiveIntegerField(default=0)
+    
+    def __str__(self):
+        return f"Sequência de tickets para {self.empresa.nome}: #{self.ultimo_numero}"
+    
+    def proximo_numero(self):
+        """Incrementa e retorna o próximo número de ticket para esta empresa"""
+        self.ultimo_numero += 1
+        self.save()
+        return self.ultimo_numero
+        
+    class Meta:
+        verbose_name = 'Sequência de Ticket por Empresa'
+        verbose_name_plural = 'Sequências de Tickets por Empresa'
+
 class Ticket(models.Model):
     STATUS_CHOICES = [
         ('aberto', 'Aberto'),
@@ -297,13 +318,28 @@ class Ticket(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
     
+    # Campo para armazenar o número do ticket específico da empresa
+    numero_empresa = models.PositiveIntegerField(default=0, help_text="Número sequencial do ticket na empresa")
+    
     class Meta:
         ordering = ['-criado_em']
         verbose_name = 'Ticket'
         verbose_name_plural = 'Tickets'
     
     def __str__(self):
+        if self.numero_empresa:
+            return f"#{self.numero_empresa} ({self.empresa.nome}) - {self.titulo}"
         return f"#{self.id} - {self.titulo}"
+    
+    def save(self, *args, **kwargs):
+        if not self.id and not self.numero_empresa:
+            # Se for um novo ticket e o número da empresa ainda não foi definido
+            # Obtém ou cria a sequência para a empresa
+            sequencia, created = SequenciaTicketEmpresa.objects.get_or_create(empresa=self.empresa)
+            # Define o próximo número de ticket
+            self.numero_empresa = sequencia.proximo_numero()
+        
+        super().save(*args, **kwargs)
     
     def get_atribuicoes(self):
         """Retorna todas as atribuições deste ticket"""

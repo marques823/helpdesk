@@ -7,7 +7,7 @@
 {% block content %}
 <p>Olá{% if nome_destinatario %} {{ nome_destinatario }}{% endif %},</p>
 
-<p>Um chamado foi atribuído a você no sistema de Helpdesk.</p>
+<p>Um chamado <strong>#{{ ticket.numero_empresa }}</strong> foi atribuído a você no sistema de Helpdesk.</p>
 
 <p>
     {% if tipo_usuario == 'cliente' %}
