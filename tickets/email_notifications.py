@@ -380,8 +380,28 @@ class EmailNotificationService:
         """
         # Determinar os destinatários (administradores e suporte da empresa)
         from .models import Funcionario
-        destinatarios = []
         destinatarios_info = []  # Lista com info de destinatários e seus tipos
+        
+        # Verificar se o criador é um cliente para notificá-lo também
+        tipo_criador = 'cliente'  # Default
+        is_criador_cliente = False
+        
+        try:
+            funcionario_criador = Funcionario.objects.filter(usuario=ticket.criado_por).first()
+            if funcionario_criador:
+                tipo_criador = funcionario_criador.tipo
+                is_criador_cliente = funcionario_criador.tipo == 'cliente'
+        except Exception as e:
+            logger.warning(f"Erro ao determinar tipo do criador {ticket.criado_por.username}: {str(e)}")
+        
+        # Se o criador for cliente, notificá-lo sobre a abertura do chamado
+        if is_criador_cliente and ticket.criado_por.email:
+            if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.criado_por, 'criacao_ticket'):
+                destinatarios_info.append({
+                    'email': ticket.criado_por.email,
+                    'tipo_usuario': tipo_criador,
+                    'nome': ticket.criado_por.get_full_name() or ticket.criado_por.username,
+                })
         
         # Localizar administradores e suporte da empresa
         funcionarios = Funcionario.objects.filter(
@@ -393,15 +413,14 @@ class EmailNotificationService:
             if funcionario.usuario.email and funcionario.usuario != ticket.criado_por:
                 # Verificar preferências de notificação
                 if ConfiguracaoNotificacao.deve_enviar_notificacao(funcionario.usuario, 'criacao_ticket'):
-                    destinatarios.append(funcionario.usuario.email)
                     destinatarios_info.append({
                         'email': funcionario.usuario.email,
                         'tipo_usuario': funcionario.tipo,
                         'nome': funcionario.usuario.get_full_name() or funcionario.usuario.username,
                     })
         
-        if not destinatarios:
-            logger.info(f"Nenhum destinatário para notificação de criação do ticket #{ticket.id}")
+        if not destinatarios_info:
+            logger.info(f"Nenhum destinatário para notificação de criação do chamado #{ticket.id}")
             return False
         
         assunto = f"[Helpdesk] Novo chamado criado: #{ticket.id} - {ticket.titulo}"

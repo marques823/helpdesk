@@ -3795,3 +3795,73 @@ def completar_cadastro(request, token):
         logger.error(f"Erro ao completar cadastro: {str(e)}")
         messages.error(request, "Ocorreu um erro ao processar seu cadastro.")
         return redirect('login')
+
+def alterar_status_ticket(request, ticket_id):
+    """
+    Altera o status de um ticket
+    """
+    ticket = get_object_or_404(Ticket, pk=ticket_id)
+    
+    # Verificar permissão
+    if not is_suporte(request) and not is_admin(request):
+        if not is_cliente_empresa(request, ticket.empresa):
+            messages.error(request, "Você não tem permissão para acessar este recurso.")
+            return redirect('tickets:dashboard')
+    
+    if request.method == 'POST':
+        form = AlterarStatusForm(request.POST, instance=ticket)
+        
+        if form.is_valid():
+            status_anterior = ticket.status
+            
+            ticket = form.save(commit=False)
+            # Salvar o usuário que está fazendo a alteração
+            ticket._usuario_alteracao = request.user
+            ticket._status_alterado = True
+            ticket._status_anterior = status_anterior
+            
+            # Se está fechando o ticket e não há data de fechamento, define agora
+            if ticket.status in ['fechado', 'resolvido'] and not ticket.data_fechamento:
+                ticket.data_fechamento = timezone.now()
+            
+            # Se está reabrindo o ticket, limpa a data de fechamento
+            if ticket.status not in ['fechado', 'resolvido'] and ticket.data_fechamento:
+                ticket.data_fechamento = None
+            
+            # Salva o ticket com o novo status
+            ticket.save()
+            
+            # Registra no histórico
+            descricao = f"Status alterado de {dict(Ticket.STATUS_CHOICES)[status_anterior]} para {dict(Ticket.STATUS_CHOICES)[ticket.status]}"
+            HistoricoTicket.objects.create(
+                ticket=ticket,
+                usuario=request.user,
+                tipo_alteracao='status',
+                valor_anterior=status_anterior,
+                valor_novo=ticket.status,
+                descricao=descricao
+            )
+            
+            # Adiciona comentário se fornecido
+            comentario_texto = request.POST.get('comentario')
+            if comentario_texto:
+                comentario = Comentario.objects.create(
+                    ticket=ticket,
+                    autor=request.user,
+                    texto=comentario_texto
+                )
+                # Notifica sobre o novo comentário
+                EmailNotificationService.notificar_novo_comentario(comentario)
+            
+            # Já não precisa mais chamar a notificação aqui, pois será feita pelo signal
+            # EmailNotificationService.notificar_alteracao_status(ticket, status_anterior, request.user)
+            
+            messages.success(request, "Status do chamado alterado com sucesso!")
+            return redirect('tickets:ticket_detalhes', ticket_id=ticket.id)
+    else:
+        form = AlterarStatusForm(instance=ticket)
+    
+    return render(request, 'tickets/alterar_status.html', {
+        'form': form,
+        'ticket': ticket
+    })

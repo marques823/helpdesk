@@ -75,13 +75,16 @@ def notificar_alteracoes_ticket(sender, instance, created, **kwargs):
             # Envia notificação de alteração de status
             status_anterior = instance._status_anterior
             
+            # Obter o usuário que fez a alteração
+            usuario_alteracao = getattr(instance, '_usuario_alteracao', instance.criado_por)
+            
             # Verificar preferências de notificação do criador do ticket
             if ConfiguracaoNotificacao.deve_enviar_notificacao(instance.criado_por, 'alteracao_status'):
                 # Envia a notificação
                 EmailNotificationService.notificar_alteracao_status(
                     ticket=instance,
                     status_anterior=status_anterior,
-                    usuario_alteracao=instance.criado_por
+                    usuario_alteracao=usuario_alteracao
                 )
                 logger.info(f"Notificação de alteração de status enviada para o ticket #{instance.id}")
             else:
