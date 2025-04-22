@@ -5,7 +5,6 @@ from django.db import transaction
 
 from .models import Ticket, Comentario, HistoricoTicket, AtribuicaoTicket, PreferenciasNotificacao
 from .email_notifications import EmailNotificationService, ConfiguracaoNotificacao
-from .middleware import _thread_locals
 
 import logging
 
@@ -38,13 +37,6 @@ def detectar_alteracao_status(sender, instance, **kwargs):
                 # Salva temporariamente o status anterior no objeto para usar no post_save
                 instance._status_anterior = ticket_antigo.status
                 instance._status_alterado = True
-                
-                # Tentativa de obter o usuário que fez a alteração a partir da requisição atual
-                current_user = getattr(_thread_locals, 'user', None)
-                
-                if current_user:
-                    instance._usuario_alteracao = current_user
-                    logger.info(f"Usuário {current_user.username} identificado como alterador do status do ticket #{instance.pk}")
             else:
                 instance._status_alterado = False
                 
@@ -83,8 +75,21 @@ def notificar_alteracoes_ticket(sender, instance, created, **kwargs):
             # Envia notificação de alteração de status
             status_anterior = instance._status_anterior
             
-            # Obter o usuário que fez a alteração
-            usuario_alteracao = getattr(instance, '_usuario_alteracao', instance.criado_por)
+            # Obter o histórico mais recente para este ticket
+            try:
+                historico_recente = HistoricoTicket.objects.filter(
+                    ticket=instance, 
+                    tipo_alteracao='status'
+                ).order_by('-data_alteracao').first()
+                
+                if historico_recente and historico_recente.usuario:
+                    usuario_alteracao = historico_recente.usuario
+                    logger.info(f"Usuário identificado do histórico: {usuario_alteracao.username}")
+                else:
+                    usuario_alteracao = instance.criado_por
+            except Exception as e:
+                logger.error(f"Erro ao obter histórico: {str(e)}")
+                usuario_alteracao = instance.criado_por
             
             # Envia a notificação
             EmailNotificationService.notificar_alteracao_status(
