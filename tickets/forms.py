@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, PreferenciasNotificacao
+from .models import Empresa, Funcionario, Ticket, Comentario, CampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, PreferenciasNotificacao, SolicitacaoVerificacaoEmail
 from django.db.models import Q
 
 class EmpresaForm(forms.ModelForm):
@@ -634,3 +634,52 @@ class PreferenciasNotificacaoForm(forms.ModelForm):
             'notificar_novo_comentario': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'notificar_prioridade_alterada': forms.CheckboxInput(attrs={'class': 'form-check-input'})
         } 
+
+class SolicitacaoVerificacaoEmailForm(forms.ModelForm):
+    """
+    Formulário para solicitar verificação de email para cadastro no sistema
+    """
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Seu email corporativo'}),
+        label="Email",
+        help_text="Este email será verificado pelo administrador do sistema"
+    )
+    
+    nome = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Seu nome completo'}),
+        label="Nome completo"
+    )
+    
+    empresa = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nome da empresa'}),
+        label="Empresa"
+    )
+    
+    telefone = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '(XX) XXXXX-XXXX'}),
+        label="Telefone",
+        required=False
+    )
+    
+    mensagem = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Informações adicionais (opcional)',
+            'rows': 4
+        }),
+        label="Mensagem (opcional)",
+        required=False
+    )
+    
+    class Meta:
+        model = SolicitacaoVerificacaoEmail
+        fields = ['email', 'nome', 'empresa', 'telefone', 'mensagem']
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        
+        # Verificar se o email já está registrado como usuário
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("Este email já está registrado no sistema. Por favor, use a recuperação de senha se necessário.")
+        
+        return email 

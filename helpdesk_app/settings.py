@@ -147,13 +147,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST')
-EMAIL_PORT = config('EMAIL_PORT', cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='suporte@tecnicolitoral.com.br')
-EMAIL_ENABLED = config('EMAIL_ENABLED', default=True, cast=bool)
+EMAIL_HOST = 'email-smtp.sa-east-1.amazonaws.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'AKIAYUQGTDV6BPXRHYL5'
+EMAIL_HOST_PASSWORD = 'BBuR6nw3FNENQ/lbscnQnsZmPImL+j2s+RYGLtY53Lw2'
+DEFAULT_FROM_EMAIL = 'suporte@tecnicolitoral.com'
+EMAIL_ENABLED = True
 
 # Se o envio de e-mails estiver desativado, usar o backend de console
 if not EMAIL_ENABLED:

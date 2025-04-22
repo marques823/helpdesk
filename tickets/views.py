@@ -10,12 +10,12 @@ from django.db import connection, models
 from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
-from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket, EmailVerificado
+from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket, EmailVerificado, SolicitacaoVerificacaoEmail
 from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
                    AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
                    NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
                    CampoPerfilCompartilhamentoForm, CompartilharTicketForm, CategoriaChamadoForm, 
-                   PreferenciasNotificacaoForm)
+                   PreferenciasNotificacaoForm, SolicitacaoVerificacaoEmailForm)
 from django.core.exceptions import ObjectDoesNotExist
 import json
 from datetime import datetime, timezone
@@ -3337,3 +3337,312 @@ def configuracoes(request):
         logger.error(f"Erro ao acessar configurações: {str(e)}")
         messages.error(request, "Ocorreu um erro ao carregar as configurações.")
         return redirect('tickets:dashboard')
+
+def solicitar_verificacao_email(request):
+    """
+    View pública para solicitar verificação de email para cadastro no sistema
+    """
+    try:
+        if request.method == 'POST':
+            form = SolicitacaoVerificacaoEmailForm(request.POST)
+            if form.is_valid():
+                solicitacao = form.save()
+                
+                # Notificar administradores sobre nova solicitação
+                # (implementação opcional - pode ser feita posteriormente)
+                
+                # Redirecionar para página de sucesso
+                return redirect('tickets:solicitacao_enviada', solicitacao_id=solicitacao.id)
+        else:
+            form = SolicitacaoVerificacaoEmailForm()
+        
+        return render(request, 'tickets/solicitar_verificacao_email.html', {'form': form})
+    except Exception as e:
+        logger.error(f"Erro ao solicitar verificação de email: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.")
+        return redirect('login')
+
+def solicitacao_enviada(request, solicitacao_id):
+    """
+    View pública para confirmação de solicitação enviada
+    """
+    try:
+        solicitacao = get_object_or_404(SolicitacaoVerificacaoEmail, id=solicitacao_id)
+        return render(request, 'tickets/solicitacao_enviada.html', {'solicitacao': solicitacao})
+    except Exception as e:
+        logger.error(f"Erro ao exibir página de solicitação enviada: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao processar sua solicitação.")
+        return redirect('login')
+
+@login_required
+def gerenciar_verificacoes_email(request):
+    """
+    View administrativa para gerenciar solicitações de verificação de email
+    """
+    try:
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para acessar esta página.")
+                return redirect('tickets:dashboard')
+        
+        # Filtros
+        query = request.GET.get('q', '')
+        status = request.GET.get('status', '')
+        
+        # Query base
+        solicitacoes = SolicitacaoVerificacaoEmail.objects.all()
+        
+        # Aplicar filtros
+        if query:
+            solicitacoes = solicitacoes.filter(
+                Q(nome__icontains=query) | Q(email__icontains=query) | Q(empresa__icontains=query)
+            )
+        
+        if status:
+            if status == 'pendente':
+                solicitacoes = solicitacoes.filter(verificado_ses=False)
+            elif status == 'verificado':
+                solicitacoes = solicitacoes.filter(verificado_ses=True, notificado=False)
+            elif status == 'notificado':
+                solicitacoes = solicitacoes.filter(notificado=True)
+        
+        # Paginação
+        paginator = Paginator(solicitacoes, 25)  # 25 tickets por página
+        page = request.GET.get('page')
+        
+        try:
+            solicitacoes = paginator.page(page)
+        except PageNotAnInteger:
+            solicitacoes = paginator.page(1)
+        except EmptyPage:
+            solicitacoes = paginator.page(paginator.num_pages)
+        
+        context = {
+            'solicitacoes': solicitacoes,
+            'query': query,
+            'status': status,
+        }
+        
+        return render(request, 'tickets/gerenciar_verificacoes_email.html', context)
+    except Exception as e:
+        logger.error(f"Erro ao gerenciar verificações de email: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar as solicitações.")
+        return redirect('tickets:dashboard')
+
+@login_required
+def detalhe_solicitacao_verificacao(request, solicitacao_id):
+    """
+    View para detalhes de solicitação de verificação de email
+    """
+    try:
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para acessar esta página.")
+                return redirect('tickets:dashboard')
+        
+        solicitacao = get_object_or_404(SolicitacaoVerificacaoEmail, id=solicitacao_id)
+        
+        context = {
+            'solicitacao': solicitacao,
+        }
+        
+        return render(request, 'tickets/detalhe_solicitacao_verificacao.html', context)
+    except Exception as e:
+        logger.error(f"Erro ao exibir detalhes da solicitação de verificação: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao carregar os detalhes da solicitação.")
+        return redirect('tickets:gerenciar_verificacoes_email')
+
+@login_required
+def marcar_verificado(request, solicitacao_id):
+    """
+    View para marcar email como verificado
+    """
+    try:
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para realizar esta ação.")
+                return redirect('tickets:dashboard')
+        
+        solicitacao = get_object_or_404(SolicitacaoVerificacaoEmail, id=solicitacao_id)
+        
+        if request.method == 'POST':
+            solicitacao.verificado_ses = True
+            solicitacao.data_verificacao = timezone.now()
+            
+            # Gerar token para continuação do cadastro
+            solicitacao.gerar_token_cadastro()
+            
+            solicitacao.save()
+            
+            messages.success(request, f"Email {solicitacao.email} marcado como verificado.")
+            return redirect('tickets:gerenciar_verificacoes_email')
+        
+        return redirect('tickets:gerenciar_verificacoes_email')
+    except Exception as e:
+        logger.error(f"Erro ao marcar email como verificado: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao marcar o email como verificado.")
+        return redirect('tickets:gerenciar_verificacoes_email')
+
+@login_required
+def enviar_notificacao(request, solicitacao_id):
+    """
+    View para enviar notificação de email verificado
+    """
+    try:
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para realizar esta ação.")
+                return redirect('tickets:dashboard')
+        
+        solicitacao = get_object_or_404(SolicitacaoVerificacaoEmail, id=solicitacao_id)
+        
+        if not solicitacao.verificado_ses:
+            messages.warning(request, "Este email ainda não foi verificado. Verifique primeiro antes de enviar a notificação.")
+            return redirect('tickets:gerenciar_verificacoes_email')
+        
+        if request.method == 'POST':
+            # Gerar link de cadastro
+            if not solicitacao.token_cadastro:
+                solicitacao.gerar_token_cadastro()
+            
+            link_cadastro = request.build_absolute_uri(
+                reverse('tickets:completar_cadastro', kwargs={'token': solicitacao.token_cadastro})
+            )
+            
+            # Enviar email (implementar lógica de envio)
+            try:
+                # Importar o serviço de email
+                from tickets.services import EmailService
+                
+                assunto = 'Seu email foi verificado - Continue seu cadastro'
+                mensagem = f"""
+                Olá {solicitacao.nome},
+                
+                Seu email foi verificado com sucesso em nosso sistema.
+                
+                Para continuar seu cadastro, acesse o link abaixo:
+                {link_cadastro}
+                
+                Atenciosamente,
+                Equipe de Suporte
+                """
+                
+                email_enviado = EmailService.enviar_email(
+                    destinatario=solicitacao.email,
+                    assunto=assunto,
+                    mensagem=mensagem
+                )
+                
+                if email_enviado:
+                    # Atualizar status da solicitação
+                    solicitacao.notificado = True
+                    solicitacao.data_notificacao = timezone.now()
+                    solicitacao.save()
+                    
+                    messages.success(request, f"Notificação enviada para {solicitacao.email} com sucesso.")
+                else:
+                    messages.error(request, f"Não foi possível enviar o email para {solicitacao.email}.")
+                    logger.error(f"Falha ao enviar email para {solicitacao.email}")
+            except Exception as e:
+                logger.error(f"Erro ao enviar email: {str(e)}")
+                messages.error(request, f"Erro ao enviar email: {str(e)}")
+                return redirect('tickets:gerenciar_verificacoes_email')
+            
+            return redirect('tickets:gerenciar_verificacoes_email')
+        
+        return redirect('tickets:gerenciar_verificacoes_email')
+    except Exception as e:
+        logger.error(f"Erro ao enviar notificação: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao enviar a notificação.")
+        return redirect('tickets:gerenciar_verificacoes_email')
+
+@login_required
+def excluir_solicitacao(request, solicitacao_id):
+    """
+    View para excluir solicitação de verificação de email
+    """
+    try:
+        # Verificar permissões
+        if not request.user.is_superuser:
+            funcionario = get_object_or_404(Funcionario, usuario=request.user)
+            if not funcionario.is_admin():
+                messages.error(request, "Você não tem permissão para realizar esta ação.")
+                return redirect('tickets:dashboard')
+        
+        solicitacao = get_object_or_404(SolicitacaoVerificacaoEmail, id=solicitacao_id)
+        
+        if request.method == 'POST':
+            email = solicitacao.email
+            solicitacao.delete()
+            messages.success(request, f"Solicitação para {email} excluída com sucesso.")
+            return redirect('tickets:gerenciar_verificacoes_email')
+        
+        return redirect('tickets:gerenciar_verificacoes_email')
+    except Exception as e:
+        logger.error(f"Erro ao excluir solicitação: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao excluir a solicitação.")
+        return redirect('tickets:gerenciar_verificacoes_email')
+
+def completar_cadastro(request, token):
+    """
+    View para completar o cadastro a partir do token enviado por email
+    """
+    try:
+        solicitacao = get_object_or_404(SolicitacaoVerificacaoEmail, token_cadastro=token)
+        
+        if not solicitacao.verificado_ses:
+            messages.error(request, "Este link não é válido. O email não foi verificado.")
+            return redirect('login')
+        
+        if request.method == 'POST':
+            # Implementar lógica de criação de usuário
+            # Exemplo:
+            user_form = UserForm(request.POST)
+            funcionario_form = FuncionarioForm(request.POST)
+            
+            if user_form.is_valid() and funcionario_form.is_valid():
+                # Criar usuário
+                user = user_form.save(commit=False)
+                user.email = solicitacao.email  # Garantir que o email seja o verificado
+                user.save()
+                
+                # Criar funcionário
+                funcionario = funcionario_form.save(commit=False)
+                funcionario.usuario = user
+                funcionario.nome = solicitacao.nome  # Preencher com dados da solicitação
+                funcionario.save()
+                
+                # Opcionalmente, excluir a solicitação após o cadastro
+                # solicitacao.delete()
+                
+                messages.success(request, "Cadastro realizado com sucesso! Agora você pode fazer login.")
+                return redirect('login')
+        else:
+            initial_data = {
+                'email': solicitacao.email,
+                'first_name': solicitacao.nome.split()[0] if solicitacao.nome else '',
+                'last_name': ' '.join(solicitacao.nome.split()[1:]) if solicitacao.nome and len(solicitacao.nome.split()) > 1 else '',
+            }
+            
+            user_form = UserForm(initial=initial_data)
+            funcionario_form = FuncionarioForm()
+        
+        context = {
+            'solicitacao': solicitacao,
+            'user_form': user_form,
+            'funcionario_form': funcionario_form,
+        }
+        
+        return render(request, 'tickets/completar_cadastro.html', context)
+    except Exception as e:
+        logger.error(f"Erro ao completar cadastro: {str(e)}")
+        messages.error(request, "Ocorreu um erro ao processar seu cadastro.")
+        return redirect('login')

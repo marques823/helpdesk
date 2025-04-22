@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitação Enviada{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow text-center">
+                <div class="card-body p-5">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h2 class="mb-4">Solicitação Recebida!</h2>
+                    <p class="lead mb-4">
+                        Obrigado, <strong>{{ solicitacao.nome }}</strong>! 
+                        Sua solicitação de acesso ao sistema de helpdesk foi recebida com sucesso.
+                    </p>
+                    <div class="alert alert-info">
+                        <p class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nossa equipe vai verificar seu email <strong>{{ solicitacao.email }}</strong> 
+                            e entraremos em contato quando o processo estiver concluído.
+                        </p>
+                    </div>
+                    <p class="mt-4">
+                        Este processo geralmente leva até 24 horas úteis. Caso não receba uma resposta 
+                        neste período, por favor entre em contato com nosso suporte.
+                    </p>
+                    <div class="mt-4">
+                        <a href="{% url 'login' %}" class="btn btn-primary">
+                            <i class="fas fa-home me-2"></i>Voltar para Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
