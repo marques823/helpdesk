@@ -1,19 +1,41 @@
 {% extends "tickets/emails/base_email.html" %}
 
-{% block title %}Status do Chamado Alterado - Helpdesk{% endblock %}
+{% block title %}Status do Chamado Alterado{% endblock %}
 
 {% block header_title %}Status do Chamado Alterado{% endblock %}
 
 {% block content %}
-<p>Olá,</p>
+<p>Olá{% if nome_destinatario %} {{ nome_destinatario }}{% endif %},</p>
 
-<p>O status de um chamado que você está relacionado foi alterado.</p>
+<p>
+    O status do chamado <strong>{{ ticket.titulo }}</strong> foi alterado 
+    por <strong>{{ alterador.get_full_name|default:alterador.username }}</strong>.
+</p>
 
-<p>O status foi alterado de <strong>{{ status_anterior }}</strong> para <strong class="status-changed">{{ status_novo }}</strong>.</p>
+<div style="background-color: #fff; border-left: 4px solid #3498db; padding: 10px; margin: 15px 0;">
+    <h3>Informações da Alteração</h3>
+    <p>Status Anterior: <strong>{{ status_anterior }}</strong></p>
+    <p>Novo Status: <strong>{{ status_novo }}</strong></p>
+    {% if comentario %}
+    <p>Comentário: {{ comentario|linebreaksbr }}</p>
+    {% endif %}
+</div>
 
-<p>Esta alteração foi realizada por: {{ usuario_alteracao.get_full_name|default:usuario_alteracao.username }}</p>
+<p>
+    {% if tipo_usuario == 'cliente' %}
+    O status do seu chamado foi atualizado. Você pode verificar mais detalhes clicando no botão abaixo.
+    {% elif tipo_usuario == 'suporte' %}
+    Um chamado que você está atendendo teve seu status alterado. Verifique os detalhes para tomar as ações necessárias.
+    {% elif tipo_usuario == 'admin' %}
+    Um chamado teve seu status alterado. Verifique os detalhes para acompanhar o progresso do atendimento.
+    {% else %}
+    Houve uma alteração no status do chamado. Verifique os detalhes para tomar as ações necessárias.
+    {% endif %}
+</p>
 
-<p>Para visualizar os detalhes completos e tomar as ações necessárias, acesse o sistema clicando no botão abaixo.</p>
-
-<p>Se você tiver alguma dúvida, entre em contato com o administrador do sistema.</p>
+{% if url_ticket %}
+<p>
+    <a href="{{ url_ticket }}" style="display: inline-block; background-color: #3498db; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 15px;">Ver Chamado</a>
+</p>
+{% endif %}
 {% endblock %} 

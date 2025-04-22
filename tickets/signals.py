@@ -75,19 +75,18 @@ def notificar_alteracoes_ticket(sender, instance, created, **kwargs):
             # Envia notificação de alteração de status
             status_anterior = instance._status_anterior
             
-            # Verificar preferências de notificação do criador do ticket
-            if ConfiguracaoNotificacao.deve_enviar_notificacao(instance.criado_por, 'alteracao_status'):
-                # Envia a notificação
-                EmailNotificationService.notificar_alteracao_status(
-                    ticket=instance,
-                    status_anterior=status_anterior,
-                    usuario_alteracao=instance.criado_por
-                )
-                logger.info(f"Notificação de alteração de status enviada para o ticket #{instance.id}")
-            else:
-                logger.info(f"Notificação de alteração de status desativada para o usuário {instance.criado_por.username}")
+            # Obter o usuário que fez a alteração
+            usuario_alteracao = getattr(instance, '_usuario_alteracao', instance.criado_por)
+            
+            # Envia a notificação
+            EmailNotificationService.notificar_alteracao_status(
+                ticket=instance,
+                status_anterior=status_anterior,
+                usuario_alteracao=usuario_alteracao
+            )
+            logger.info(f"Notificação de alteração de status enviada para o chamado #{instance.id}")
         except Exception as e:
-            logger.error(f"Erro ao enviar notificação de alteração de status para o ticket #{instance.id}: {str(e)}")
+            logger.error(f"Erro ao enviar notificação de alteração de status para o chamado #{instance.id}: {str(e)}")
     
     # Processar alteração de atribuição
     if hasattr(instance, '_atribuicao_alterada') and instance._atribuicao_alterada:
