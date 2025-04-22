@@ -185,7 +185,8 @@ class EmailNotificationService:
         contexto = {
             'ticket': ticket,
             'destinatario': destinatario_user,
-            'empresa': ticket.empresa
+            'empresa': ticket.empresa,
+            'url_ticket': f"{settings.SITE_URL}/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
         }
         
         return cls.enviar_email(assunto, destinatarios, template_html, contexto)
@@ -226,7 +227,8 @@ class EmailNotificationService:
             'status_anterior': status_dict.get(status_anterior, status_anterior),
             'status_novo': ticket.get_status_display(),
             'usuario_alteracao': usuario_alteracao,
-            'empresa': ticket.empresa
+            'empresa': ticket.empresa,
+            'url_ticket': f"{settings.SITE_URL}/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
         }
         
         return cls.enviar_email(assunto, destinatarios, template_html, contexto)
@@ -277,7 +279,8 @@ class EmailNotificationService:
             'ticket': ticket,
             'comentario': comentario,
             'autor': autor,
-            'empresa': ticket.empresa
+            'empresa': ticket.empresa,
+            'url_ticket': f"{settings.SITE_URL}/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
         }
         
         return cls.enviar_email(assunto, destinatarios, template_html, contexto)
@@ -317,7 +320,7 @@ class EmailNotificationService:
             'ticket': ticket,
             'criador': ticket.criado_por,
             'empresa': ticket.empresa,
-            'url_ticket': f"{settings.SITE_URL}/tickets/detalhe/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
+            'url_ticket': f"{settings.SITE_URL}/ticket/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
         }
         
         return cls.enviar_email(assunto, destinatarios, template_html, contexto)

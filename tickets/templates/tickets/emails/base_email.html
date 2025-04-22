@@ -84,9 +84,12 @@
                 {% endif %}
                 <p><strong>Data de criação:</strong> {{ ticket.criado_em|date:"d/m/Y H:i" }}</p>
             </div>
+            
+            {% if url_ticket %}
+            <a href="{{ url_ticket }}" class="button">Ver Chamado</a>
             {% endif %}
             
-            {% if empresa %}
+            {% elif empresa %}
             <a href="{{ empresa_url|default:'#' }}" class="button">Acessar o Sistema</a>
             {% endif %}
         </div>
