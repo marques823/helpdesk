@@ -3814,11 +3814,8 @@ def alterar_status_ticket(request, ticket_id):
         if form.is_valid():
             status_anterior = ticket.status
             
+            # Salvamos o ticket sem acionar flags para o signal
             ticket = form.save(commit=False)
-            # Salvar o usuário que está fazendo a alteração
-            ticket._usuario_alteracao = request.user
-            ticket._status_alterado = True
-            ticket._status_anterior = status_anterior
             
             # Se está fechando o ticket e não há data de fechamento, define agora
             if ticket.status in ['fechado', 'resolvido'] and not ticket.data_fechamento:
@@ -3833,9 +3830,9 @@ def alterar_status_ticket(request, ticket_id):
             
             # Registra no histórico
             descricao = f"Status alterado de {dict(Ticket.STATUS_CHOICES)[status_anterior]} para {dict(Ticket.STATUS_CHOICES)[ticket.status]}"
-            HistoricoTicket.objects.create(
+            historico = HistoricoTicket.objects.create(
                 ticket=ticket,
-                usuario=request.user,
+                usuario=request.user,  # Usuário atual que fez a alteração
                 tipo_alteracao='status',
                 valor_anterior=status_anterior,
                 valor_novo=ticket.status,
@@ -3853,16 +3850,12 @@ def alterar_status_ticket(request, ticket_id):
                 # Notifica sobre o novo comentário
                 EmailNotificationService.notificar_novo_comentario(comentario)
             
-            # Enviar notificação diretamente para garantir que o usuário correto seja registrado
-            # O signal também será acionado, mas como não há mais alteração de status, não duplicará o envio
+            # Enviar notificação diretamente sem passar pelo signal
             EmailNotificationService.notificar_alteracao_status(
                 ticket=ticket, 
                 status_anterior=status_anterior, 
-                usuario_alteracao=request.user
+                usuario_alteracao=request.user  # Usar explicitamente o usuário da request
             )
-            
-            # Limpar a flag para evitar que o signal envie a notificação novamente
-            ticket._status_alterado = False
             
             messages.success(request, "Status do chamado alterado com sucesso!")
             return redirect('tickets:ticket_detalhes', ticket_id=ticket.id)
