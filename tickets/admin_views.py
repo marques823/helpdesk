@@ -4,12 +4,19 @@ import subprocess
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, FileResponse, JsonResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 from django.urls import path
 from django.core.management import call_command
 from django.contrib import messages
 from django.utils.html import format_html
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+import datetime
+import json
+import logging
+from .models import Ticket, Empresa, Funcionario
+from .api.n8n import send_webhook_to_n8n
 
 @staff_member_required
 def backup_manager(request):
@@ -165,4 +172,73 @@ def _get_disk_usage():
         'used': 'N/A',
         'available': 'N/A',
         'percent_used': 'N/A'
-    } 
+    }
+
+@staff_member_required
+def n8n_settings(request):
+    """
+    View para gerenciar configurações de integração com n8n
+    """
+    # Obter as configurações atuais
+    webhook_enabled = getattr(settings, 'N8N_WEBHOOK_ENABLED', False)
+    webhook_url = getattr(settings, 'N8N_WEBHOOK_URL', '')
+    
+    if request.method == 'POST':
+        # Processar o formulário
+        webhook_enabled = 'webhook_enabled' in request.POST
+        webhook_url = request.POST.get('webhook_url', '')
+        
+        # Salvar as configurações em variáveis de ambiente
+        os.environ['N8N_WEBHOOK_ENABLED'] = 'true' if webhook_enabled else 'false'
+        os.environ['N8N_WEBHOOK_URL'] = webhook_url
+        
+        # Atualizar as configurações no settings
+        settings.N8N_WEBHOOK_ENABLED = webhook_enabled
+        settings.N8N_WEBHOOK_URL = webhook_url
+        
+        messages.success(request, 'Configurações do n8n atualizadas com sucesso.')
+        
+    context = {
+        'webhook_enabled': webhook_enabled,
+        'webhook_url': webhook_url
+    }
+    
+    return render(request, 'tickets/admin/n8n_settings.html', context)
+
+@staff_member_required
+def n8n_test_webhook(request):
+    """
+    View para testar o webhook do n8n
+    """
+    if request.method == 'POST':
+        event_type = request.POST.get('event_type', 'ticket_created')
+        
+        # Dados de teste
+        test_data = {
+            'test': True,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'sender': request.user.username,
+            'message': f'Teste de evento {event_type} enviado manualmente'
+        }
+        
+        # Adicionar dados específicos do tipo de evento
+        if event_type == 'ticket_created' or event_type == 'ticket_updated':
+            # Obter um ticket aleatório para teste, se existir
+            ticket = Ticket.objects.filter(empresa__isnull=False).first()
+            if ticket:
+                test_data['ticket'] = {
+                    'id': ticket.id,
+                    'numero_empresa': ticket.numero_empresa,
+                    'titulo': ticket.titulo,
+                    'status': ticket.status
+                }
+                
+        # Enviar o webhook
+        success = send_webhook_to_n8n(event_type, test_data)
+        
+        if success:
+            messages.success(request, f'Evento de teste {event_type} enviado com sucesso para o n8n.')
+        else:
+            messages.error(request, f'Falha ao enviar evento de teste {event_type} para o n8n. Verifique as configurações e os logs.')
+            
+    return redirect('tickets:n8n_settings') 

@@ -1,0 +1,100 @@
+{% extends "tickets/base.html" %}
+{% load static %}
+
+{% block title %}Configurações N8N - Helpdesk{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Configurações de Integração com N8N</h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <p><strong>O que é N8N?</strong> O n8n é uma ferramenta de automação de fluxo de trabalho que permite conectar diferentes sistemas e automatizar processos.</p>
+                        <p>Utilize estas configurações para integrar o Helpdesk com o n8n para automação de fluxos de trabalho.</p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if messages %}
+                        <div class="mb-4">
+                            {% for message in messages %}
+                            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %}">
+                                {{ message }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="webhook_enabled" name="webhook_enabled" {% if webhook_enabled %}checked{% endif %}>
+                                <label class="custom-control-label" for="webhook_enabled">Habilitar Webhooks para N8N</label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Quando habilitado, o sistema enviará notificações automáticas para o n8n quando eventos ocorrerem (criação de tickets, comentários, alterações de status).
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="webhook_url">URL do Webhook N8N</label>
+                            <input type="text" class="form-control" id="webhook_url" name="webhook_url" value="{{ webhook_url }}" placeholder="https://seuservidor.n8n.io/webhook/...">
+                            <small class="form-text text-muted">
+                                URL para qual o sistema enviará as notificações. Deve ser uma URL de webhook válida do n8n.
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Eventos disponíveis:</label>
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    <strong>ticket_created</strong> - Quando um novo ticket é criado
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>ticket_updated</strong> - Quando um ticket é atualizado
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>comment_added</strong> - Quando um comentário é adicionado a um ticket
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>ticket_status_changed</strong> - Quando o status de um ticket é alterado
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Testar Integração</h6>
+                </div>
+                <div class="card-body">
+                    <p>Você pode enviar um evento de teste para verificar se a integração está funcionando corretamente.</p>
+                    
+                    <form method="post" action="{% url 'tickets:n8n_test_webhook' %}">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="event_type">Tipo de Evento</label>
+                            <select class="form-control" id="event_type" name="event_type">
+                                <option value="ticket_created">Ticket Criado</option>
+                                <option value="ticket_updated">Ticket Atualizado</option>
+                                <option value="comment_added">Comentário Adicionado</option>
+                                <option value="ticket_status_changed">Status de Ticket Alterado</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-info">Enviar Evento de Teste</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

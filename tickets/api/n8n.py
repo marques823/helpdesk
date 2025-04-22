@@ -7,9 +7,56 @@ from django.http import JsonResponse
 from django.conf import settings
 import json
 import logging
+import requests
 from ..models import Ticket, Empresa, Funcionario, CategoriaChamado, Comentario
 
 logger = logging.getLogger(__name__)
+
+# Configurações N8N
+N8N_WEBHOOK_URL = getattr(settings, 'N8N_WEBHOOK_URL', None)
+N8N_WEBHOOK_ENABLED = getattr(settings, 'N8N_WEBHOOK_ENABLED', False)
+
+def send_webhook_to_n8n(event_type, data):
+    """
+    Envia um webhook para o n8n com informações sobre eventos do sistema.
+    
+    Args:
+        event_type: Tipo do evento ('ticket_created', 'ticket_updated', 'comment_added', etc)
+        data: Dados do evento a serem enviados
+    
+    Returns:
+        bool: True se o webhook foi enviado com sucesso, False caso contrário
+    """
+    if not N8N_WEBHOOK_ENABLED or not N8N_WEBHOOK_URL:
+        logger.info(f"Webhook para n8n não configurado ou desativado. Evento {event_type} não enviado.")
+        return False
+    
+    try:
+        # Preparar payload
+        payload = {
+            'event': event_type,
+            'data': data
+        }
+        
+        # Enviar para o n8n
+        response = requests.post(
+            N8N_WEBHOOK_URL,
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=5  # Timeout em segundos
+        )
+        
+        # Verificar resposta
+        if response.status_code >= 200 and response.status_code < 300:
+            logger.info(f"Webhook enviado com sucesso para n8n: {event_type}")
+            return True
+        else:
+            logger.error(f"Erro ao enviar webhook para n8n. Status: {response.status_code}, Resposta: {response.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Erro ao enviar webhook para n8n: {str(e)}", exc_info=True)
+        return False
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -211,13 +258,46 @@ def update_ticket(request, ticket_id):
         ticket.save()
         
         # Adicionar comentário, se fornecido
+        comentario = None
         if comentario_texto:
-            Comentario.objects.create(
+            comentario = Comentario.objects.create(
                 ticket=ticket,
                 autor=request.user,
                 conteudo=comentario_texto,
                 publico=data.get('comentario_publico', True)
             )
+            
+            # Enviar webhook para n8n sobre o novo comentário
+            if comentario:
+                comentario_data = {
+                    'id': comentario.id,
+                    'ticket_id': ticket.id,
+                    'ticket_numero_empresa': ticket.numero_empresa,
+                    'conteudo': comentario.conteudo,
+                    'publico': comentario.publico,
+                    'autor': {
+                        'id': request.user.id,
+                        'username': request.user.username,
+                        'email': request.user.email
+                    }
+                }
+                send_webhook_to_n8n('comment_added', comentario_data)
+        
+        # Enviar webhook para n8n sobre a atualização do ticket
+        ticket_data = {
+            'id': ticket.id,
+            'numero_empresa': ticket.numero_empresa,
+            'titulo': ticket.titulo,
+            'status': ticket.status,
+            'status_anterior': status_anterior,
+            'prioridade': ticket.prioridade,
+            'usuario_atualizacao': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        }
+        send_webhook_to_n8n('ticket_updated', ticket_data)
             
         return Response({
             'success': True,
@@ -264,6 +344,22 @@ def add_comment(request, ticket_id):
             conteudo=conteudo,
             publico=data.get('publico', True)
         )
+        
+        # Enviar webhook para n8n sobre o novo comentário
+        comentario_data = {
+            'id': comentario.id,
+            'ticket_id': ticket.id,
+            'ticket_numero_empresa': ticket.numero_empresa,
+            'ticket_titulo': ticket.titulo,
+            'conteudo': comentario.conteudo,
+            'publico': comentario.publico,
+            'autor': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        }
+        send_webhook_to_n8n('comment_added', comentario_data)
         
         return Response({
             'success': True,
@@ -353,6 +449,30 @@ def create_ticket(request):
             criado_por=request.user,
             atribuido_a=funcionario
         )
+        
+        # Enviar webhook para n8n sobre o novo ticket
+        ticket_data = {
+            'id': ticket.id,
+            'numero_empresa': ticket.numero_empresa,
+            'titulo': ticket.titulo,
+            'descricao': ticket.descricao,
+            'status': ticket.status,
+            'prioridade': ticket.prioridade,
+            'empresa': {
+                'id': empresa.id,
+                'nome': empresa.nome
+            },
+            'categoria': {
+                'id': categoria.id,
+                'nome': categoria.nome
+            } if categoria else None,
+            'criado_por': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        }
+        send_webhook_to_n8n('ticket_created', ticket_data)
         
         return Response({
             'success': True,

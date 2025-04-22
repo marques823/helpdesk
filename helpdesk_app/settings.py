@@ -268,3 +268,7 @@ LOGGING = {
 #         'img-src': ("'self'", "data:", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"),
 #     }
 # }
+
+# Configurações da API para n8n
+N8N_WEBHOOK_ENABLED = os.environ.get('N8N_WEBHOOK_ENABLED', 'False').lower() == 'true'
+N8N_WEBHOOK_URL = os.environ.get('N8N_WEBHOOK_URL', '')
