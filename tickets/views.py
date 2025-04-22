@@ -3853,8 +3853,16 @@ def alterar_status_ticket(request, ticket_id):
                 # Notifica sobre o novo comentário
                 EmailNotificationService.notificar_novo_comentario(comentario)
             
-            # Já não precisa mais chamar a notificação aqui, pois será feita pelo signal
-            # EmailNotificationService.notificar_alteracao_status(ticket, status_anterior, request.user)
+            # Enviar notificação diretamente para garantir que o usuário correto seja registrado
+            # O signal também será acionado, mas como não há mais alteração de status, não duplicará o envio
+            EmailNotificationService.notificar_alteracao_status(
+                ticket=ticket, 
+                status_anterior=status_anterior, 
+                usuario_alteracao=request.user
+            )
+            
+            # Limpar a flag para evitar que o signal envie a notificação novamente
+            ticket._status_alterado = False
             
             messages.success(request, "Status do chamado alterado com sucesso!")
             return redirect('tickets:ticket_detalhes', ticket_id=ticket.id)

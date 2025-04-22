@@ -238,12 +238,47 @@ class EmailNotificationService:
         
         # Notificar o atribuído se houver e for diferente do criador
         if ticket.atribuido_a and ticket.atribuido_a.usuario.email:
-            if ticket.atribuido_a.usuario.email != ticket.criado_por.email:
+            if ticket.atribuido_a.usuario.email != ticket.criado_por.email and ticket.atribuido_a.usuario != usuario_alteracao:
                 if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.atribuido_a.usuario, 'alteracao_status'):
                     destinatarios_info.append({
                         'email': ticket.atribuido_a.usuario.email,
                         'tipo_usuario': ticket.atribuido_a.tipo,
                         'nome': ticket.atribuido_a.usuario.get_full_name() or ticket.atribuido_a.usuario.username
+                    })
+        
+        # Notificar outros técnicos atribuídos
+        for atribuicao in ticket.atribuicoes.all():
+            if (atribuicao.funcionario != ticket.atribuido_a and 
+                atribuicao.funcionario.usuario.email and 
+                atribuicao.funcionario.usuario != ticket.criado_por and
+                atribuicao.funcionario.usuario != usuario_alteracao):
+                # Verificar preferências de notificação
+                if ConfiguracaoNotificacao.deve_enviar_notificacao(atribuicao.funcionario.usuario, 'alteracao_status'):
+                    destinatarios_info.append({
+                        'email': atribuicao.funcionario.usuario.email,
+                        'tipo_usuario': atribuicao.funcionario.tipo,
+                        'nome': atribuicao.funcionario.usuario.get_full_name() or atribuicao.funcionario.usuario.username
+                    })
+        
+        # Notificar suporte e admin da empresa
+        from .models import Funcionario
+        funcionarios = Funcionario.objects.filter(
+            empresas=ticket.empresa,
+            tipo__in=['admin', 'suporte']
+        ).select_related('usuario')
+        
+        for funcionario in funcionarios:
+            # Não notificar o usuário que fez a alteração ou se já está na lista
+            if (funcionario.usuario.email and 
+                funcionario.usuario != usuario_alteracao and
+                funcionario.usuario != ticket.criado_por and
+                not any(d['email'] == funcionario.usuario.email for d in destinatarios_info)):
+                # Verificar preferências de notificação
+                if ConfiguracaoNotificacao.deve_enviar_notificacao(funcionario.usuario, 'alteracao_status'):
+                    destinatarios_info.append({
+                        'email': funcionario.usuario.email,
+                        'tipo_usuario': funcionario.tipo,
+                        'nome': funcionario.usuario.get_full_name() or funcionario.usuario.username,
                     })
         
         if not destinatarios_info:
@@ -277,6 +312,7 @@ class EmailNotificationService:
             )
             if success:
                 sucessos += 1
+                logger.info(f"Notificação de alteração de status enviada para {destinatario['email']} (tipo: {destinatario['tipo_usuario']})")
         
         return sucessos > 0  # Retorna True se pelo menos um email foi enviado com sucesso
     
@@ -338,6 +374,25 @@ class EmailNotificationService:
                         'tipo_usuario': atribuicao.funcionario.tipo,
                         'nome': atribuicao.funcionario.usuario.get_full_name() or atribuicao.funcionario.usuario.username
                     })
+                    
+        # Notificar suporte e admin da empresa
+        funcionarios = Funcionario.objects.filter(
+            empresas=ticket.empresa,
+            tipo__in=['admin', 'suporte']
+        ).select_related('usuario')
+        
+        for funcionario in funcionarios:
+            # Não notificar o autor do comentário ou se já está na lista
+            if (funcionario.usuario.email and 
+                funcionario.usuario != autor and
+                not any(d['email'] == funcionario.usuario.email for d in destinatarios_info)):
+                # Verificar preferências de notificação
+                if ConfiguracaoNotificacao.deve_enviar_notificacao(funcionario.usuario, 'novo_comentario'):
+                    destinatarios_info.append({
+                        'email': funcionario.usuario.email,
+                        'tipo_usuario': funcionario.tipo,
+                        'nome': funcionario.usuario.get_full_name() or funcionario.usuario.username,
+                    })
         
         if not destinatarios_info:
             logger.info(f"Nenhum destinatário para notificação de novo comentário no chamado #{ticket.id}")
@@ -367,6 +422,7 @@ class EmailNotificationService:
             )
             if success:
                 sucessos += 1
+                logger.info(f"Notificação de novo comentário enviada para {destinatario['email']} (tipo: {destinatario['tipo_usuario']})")
                 
         return sucessos > 0  # Retorna True se pelo menos um email foi enviado com sucesso
     
