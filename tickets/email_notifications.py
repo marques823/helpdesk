@@ -188,7 +188,7 @@ class EmailNotificationService:
         except Exception as e:
             logger.warning(f"Erro ao determinar tipo de usuário para {destinatario_user.username}: {str(e)}")
         
-        assunto = f"[Helpdesk] Chamado #{ticket.id} - {ticket.titulo} foi atribuído a você"
+        assunto = f"[Helpdesk] Chamado #{ticket.numero_empresa} - {ticket.titulo} foi atribuído a você"
         destinatarios = [destinatario_user.email]
         template_html = "tickets/emails/atribuicao_ticket.html"
         
@@ -285,7 +285,7 @@ class EmailNotificationService:
             logger.warning(f"Nenhum destinatário encontrado para notificação de alteração de status do chamado #{ticket.id}")
             return False
         
-        assunto = f"[Helpdesk] Status do Chamado #{ticket.id} alterado para {ticket.get_status_display()}"
+        assunto = f"[Helpdesk] Status do Chamado #{ticket.numero_empresa} alterado para {ticket.get_status_display()}"
         template_html = "tickets/emails/alteracao_status.html"
         
         status_dict = dict(Ticket.STATUS_CHOICES)
@@ -398,7 +398,7 @@ class EmailNotificationService:
             logger.info(f"Nenhum destinatário para notificação de novo comentário no chamado #{ticket.id}")
             return False
         
-        assunto = f"[Helpdesk] Novo comentário no Chamado #{ticket.id} - {ticket.titulo}"
+        assunto = f"[Helpdesk] Novo comentário no Chamado #{ticket.numero_empresa} - {ticket.titulo}"
         template_html = "tickets/emails/novo_comentario.html"
         
         # Envio individual para cada destinatário com contexto personalizado
@@ -479,7 +479,7 @@ class EmailNotificationService:
             logger.info(f"Nenhum destinatário para notificação de criação do chamado #{ticket.id}")
             return False
         
-        assunto = f"[Helpdesk] Novo chamado criado: #{ticket.id} - {ticket.titulo}"
+        assunto = f"[Helpdesk] Novo chamado criado: #{ticket.numero_empresa} - {ticket.titulo}"
         template_html = "tickets/emails/novo_ticket.html"
         
         # Envio individual para cada destinatário com contexto personalizado

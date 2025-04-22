@@ -10,7 +10,7 @@
                 <div class="card-header">
                     <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
                         <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
-                            <h2 class="card-title mb-0">Chamado #{{ ticket.id }}</h2>
+                            <h2 class="card-title mb-0">Chamado #{{ ticket.numero_empresa }}</h2>
                         <div class="btn-group">
                             {% if ticket_anterior %}
                                     <a href="{% url 'tickets:detalhe_ticket' ticket_anterior.id %}?status={{ status }}&prioridade={{ prioridade }}&empresa={{ empresa }}&order_by={{ order_by }}" class="btn btn-sm btn-outline-secondary">
