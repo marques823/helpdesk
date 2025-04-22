@@ -1,14 +1,14 @@
 {% extends "tickets/emails/base_email.html" %}
 
-{% block title %}Novo Ticket Criado{% endblock %}
+{% block title %}Novo Chamado Criado{% endblock %}
 
-{% block header_title %}Novo Ticket Criado{% endblock %}
+{% block header_title %}Novo Chamado Criado{% endblock %}
 
 {% block content %}
 <p>Olá,</p>
 
 <p>
-    Um novo ticket foi criado por <strong>{{ criador.get_full_name|default:criador.username }}</strong> 
+    Um novo chamado foi criado por <strong>{{ criador.get_full_name|default:criador.username }}</strong> 
     para a empresa <strong>{{ empresa.nome }}</strong>.
 </p>
 
@@ -18,12 +18,12 @@
 </div>
 
 <p>
-    Este ticket necessita de sua atenção. Por favor, acesse o sistema para verificar os detalhes e atribuí-lo a um técnico.
+    Este chamado necessita de sua atenção. Por favor, acesse o sistema para verificar os detalhes e atribuí-lo a um técnico.
 </p>
 
 {% if url_ticket %}
 <p>
-    <a href="{{ url_ticket }}" style="display: inline-block; background-color: #27ae60; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 15px;">Ver Ticket</a>
+    <a href="{{ url_ticket }}" style="display: inline-block; background-color: #27ae60; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; margin-top: 15px;">Ver Chamado</a>
 </p>
 {% endif %}
 {% endblock %} 

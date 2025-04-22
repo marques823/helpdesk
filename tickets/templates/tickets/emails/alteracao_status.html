@@ -1,13 +1,13 @@
 {% extends "tickets/emails/base_email.html" %}
 
-{% block title %}Status do Ticket Alterado - Helpdesk{% endblock %}
+{% block title %}Status do Chamado Alterado - Helpdesk{% endblock %}
 
-{% block header_title %}Status do Ticket Alterado{% endblock %}
+{% block header_title %}Status do Chamado Alterado{% endblock %}
 
 {% block content %}
 <p>Olá,</p>
 
-<p>O status de um ticket que você está relacionado foi alterado.</p>
+<p>O status de um chamado que você está relacionado foi alterado.</p>
 
 <p>O status foi alterado de <strong>{{ status_anterior }}</strong> para <strong class="status-changed">{{ status_novo }}</strong>.</p>
 

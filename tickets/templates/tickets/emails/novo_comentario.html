@@ -1,14 +1,14 @@
 {% extends "tickets/emails/base_email.html" %}
 
-{% block title %}Novo Comentário em Ticket{% endblock %}
+{% block title %}Novo Comentário em Chamado{% endblock %}
 
-{% block header_title %}Novo Comentário em Ticket{% endblock %}
+{% block header_title %}Novo Comentário em Chamado{% endblock %}
 
 {% block content %}
 <p>Olá,</p>
 
 <p>
-    Um novo comentário foi adicionado ao ticket <strong>#{{ ticket.id }} - {{ ticket.titulo }}</strong>
+    Um novo comentário foi adicionado ao chamado <strong>#{{ ticket.id }} - {{ ticket.titulo }}</strong>
     por <strong>{{ autor.get_full_name|default:autor.username }}</strong>.
 </p>
 
@@ -18,6 +18,6 @@
 </div>
 
 <p>
-    Acesse o sistema para visualizar o ticket completo ou responder ao comentário.
+    Acesse o sistema para visualizar o chamado completo ou responder ao comentário.
 </p>
 {% endblock %} 
