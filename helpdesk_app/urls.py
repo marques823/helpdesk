@@ -28,6 +28,9 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('tickets/', include('tickets.urls', namespace='tickets')),
     
+    # URLs para API
+    path('api/', include('tickets.api.urls')),
+    
     # URLs para gerenciamento de empresas
     path('empresas/', views.lista_empresas, name='lista_empresas'),
     path('empresas/criar/', views.criar_empresa, name='criar_empresa'),
