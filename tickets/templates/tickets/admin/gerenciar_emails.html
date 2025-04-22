@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gerenciar Emails Verificados - Helpdesk{% endblock %}
+
+{% block extra_css %}
+<style>
+    .email-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .email-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .email-card .card-header {
+        background: linear-gradient(45deg, #4b6cb7, #182848);
+        color: white;
+        font-weight: bold;
+    }
+    
+    .status-verified {
+        background-color: #d4edda;
+        color: #155724;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+    
+    .status-pending {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+    
+    .status-error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.85em;
+    }
+    
+    .email-test-form {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 30px;
+    }
+    
+    .stats-box {
+        background: linear-gradient(45deg, #3498db, #2c3e50);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        height: 100%;
+    }
+    
+    .stats-box h3 {
+        font-size: 2.2em;
+        margin-bottom: 10px;
+    }
+    
+    .stats-box p {
+        font-size: 1em;
+        opacity: 0.8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <h1 class="mb-4">
+        <i class="fas fa-envelope-open-text me-2"></i>
+        Gerenciamento de Emails
+    </h1>
+    
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stats-box">
+                <h3>{{ total_emails }}</h3>
+                <p>Total de Emails Registrados</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stats-box" style="background: linear-gradient(45deg, #2ecc71, #27ae60);">
+                <h3>{{ emails_verificados }}</h3>
+                <p>Emails Verificados</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stats-box" style="background: linear-gradient(45deg, #f39c12, #d35400);">
+                <h3>{{ emails_pendentes }}</h3>
+                <p>Verificações Pendentes</p>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stats-box" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">
+                <h3>{{ emails_erro }}</h3>
+                <p>Erros de Envio</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-envelope me-2"></i>
+                Testar Envio de Email
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{% url 'tickets:testar_envio_email' %}" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-4">
+                    <label for="destinatario" class="form-label">Destinatário</label>
+                    <input type="email" class="form-control" id="destinatario" name="destinatario" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="assunto" class="form-label">Assunto</label>
+                    <input type="text" class="form-control" id="assunto" name="assunto" value="Teste de envio de email" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="template" class="form-label">Template</label>
+                    <select class="form-select" id="template" name="template">
+                        <option value="test">Email de Teste</option>
+                        <option value="email_verificado">Email Verificado</option>
+                        <option value="novo_ticket">Novo Ticket</option>
+                        <option value="alteracao_status">Alteração de Status</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label for="mensagem" class="form-label">Mensagem (opcional)</label>
+                    <textarea class="form-control" id="mensagem" name="mensagem" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        Enviar Email de Teste
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h2 class="h4 mb-3">Emails Verificados</h2>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addEmailModal">
+                <i class="fas fa-plus-circle me-1"></i>
+                Adicionar Email
+            </button>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% for email in emails %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card email-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ email.email }}</h5>
+                    <div>
+                        {% if email.verificado %}
+                        <span class="status-verified">
+                            <i class="fas fa-check-circle me-1"></i>Verificado
+                        </span>
+                        {% else %}
+                        <span class="status-pending">
+                            <i class="fas fa-clock me-1"></i>Pendente
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            Registrado em: {{ email.data_registro|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                    
+                    {% if email.verificado %}
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-check me-1"></i>
+                            Verificado em: {{ email.data_verificacao|date:"d/m/Y H:i" }}
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mt-3">
+                        <button class="btn btn-sm btn-outline-primary" 
+                                onclick="testarEmail('{{ email.email }}')">
+                            <i class="fas fa-paper-plane me-1"></i>
+                            Testar
+                        </button>
+                        
+                        <div class="btn-group">
+                            {% if not email.verificado %}
+                            <form method="post" action="{% url 'tickets:marcar_email_verificado' email.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success me-1">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Verificar
+                                </button>
+                            </form>
+                            {% endif %}
+                            
+                            <form method="post" action="{% url 'tickets:excluir_email_verificado' email.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                        onclick="return confirm('Tem certeza que deseja excluir este email?')">
+                                    <i class="fas fa-trash me-1"></i>
+                                    Excluir
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Nenhum email verificado cadastrado. Adicione um novo email para começar.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal para adicionar novo email -->
+<div class="modal fade" id="addEmailModal" tabindex="-1" aria-labelledby="addEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addEmailModalLabel">Adicionar Email Verificado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'tickets:adicionar_email_verificado' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Endereço de Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="verificado" name="verificado" checked>
+                        <label class="form-check-label" for="verificado">Marcar como verificado</label>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>
+                            Salvar Email
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function testarEmail(emailDestino) {
+        // Preenche automaticamente o formulário de teste com o email selecionado
+        document.getElementById('destinatario').value = emailDestino;
+        // Rola a página até o formulário de teste
+        document.querySelector('.email-test-form').scrollIntoView({ behavior: 'smooth' });
+    }
+</script>
+{% endblock %} 

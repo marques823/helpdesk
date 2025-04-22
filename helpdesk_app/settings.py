@@ -155,6 +155,9 @@ EMAIL_HOST_PASSWORD = 'BBuR6nw3FNENQ/lbscnQnsZmPImL+j2s+RYGLtY53Lw2'
 DEFAULT_FROM_EMAIL = 'suporte@tecnicolitoral.com'
 EMAIL_ENABLED = True
 
+# URL do site para uso em links de email
+SITE_URL = 'https://helpdesk.tecnicolitoral.com'
+
 # Se o envio de e-mails estiver desativado, usar o backend de console
 if not EMAIL_ENABLED:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

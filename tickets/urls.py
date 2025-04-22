@@ -91,4 +91,11 @@ urlpatterns = [
     path('admin/verificacoes-email/<int:solicitacao_id>/enviar-notificacao/', views.enviar_notificacao, name='enviar_notificacao'),
     path('admin/verificacoes-email/<int:solicitacao_id>/excluir/', views.excluir_solicitacao, name='excluir_solicitacao'),
     path('cadastro/<str:token>/', views.completar_cadastro, name='completar_cadastro'),
+
+    # URLs para gerenciamento de emails verificados
+    path('admin/emails-verificados/', views.gerenciar_emails_verificados, name='gerenciar_emails_verificados'),
+    path('admin/emails-verificados/adicionar/', views.adicionar_email_verificado, name='adicionar_email_verificado'),
+    path('admin/emails-verificados/<int:email_id>/verificar/', views.marcar_email_verificado, name='marcar_email_verificado'),
+    path('admin/emails-verificados/<int:email_id>/excluir/', views.excluir_email_verificado, name='excluir_email_verificado'),
+    path('admin/emails-verificados/testar-envio/', views.testar_envio_email, name='testar_envio_email'),
 ] 
