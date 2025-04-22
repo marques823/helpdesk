@@ -1,0 +1,40 @@
+{% extends "tickets/emails/base_email.html" %}
+
+{% block title %}Email Verificado - Continue seu Cadastro{% endblock %}
+
+{% block header_title %}Email Verificado com Sucesso!{% endblock %}
+
+{% block content %}
+<p>Olá, {{ solicitacao.nome }}!</p>
+
+<p>
+    Temos o prazer de informar que seu email <strong>{{ solicitacao.email }}</strong> foi verificado com sucesso em nosso sistema.
+</p>
+
+<p>
+    Você agora pode finalizar seu cadastro no sistema de helpdesk clicando no botão abaixo:
+</p>
+
+<p style="text-align: center; margin: 30px 0;">
+    <a href="{{ url_cadastro }}" style="display: inline-block; background-color: #28a745; color: white; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold;">COMPLETAR MEU CADASTRO</a>
+</p>
+
+<p>
+    Por questões de segurança, este link é válido por 48 horas. Após este período, será necessário solicitar um novo link.
+</p>
+
+<p>
+    Se você não solicitou acesso ao nosso sistema, por favor ignore este email.
+</p>
+
+<p>
+    Atenciosamente,<br>
+    Equipe de Suporte
+</p>
+{% endblock %}
+
+{% block unsubscribe %}
+<p>
+    Este é um email automático enviado após a verificação do seu email. Por favor, não responda a este email.
+</p>
+{% endblock %} 

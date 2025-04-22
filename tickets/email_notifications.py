@@ -4,7 +4,8 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.contrib.auth.models import User
-from .models import Ticket, Funcionario, HistoricoTicket
+from django.utils import timezone
+from .models import Ticket, Funcionario, HistoricoTicket, EmailVerificado
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +15,10 @@ class EmailNotificationService:
     """
     
     # Lista de domínios verificados no Amazon SES
-    DOMINIOS_VERIFICADOS = ['tecnicolitoral.com.br']
+    DOMINIOS_VERIFICADOS = ['tecnicolitoral.com']
     
     # Lista de emails específicos verificados no Amazon SES
-    EMAILS_VERIFICADOS = ['suportetecnicolitoral@gmail.com']
+    EMAILS_VERIFICADOS = ['suportetecnicolitoral@gmail.com', 'suporte@tecnicolitoral.com']
     
     @classmethod
     def email_verificado(cls, email):
@@ -32,6 +33,14 @@ class EmailNotificationService:
         """
         if not email:
             return False
+        
+        # Verifica no banco de dados
+        try:
+            email_verificado = EmailVerificado.objects.filter(email=email, verificado=True).exists()
+            if email_verificado:
+                return True
+        except Exception as e:
+            logger.error(f"Erro ao verificar email no banco de dados: {str(e)}")
             
         # Verifica se é um email específico verificado
         if email in cls.EMAILS_VERIFICADOS:
@@ -40,6 +49,52 @@ class EmailNotificationService:
         # Verifica se o domínio está verificado
         dominio = email.split('@')[-1]
         return dominio in cls.DOMINIOS_VERIFICADOS
+    
+    @classmethod
+    def verificar_email_especifico(cls, email):
+        """
+        Verifica se um email específico está na lista de emails verificados
+        """
+        return email in cls.EMAILS_VERIFICADOS
+    
+    @classmethod
+    def verificar_dominio_email(cls, email):
+        """
+        Verifica se o domínio do email está na lista de domínios verificados
+        """
+        if not email or '@' not in email:
+            return False
+        dominio = email.split('@')[-1]
+        return dominio in cls.DOMINIOS_VERIFICADOS
+    
+    @classmethod
+    def registrar_email_verificado(cls, email, verificado=True):
+        """
+        Registra um email no sistema como verificado ou não verificado
+        
+        Args:
+            email: Endereço de email para registrar
+            verificado: Boolean indicando se o email está verificado
+            
+        Returns:
+            EmailVerificado: Objeto criado ou atualizado
+        """
+        try:
+            obj, created = EmailVerificado.objects.update_or_create(
+                email=email,
+                defaults={
+                    'verificado': verificado,
+                    'data_verificacao': timezone.now() if verificado else None
+                }
+            )
+            if created:
+                logger.info(f"Email {email} registrado como {'verificado' if verificado else 'não verificado'}")
+            else:
+                logger.info(f"Status de verificação de {email} atualizado para {'verificado' if verificado else 'não verificado'}")
+            return obj
+        except Exception as e:
+            logger.error(f"Erro ao registrar email verificado: {str(e)}")
+            return None
     
     @staticmethod
     def enviar_email(assunto, destinatarios, template_html, contexto, reply_to=None):
@@ -175,6 +230,97 @@ class EmailNotificationService:
         }
         
         return cls.enviar_email(assunto, destinatarios, template_html, contexto)
+    
+    @classmethod
+    def notificar_novo_comentario(cls, comentario):
+        """
+        Notifica sobre um novo comentário em um ticket
+        
+        Args:
+            comentario: Objeto Comentario
+        """
+        ticket = comentario.ticket
+        autor = comentario.autor
+        
+        # Determinar os destinatários
+        destinatarios = []
+        
+        # Notificar o criador do ticket (se não for o autor do comentário)
+        if ticket.criado_por.email and ticket.criado_por != autor:
+            # Verificar preferências de notificação
+            if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.criado_por, 'novo_comentario'):
+                destinatarios.append(ticket.criado_por.email)
+        
+        # Notificar o técnico atribuído (se houver e não for o autor do comentário)
+        if ticket.atribuido_a and ticket.atribuido_a.usuario.email and ticket.atribuido_a.usuario != autor:
+            # Verificar preferências de notificação
+            if ConfiguracaoNotificacao.deve_enviar_notificacao(ticket.atribuido_a.usuario, 'novo_comentario'):
+                destinatarios.append(ticket.atribuido_a.usuario.email)
+        
+        # Notificar outros técnicos atribuídos
+        for atribuicao in ticket.atribuicoes.all():
+            if (atribuicao.funcionario != ticket.atribuido_a and 
+                atribuicao.funcionario.usuario.email and 
+                atribuicao.funcionario.usuario != autor):
+                # Verificar preferências de notificação
+                if ConfiguracaoNotificacao.deve_enviar_notificacao(atribuicao.funcionario.usuario, 'novo_comentario'):
+                    destinatarios.append(atribuicao.funcionario.usuario.email)
+        
+        if not destinatarios:
+            logger.info(f"Nenhum destinatário para notificação de novo comentário no ticket #{ticket.id}")
+            return False
+        
+        assunto = f"[Helpdesk] Novo comentário no Ticket #{ticket.id} - {ticket.titulo}"
+        template_html = "tickets/emails/novo_comentario.html"
+        
+        contexto = {
+            'ticket': ticket,
+            'comentario': comentario,
+            'autor': autor,
+            'empresa': ticket.empresa
+        }
+        
+        return cls.enviar_email(assunto, destinatarios, template_html, contexto)
+    
+    @classmethod
+    def notificar_criacao_ticket(cls, ticket):
+        """
+        Notifica sobre a criação de um novo ticket
+        
+        Args:
+            ticket: Objeto Ticket recém-criado
+        """
+        # Determinar os destinatários (administradores e suporte da empresa)
+        from .models import Funcionario
+        destinatarios = []
+        
+        # Localizar administradores e suporte da empresa
+        funcionarios = Funcionario.objects.filter(
+            empresas=ticket.empresa,
+            tipo__in=['admin', 'suporte']
+        ).select_related('usuario')
+        
+        for funcionario in funcionarios:
+            if funcionario.usuario.email and funcionario.usuario != ticket.criado_por:
+                # Verificar preferências de notificação
+                if ConfiguracaoNotificacao.deve_enviar_notificacao(funcionario.usuario, 'criacao_ticket'):
+                    destinatarios.append(funcionario.usuario.email)
+        
+        if not destinatarios:
+            logger.info(f"Nenhum destinatário para notificação de criação do ticket #{ticket.id}")
+            return False
+        
+        assunto = f"[Helpdesk] Novo ticket criado: #{ticket.id} - {ticket.titulo}"
+        template_html = "tickets/emails/novo_ticket.html"
+        
+        contexto = {
+            'ticket': ticket,
+            'criador': ticket.criado_por,
+            'empresa': ticket.empresa,
+            'url_ticket': f"{settings.SITE_URL}/tickets/detalhe/{ticket.id}/" if hasattr(settings, 'SITE_URL') else None
+        }
+        
+        return cls.enviar_email(assunto, destinatarios, template_html, contexto)
 
 # Configurações de usuário para notificações
 class ConfiguracaoNotificacao:
@@ -190,7 +336,7 @@ class ConfiguracaoNotificacao:
         Args:
             usuario: Objeto User
             tipo_notificacao: String com o tipo de notificação 
-                            ('atribuicao', 'alteracao_status', etc)
+                            ('atribuicao', 'alteracao_status', 'novo_comentario', 'criacao_ticket', etc)
         
         Returns:
             bool: True se deve enviar, False caso contrário
@@ -204,10 +350,47 @@ class ConfiguracaoNotificacao:
                 return pref.notificar_atribuicao
             elif tipo_notificacao == 'alteracao_status':
                 return pref.notificar_alteracao_status
+            elif tipo_notificacao == 'novo_comentario':
+                return pref.notificar_novo_comentario
+            elif tipo_notificacao == 'criacao_ticket':
+                return pref.notificar_todas  # Usa a configuração "todas" para notificações de novos tickets
             else:
                 # Para qualquer outro tipo que não tenha configuração específica
                 return pref.notificar_todas
                 
-        except Exception:
+        except Exception as e:
             # Se não existe configuração, assume que deve notificar (default)
-            return True 
+            logger.debug(f"Erro ao verificar preferências de notificação para {usuario.username}: {str(e)}")
+            return True
+            
+    @staticmethod
+    def criar_preferencias_padrao(usuario):
+        """
+        Cria preferências de notificação padrão para um usuário caso não existam
+        
+        Args:
+            usuario: Objeto User
+            
+        Returns:
+            PreferenciasNotificacao: Objeto de preferências
+        """
+        from .models import PreferenciasNotificacao
+        try:
+            preferencias, criado = PreferenciasNotificacao.objects.get_or_create(
+                usuario=usuario,
+                defaults={
+                    'notificar_todas': True,
+                    'notificar_atribuicao': True,
+                    'notificar_alteracao_status': True,
+                    'notificar_novo_comentario': True,
+                    'notificar_prioridade_alterada': True
+                }
+            )
+            
+            if criado:
+                logger.info(f"Preferências de notificação padrão criadas para {usuario.username}")
+                
+            return preferencias
+        except Exception as e:
+            logger.error(f"Erro ao criar preferências de notificação para {usuario.username}: {str(e)}")
+            return None 
