@@ -3815,10 +3815,11 @@ def alterar_status_ticket(request, ticket_id):
             status_anterior = ticket.status
             
             ticket = form.save(commit=False)
-            # Salvar o usuário que está fazendo a alteração
-            ticket._usuario_alteracao = request.user
-            ticket._status_alterado = True
-            ticket._status_anterior = status_anterior
+            
+            # NÃO definir flags que acionariam o signal
+            # ticket._usuario_alteracao = request.user
+            # ticket._status_alterado = True
+            # ticket._status_anterior = status_anterior
             
             # Se está fechando o ticket e não há data de fechamento, define agora
             if ticket.status in ['fechado', 'resolvido'] and not ticket.data_fechamento:
@@ -3854,15 +3855,11 @@ def alterar_status_ticket(request, ticket_id):
                 EmailNotificationService.notificar_novo_comentario(comentario)
             
             # Enviar notificação diretamente para garantir que o usuário correto seja registrado
-            # O signal também será acionado, mas como não há mais alteração de status, não duplicará o envio
             EmailNotificationService.notificar_alteracao_status(
                 ticket=ticket, 
                 status_anterior=status_anterior, 
                 usuario_alteracao=request.user
             )
-            
-            # Limpar a flag para evitar que o signal envie a notificação novamente
-            ticket._status_alterado = False
             
             messages.success(request, "Status do chamado alterado com sucesso!")
             return redirect('tickets:ticket_detalhes', ticket_id=ticket.id)
