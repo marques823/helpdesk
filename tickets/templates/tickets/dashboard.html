@@ -274,7 +274,7 @@
                                                 <tr class="chamado-row" data-href="{% url 'tickets:detalhe_ticket' alteracao.ticket.id %}">
                                                     <td>
                                                         <div class="d-flex align-items-center">
-                                                            <span class="ticket-id text-muted small">#{{ alteracao.ticket.id }}</span>
+                                                            <span class="ticket-id text-muted small">#{{ alteracao.ticket.numero_empresa }}</span>
                                                             <span class="ms-2">{{ alteracao.ticket.titulo|truncatechars:40 }}</span>
                                                         </div>
                                                     </td>
@@ -406,7 +406,7 @@
                                             <tr class="chamado-row" data-href="{% url 'tickets:detalhe_ticket' ticket.id %}">
                                                 <td>
                                                     <div class="d-flex align-items-center">
-                                                        <span class="ticket-id text-muted small">#{{ ticket.id }}</span>
+                                                        <span class="ticket-id text-muted small">#{{ ticket.numero_empresa }}</span>
                                                         <span class="ms-2">{{ ticket.titulo }}</span>
                                                     </div>
                                                 </td>

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Chamado #{{ ticket.id }} - {{ ticket.titulo }}</title>
+    <title>Chamado #{{ ticket.numero_empresa }} - {{ ticket.titulo }}</title>
     <style>
         @page {
             size: A4;
@@ -146,7 +146,7 @@
         <div>CNPJ: {{ empresa.cnpj }}</div>
     </div>
     
-    <h1>Chamado #{{ ticket.id }} - {{ ticket.titulo }}</h1>
+    <h1>Chamado #{{ ticket.numero_empresa }} - {{ ticket.titulo }}</h1>
     
     <table class="chamado-info">
         <tr>
