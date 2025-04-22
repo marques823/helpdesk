@@ -5,9 +5,15 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Deve vir antes do CommonMiddleware
     'django.middleware.common.CommonMiddleware',
-    # ... outros middlewares ...
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'tickets.middleware.CurrentUserMiddleware',  # Adicionar middleware para rastrear usuário atual
 ]
 
 # Configurações do CORS
