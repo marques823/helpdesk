@@ -15,7 +15,7 @@ from django.contrib import messages
 import datetime
 import json
 import logging
-from .models import Ticket, Empresa, Funcionario
+from .models import Ticket, Empresa, Funcionario, APIKey
 from .api.n8n import send_webhook_to_n8n
 
 @staff_member_required
@@ -183,24 +183,55 @@ def n8n_settings(request):
     webhook_enabled = getattr(settings, 'N8N_WEBHOOK_ENABLED', False)
     webhook_url = getattr(settings, 'N8N_WEBHOOK_URL', '')
     
+    # Obter todas as chaves de API ativas para n8n
+    api_keys = APIKey.objects.filter(service='n8n', active=True)
+    
     if request.method == 'POST':
-        # Processar o formulário
-        webhook_enabled = 'webhook_enabled' in request.POST
-        webhook_url = request.POST.get('webhook_url', '')
-        
-        # Salvar as configurações em variáveis de ambiente
-        os.environ['N8N_WEBHOOK_ENABLED'] = 'true' if webhook_enabled else 'false'
-        os.environ['N8N_WEBHOOK_URL'] = webhook_url
-        
-        # Atualizar as configurações no settings
-        settings.N8N_WEBHOOK_ENABLED = webhook_enabled
-        settings.N8N_WEBHOOK_URL = webhook_url
-        
-        messages.success(request, 'Configurações do n8n atualizadas com sucesso.')
+        # Verificar se é uma solicitação de gestão de API key
+        if 'create_api_key' in request.POST:
+            name = request.POST.get('api_key_name')
+            if name:
+                api_key = APIKey.create_key(name=name, service='n8n', created_by=request.user)
+                messages.success(request, f'Chave API "{name}" criada com sucesso.')
+                messages.info(request, f'Sua chave: {api_key.key} (Guarde este valor, ele não será mostrado novamente)')
+            else:
+                messages.error(request, 'Um nome é necessário para criar uma chave API.')
+                
+        elif 'delete_api_key' in request.POST:
+            key_id = request.POST.get('api_key_id')
+            if key_id:
+                try:
+                    api_key = APIKey.objects.get(id=key_id)
+                    name = api_key.name
+                    api_key.delete()
+                    messages.success(request, f'Chave API "{name}" excluída com sucesso.')
+                except APIKey.DoesNotExist:
+                    messages.error(request, 'Chave API não encontrada.')
+            else:
+                messages.error(request, 'ID de chave API não fornecido.')
+                
+        # Processar o formulário de configurações gerais
+        else:
+            webhook_enabled = 'webhook_enabled' in request.POST
+            webhook_url = request.POST.get('webhook_url', '')
+            
+            # Salvar as configurações em variáveis de ambiente
+            os.environ['N8N_WEBHOOK_ENABLED'] = 'true' if webhook_enabled else 'false'
+            os.environ['N8N_WEBHOOK_URL'] = webhook_url
+            
+            # Atualizar as configurações no settings
+            settings.N8N_WEBHOOK_ENABLED = webhook_enabled
+            settings.N8N_WEBHOOK_URL = webhook_url
+            
+            messages.success(request, 'Configurações do n8n atualizadas com sucesso.')
+            
+        # Recarregar a lista de API keys após possíveis mudanças
+        api_keys = APIKey.objects.filter(service='n8n', active=True)
         
     context = {
         'webhook_enabled': webhook_enabled,
-        'webhook_url': webhook_url
+        'webhook_url': webhook_url,
+        'api_keys': api_keys
     }
     
     return render(request, 'tickets/admin/n8n_settings.html', context)
@@ -241,4 +272,18 @@ def n8n_test_webhook(request):
         else:
             messages.error(request, f'Falha ao enviar evento de teste {event_type} para o n8n. Verifique as configurações e os logs.')
             
-    return redirect('tickets:n8n_settings') 
+    return redirect('tickets:n8n_settings')
+
+@staff_member_required
+def api_management(request):
+    """
+    View principal para gerenciamento de APIs e integrações
+    """
+    return render(request, 'admin/api_management.html')
+
+@staff_member_required
+def api_documentation(request):
+    """
+    View para documentação detalhada da API
+    """
+    return render(request, 'admin/api_documentation.html') 

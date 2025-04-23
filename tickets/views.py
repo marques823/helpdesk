@@ -40,8 +40,12 @@ from django.utils.html import strip_tags
 # Configuração do logger
 logger = logging.getLogger(__name__)
 
+def admin_required(view_func):
+    decorated_view = user_passes_test(is_admin)(view_func)
+    return login_required(decorated_view)
+
 def is_admin(user):
-    return user.is_superuser
+    return user.is_superuser or (hasattr(user, 'funcionarios') and user.funcionarios.exists() and user.funcionarios.first().is_admin())
 
 def pode_visualizar_ticket(user, ticket):
     """Verifica se o usuário pode visualizar o ticket"""
@@ -3866,3 +3870,110 @@ def alterar_status_ticket(request, ticket_id):
         'form': form,
         'ticket': ticket
     })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def n8n_settings(request):
+    """
+    View para configurações da integração com n8n
+    """
+    from tickets.models import APIKey, N8nConfig
+    from django.contrib import messages
+    import secrets
+    
+    # Obter todas as chaves de API
+    api_keys = APIKey.objects.all().order_by('-created_at')
+    
+    # Obter ou criar configuração do n8n
+    n8n_config, created = N8nConfig.objects.get_or_create(id=1)
+    
+    # Processar formulários POST
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        # Criar nova chave de API
+        if action == 'create_key':
+            key_name = request.POST.get('key_name')
+            if key_name:
+                # Gerar uma chave segura e aleatória com 32 caracteres
+                api_key = secrets.token_hex(16)
+                APIKey.objects.create(name=key_name, key=api_key)
+                messages.success(request, f'Chave API "{key_name}" criada com sucesso.')
+            else:
+                messages.error(request, 'Nome da chave não pode estar vazio.')
+        
+        # Excluir chave existente
+        elif action == 'delete_key':
+            key_id = request.POST.get('key_id')
+            if key_id:
+                try:
+                    key = APIKey.objects.get(id=key_id)
+                    key_name = key.name
+                    key.delete()
+                    messages.success(request, f'Chave API "{key_name}" excluída com sucesso.')
+                except APIKey.DoesNotExist:
+                    messages.error(request, 'Chave API não encontrada.')
+            else:
+                messages.error(request, 'ID da chave não fornecido.')
+        
+        # Atualizar configurações de webhook
+        elif action == 'update_webhook':
+            webhook_enabled = request.POST.get('webhook_enabled') == 'on'
+            webhook_url = request.POST.get('webhook_url', '')
+            
+            n8n_config.webhook_enabled = webhook_enabled
+            n8n_config.webhook_url = webhook_url
+            n8n_config.save()
+            
+            messages.success(request, 'Configurações de webhook atualizadas com sucesso.')
+    
+    # Contexto para o template
+    context = {
+        'api_keys': api_keys,
+        'webhook_enabled': n8n_config.webhook_enabled,
+        'webhook_url': n8n_config.webhook_url,
+    }
+    
+    return render(request, 'tickets/admin/n8n_settings.html', context)
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def n8n_test_webhook(request):
+    """
+    View para testar o webhook do n8n
+    """
+    from tickets.api.n8n import send_webhook_to_n8n
+    import datetime
+    
+    if request.method == 'POST':
+        event_type = request.POST.get('event_type', 'ticket_created')
+        
+        # Dados de teste
+        test_data = {
+            'test': True,
+            'timestamp': datetime.datetime.now().isoformat(),
+            'sender': request.user.username,
+            'message': f'Teste de evento {event_type} enviado manualmente'
+        }
+        
+        # Adicionar dados específicos do tipo de evento
+        if event_type == 'ticket_created' or event_type == 'ticket_updated':
+            # Obter um ticket aleatório para teste, se existir
+            ticket = Ticket.objects.filter(empresa__isnull=False).first()
+            if ticket:
+                test_data['ticket'] = {
+                    'id': ticket.id,
+                    'numero_empresa': ticket.numero_empresa,
+                    'titulo': ticket.titulo,
+                    'status': ticket.status
+                }
+                
+        # Enviar o webhook
+        success = send_webhook_to_n8n(event_type, test_data)
+        
+        if success:
+            messages.success(request, f'Evento de teste {event_type} enviado com sucesso para o n8n.')
+        else:
+            messages.error(request, f'Falha ao enviar evento de teste {event_type} para o n8n. Verifique as configurações e os logs.')
+            
+    return redirect('tickets:n8n_settings')

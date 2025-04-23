@@ -11,6 +11,28 @@
                 {% trans "Gerenciador de Backups" %}
             </a>
         </li>
+        {% if user.is_superuser %}
+        <li>
+            <a href="{% url 'tickets:api_management' %}">
+                {% trans "Gerenciamento de APIs" %}
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'tickets:n8n_settings' %}">
+                {% trans "Configurações de API" %}
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'admin:tickets_apikey_changelist' %}">
+                {% trans "Gerenciar Chaves de API" %}
+            </a>
+        </li>
+        <li>
+            <a href="{% url 'admin:tickets_n8nconfig_changelist' %}">
+                {% trans "Configurações de Webhooks" %}
+            </a>
+        </li>
+        {% endif %}
     </ul>
 </div>
 {% endblock %} 

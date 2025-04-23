@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+import uuid
+import secrets
 
 class Empresa(models.Model):
     nome = models.CharField(max_length=200)
@@ -675,3 +677,68 @@ class SolicitacaoVerificacaoEmail(models.Model):
     
     def __str__(self):
         return f"{self.nome} - {self.email}"
+
+class APIKey(models.Model):
+    """
+    Modelo para armazenar chaves de API para integração com n8n ou outros serviços
+    """
+    name = models.CharField(max_length=100, verbose_name="Nome da chave")
+    key = models.CharField(max_length=64, unique=True, verbose_name="Chave API")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data de criação")
+    last_used = models.DateTimeField(null=True, blank=True, verbose_name="Último uso")
+    active = models.BooleanField(default=True, verbose_name="Ativa")
+    service = models.CharField(max_length=50, default='n8n', verbose_name="Serviço")
+    
+    def mark_used(self):
+        """Atualiza o timestamp de último uso da chave"""
+        self.last_used = timezone.now()
+        self.save(update_fields=['last_used'])
+    
+    @classmethod
+    def create_key(cls, name, service='n8n', created_by=None):
+        """
+        Cria uma nova chave de API com um valor aleatório seguro
+        
+        Args:
+            name: Nome para identificar a chave
+            service: Serviço ao qual a chave se destina
+            created_by: Usuário que criou a chave
+            
+        Returns:
+            APIKey: O objeto APIKey criado
+        """
+        import secrets
+        import string
+        
+        # Gera uma chave aleatória de 48 caracteres
+        alphabet = string.ascii_letters + string.digits
+        key = ''.join(secrets.choice(alphabet) for _ in range(48))
+        
+        # Cria e retorna o objeto APIKey
+        api_key = cls(name=name, key=key, service=service)
+        api_key.save()
+        
+        return api_key
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        verbose_name = "Chave API"
+        verbose_name_plural = "Chaves API"
+
+class N8nConfig(models.Model):
+    """
+    Modelo para armazenar configurações relacionadas a n8n
+    """
+    webhook_enabled = models.BooleanField(default=False, verbose_name="Webhook ativado")
+    webhook_url = models.URLField(max_length=255, blank=True, verbose_name="URL do Webhook")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data de criação")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Última atualização")
+    
+    def __str__(self):
+        return "Configuração n8n"
+    
+    class Meta:
+        verbose_name = "Configuração n8n"
+        verbose_name_plural = "Configurações n8n"
