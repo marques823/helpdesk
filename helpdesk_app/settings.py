@@ -150,13 +150,13 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'email-smtp.sa-east-1.amazonaws.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'AKIAYUQGTDV6BPXRHYL5'
-EMAIL_HOST_PASSWORD = 'BBuR6nw3FNENQ/lbscnQnsZmPImL+j2s+RYGLtY53Lw2'
-DEFAULT_FROM_EMAIL = 'suporte@tecnicolitoral.com'
+EMAIL_HOST_USER = 'AKIRNDURIDBDYRURIWI5'
+EMAIL_HOST_PASSWORD jdjdhdhrhdhjfjfjfjfjfhfhf3Lw2'
+DEFAULT_FROM_EMAIL = 'suporte@helpdesk.com'
 EMAIL_ENABLED = True
 
 # URL do site para uso em links de email
-SITE_URL = 'https://helpdesk.tecnicolitoral.com'
+SITE_URL = 'https://helpdesk.helpdesk.com'
 
 # Se o envio de e-mails estiver desativado, usar o backend de console
 if not EMAIL_ENABLED:
@@ -192,10 +192,10 @@ SESSION_SAVE_EVERY_REQUEST = True  # Atualiza o cookie de sessão a cada requisi
 
 # Configurações de CSRF e segurança
 CSRF_TRUSTED_ORIGINS = [
-    'https://helpdesk.tecnicolitoral.com',
-    'https://helpdesk.tecnicolitoral.com:8002',
-    'http://helpdesk.tecnicolitoral.com:8002',
-    'http://helpdesk.tecnicolitoral.com',
+    'helpdesk.helpdesk.com',
+    'https://helpdesk.helpdesk.com:8002',
+    'http://helpdesk.helpdesk.com:8002',
+    'http://helpdesk.helpdesk.com',
     'http://10.10.10.2:8002',
     'http://10.10.10.2:8000',
     'http://localhost:8000'
