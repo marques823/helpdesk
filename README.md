@@ -126,4 +126,4 @@
 8. Iniciar servidor: `gunicorn -c gunicorn_config.py helpdesk_app.wsgi:application`
 
 ## Suporte
-Para suporte técnico ou dúvidas, entre em contato com o administrador do sistema. 
+Para suporte técnico ou dúvidas, entre em contato com o administrador do sistema. marques823@gmail.com
