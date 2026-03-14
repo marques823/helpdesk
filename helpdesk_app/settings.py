@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'django_filters',
+    'rest_framework',
+    'rest_framework_simplejwt',
     'tickets',
     'csp',  # Content Security Policy
 ]
@@ -188,7 +190,8 @@ LOGIN_EXEMPT_URLS = [
     'logout',
     'logout-success',
     'home',
-    'api/auth/login',
+    'api/auth/token',
+    'api/auth/token/refresh',
 ]
 
 # Configurações de autenticação
@@ -210,6 +213,9 @@ CSRF_TRUSTED_ORIGINS = [
     'http://helpdesk.helpdesk.com',
     'http://10.10.10.2:8002',
     'http://10.10.10.2:8000',
+    'http://10.10.10.2:3001',
+    'http://localhost:3001',
+    'http://localhost:3000',
     'http://localhost:8000'
 ]
 
@@ -226,7 +232,7 @@ else:
     SESSION_COOKIE_SECURE = False
     SECURE_SSL_REDIRECT = False
 
-CSRF_COOKIE_HTTPONLY = True  # Evita que o token CSRF seja acessível por JavaScript
+CSRF_COOKIE_HTTPONLY = False  # Permitir que o React leia o token para enviar no header X-CSRFToken
 SECURE_HSTS_SECONDS = 31536000  # 1 ano
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -288,6 +294,27 @@ CONTENT_SECURITY_POLICY = {
 
 # Opcional: Para testar sem bloquear nada, ative o Report-Only primeiro:
 # CSP_REPORT_ONLY = True
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # Configurações da API para n8n
 N8N_WEBHOOK_ENABLED = os.environ.get('N8N_WEBHOOK_ENABLED', 'False').lower() == 'true'

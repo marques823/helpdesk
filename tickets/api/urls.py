@@ -1,10 +1,16 @@
 from django.urls import path
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 from tickets.api import n8n, auth, dashboard, meta, mobile
 
 # Padrões de URL para a API
 urlpatterns = [
     # Autenticação
-    path('auth/login/', auth.api_login, name='api_login'),
+    path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/login/', auth.api_login, name='api_login'), # Mantendo compatibilidade temporária
     path('auth/logout/', auth.api_logout, name='api_logout'),
     path('auth/user/', auth.api_user, name='api_user'),
     

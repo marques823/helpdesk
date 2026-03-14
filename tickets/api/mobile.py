@@ -2,6 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from ..models import Ticket, Comentario, Empresa, CategoriaChamado, Funcionario
 
 @api_view(['GET'])
@@ -40,12 +42,13 @@ def ticket_detail(request, ticket_id):
     Retorna os detalhes de um ticket e seus comentários.
     """
     try:
-        ticket = Ticket.objects.select_related(
+        # Verifica acesso: se é o criador ou o técnico atribuído
+        # Isso evita que um usuário veja tickets de outros (IDOR)
+        ticket = Ticket.objects.filter(
+            Q(criado_por=request.user) | Q(atribuido_a__usuario=request.user)
+        ).select_related(
             'empresa', 'categoria', 'criado_por', 'atribuido_a__usuario'
         ).get(id=ticket_id)
-        
-        # Verifica acesso (simplificado: se é o criador ou o técnico atribuído)
-        # Em um sistema real, checks mais rigorosos seriam feitos
         
         comentarios = Comentario.objects.filter(ticket=ticket).select_related('autor')
         
@@ -76,6 +79,7 @@ def ticket_detail(request, ticket_id):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_ticket(request):
@@ -92,6 +96,14 @@ def create_ticket(request):
         if not titulo or not empresa_id:
             return Response({"error": "Título e empresa_id são obrigatórios"}, status=400)
             
+        # Verifica se o usuário tem acesso a esta empresa
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        if not funcionario:
+             return Response({"error": "Usuário não possui perfil de funcionário"}, status=403)
+             
+        if not request.user.is_superuser and not funcionario.empresas.filter(id=empresa_id).exists():
+            return Response({"error": "Você não tem permissão para criar chamados para esta empresa"}, status=403)
+
         empresa = Empresa.objects.get(id=empresa_id)
         categoria = None
         if categoria_id:
@@ -115,6 +127,7 @@ def create_ticket(request):
     except Exception as e:
         return Response({"error": str(e)}, status=500)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def add_comment(request, ticket_id):
@@ -122,7 +135,10 @@ def add_comment(request, ticket_id):
     Adiciona um comentário a um ticket via sessão.
     """
     try:
-        ticket = Ticket.objects.get(id=ticket_id)
+        # Garante que o usuário só consiga comentar em tickets que ele pode ver
+        ticket = Ticket.objects.filter(
+            Q(criado_por=request.user) | Q(atribuido_a__usuario=request.user)
+        ).get(id=ticket_id)
         texto = request.data.get('texto')
         
         if not texto:

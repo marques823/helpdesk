@@ -24,6 +24,7 @@ class SecurityMiddleware(MiddlewareMixin):
         r'^/static/',
         r'^/media/',
         r'^/$',  # Página inicial
+        r'^/api/',  # API endpoints (autenticados via JWT ou API Key)
     ]
     
     # Dicionário de rotas que requerem verificações específicas
