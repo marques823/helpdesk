@@ -158,14 +158,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'email-smtp.sa-east-1.amazonaws.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'AKIRNDURIDBDYRURIWI5'
-EMAIL_HOST_PASSWORD jdjdhdhrhdhjfjfjfjfjfhfhf3Lw2'
-DEFAULT_FROM_EMAIL = 'suporte@helpdesk.com'
-EMAIL_ENABLED = True
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.resend.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='resend')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='suporte@tecnicolitoral.com')
+EMAIL_ENABLED = config('EMAIL_ENABLED', default=True, cast=bool)
 
 # URL do site para uso em links de email
 SITE_URL = 'https://helpdesk.helpdesk.com'
