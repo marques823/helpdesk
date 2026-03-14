@@ -11,6 +11,7 @@ from django.db.models import Q, Avg, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Concat, Cast, TruncDate
 import logging
 from .models import Ticket, Comentario, Empresa, Funcionario, HistoricoTicket, CampoPersonalizado, ValorCampoPersonalizado, NotaTecnica, AtribuicaoTicket, PerfilCompartilhamento, CampoPerfilCompartilhamento, CategoriaChamado, EmpresaConfig, PreferenciasNotificacao, CategoriaPermissao, DetalheHistoricoTicket, EmailVerificado, SolicitacaoVerificacaoEmail
+from django_ratelimit.decorators import ratelimit
 from .forms import (TicketForm, ComentarioForm, EmpresaForm, FuncionarioForm, UserForm, 
                    AtribuirTicketForm, CampoPersonalizadoForm, ValorCampoPersonalizadoForm, 
                    NotaTecnicaForm, MultiAtribuirTicketForm, PerfilCompartilhamentoForm, 
@@ -537,6 +538,7 @@ def excluir_nota_tecnica(request, nota_id):
     })
 
 @login_required
+@ratelimit(key='user', rate='20/h', block=True)
 def criar_ticket(request):
     try:
         # Verifica se o usuário tem permissão para criar tickets
@@ -1123,6 +1125,7 @@ def lista_funcionarios(request):
         return redirect('tickets:dashboard')
 
 @login_required
+@ratelimit(key='user_or_ip', rate='10/h', block=True)
 def criar_funcionario(request):
     try:
         # Verifica se o usuário tem permissão para criar funcionários

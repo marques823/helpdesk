@@ -19,10 +19,23 @@ from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from tickets import views
 
+from django_ratelimit.decorators import ratelimit
+from django_ratelimit.exceptions import Ratelimited
+from django.http import HttpResponseForbidden
+
+def handler403(request, exception=None):
+    if isinstance(exception, Ratelimited):
+        return HttpResponseForbidden('Muitas solicitações ("Too Many Requests"). Por favor, tente novamente mais tarde.')
+    return HttpResponseForbidden('Acesso negado ("Forbidden").')
+
+# Aplicar rate limiting à view de login:
+# Limite: 5 tentativas por minuto, baseado na chave "ip". block=True retornará 403.
+ratelimited_login = ratelimit(key='ip', rate='5/m', block=True)(auth_views.LoginView.as_view(template_name='registration/login.html'))
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path('login/', ratelimited_login, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('logout-success/', views.logout_success, name='logout_success'),
     path('dashboard/', views.dashboard, name='dashboard'),

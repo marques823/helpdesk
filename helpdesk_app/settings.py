@@ -98,6 +98,14 @@ DATABASES = {
     }
 }
 
+# Configuração de Cache (Necessário para django-ratelimit)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'helpdesk_cache_table',
+    }
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
