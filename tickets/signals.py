@@ -16,6 +16,7 @@ def criar_preferencias_notificacao(sender, instance, created, **kwargs):
     """
     Cria automaticamente um registro de preferências de notificação para novos usuários
     """
+    if kwargs.get('raw', False): return
     if created:
         try:
             PreferenciasNotificacao.objects.create(usuario=instance)
@@ -28,6 +29,7 @@ def detectar_alteracao_status(sender, instance, **kwargs):
     """
     Detecta alterações de status em tickets antes de salvar
     """
+    if kwargs.get('raw', False): return
     if instance.pk:  # Se não é um novo ticket
         try:
             # Obtém o ticket original do banco de dados
@@ -61,6 +63,7 @@ def notificar_alteracoes_ticket(sender, instance, created, **kwargs):
     """
     Envia notificações de e-mail quando o status de um ticket é alterado ou quando é atribuído
     """
+    if kwargs.get('raw', False): return
     # Se foi um novo ticket criado, notifica os administradores e suporte
     if created:
         try:
@@ -135,6 +138,7 @@ def notificar_atribuicao_multipla(sender, instance, created, **kwargs):
     """
     Envia notificações quando um ticket é atribuído a múltiplos funcionários
     """
+    if kwargs.get('raw', False): return
     if created:  # Apenas para novas atribuições
         try:
             # Obter o usuário do funcionário atribuído
@@ -158,6 +162,7 @@ def notificar_novo_comentario(sender, instance, created, **kwargs):
     """
     Envia notificações quando um novo comentário é adicionado a um ticket
     """
+    if kwargs.get('raw', False): return
     if created:  # Apenas para novos comentários
         try:
             # Agenda o envio da notificação para após o commit da transação
@@ -181,6 +186,7 @@ def ticket_saved(sender, instance, created, **kwargs):
     Sinal disparado quando um ticket é criado ou atualizado.
     Envia webhook para o n8n se habilitado.
     """
+    if kwargs.get('raw', False): return
     if not N8N_WEBHOOK_ENABLED:
         return
     
@@ -233,6 +239,7 @@ def comentario_saved(sender, instance, created, **kwargs):
     Sinal disparado quando um comentário é criado.
     Envia webhook para o n8n se habilitado.
     """
+    if kwargs.get('raw', False): return
     if not N8N_WEBHOOK_ENABLED or not created:  # Somente para novos comentários
         return
     
@@ -265,6 +272,7 @@ def historico_ticket_saved(sender, instance, created, **kwargs):
     Sinal disparado quando um histórico de ticket é criado.
     Envia webhook para o n8n se habilitado.
     """
+    if kwargs.get('raw', False): return
     if not N8N_WEBHOOK_ENABLED or not created:
         return
     
