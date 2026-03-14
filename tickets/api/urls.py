@@ -34,4 +34,5 @@ urlpatterns = [
     path('mobile/tickets/<int:ticket_id>/', mobile.ticket_detail, name='api_mobile_ticket_detail'),
     path('mobile/tickets/create/', mobile.create_ticket, name='api_mobile_create_ticket'),
     path('mobile/tickets/<int:ticket_id>/comment/', mobile.add_comment, name='api_mobile_add_comment'),
+    path('mobile/tickets/<int:ticket_id>/status/', mobile.update_ticket_status, name='api_mobile_update_ticket_status'),
 ]
