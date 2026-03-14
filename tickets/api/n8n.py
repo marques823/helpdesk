@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
@@ -8,7 +8,7 @@ from django.conf import settings
 import json
 import logging
 import requests
-from ..models import Ticket, Empresa, Funcionario, CategoriaChamado, Comentario
+from ..models import Ticket, Empresa, Funcionario, CategoriaChamado, Comentario, APIKey
 
 logger = logging.getLogger(__name__)
 
@@ -27,46 +27,75 @@ def send_webhook_to_n8n(event_type, data):
     Returns:
         bool: True se o webhook foi enviado com sucesso, False caso contrário
     """
-    if not N8N_WEBHOOK_ENABLED or not N8N_WEBHOOK_URL:
-        logger.info(f"Webhook para n8n não configurado ou desativado. Evento {event_type} não enviado.")
+    # Verificar se webhook está configurado e ativado
+    if not N8N_WEBHOOK_ENABLED:
+        logger.info(f"Webhook para n8n está desativado. Evento {event_type} não enviado.")
+        return False
+        
+    if not N8N_WEBHOOK_URL:
+        logger.error("URL do webhook para n8n não está configurada. Verifique as configurações N8N_WEBHOOK_URL.")
+        return False
+        
+    # Verificar se a URL parece válida
+    if not (N8N_WEBHOOK_URL.startswith('http://') or N8N_WEBHOOK_URL.startswith('https://')):
+        logger.error(f"URL do webhook inválida: {N8N_WEBHOOK_URL}. A URL deve começar com http:// ou https://")
         return False
     
     try:
+        # Logar os dados que serão enviados (mas evitando dados sensíveis)
+        logger.debug(f"Enviando webhook para n8n - Evento: {event_type}")
+        
         # Preparar payload
         payload = {
             'event': event_type,
             'data': data
         }
         
+        # Log mais detalhado
+        logger.info(f"Enviando webhook para: {N8N_WEBHOOK_URL}")
+        
         # Enviar para o n8n
         response = requests.post(
             N8N_WEBHOOK_URL,
             json=payload,
             headers={'Content-Type': 'application/json'},
-            timeout=5  # Timeout em segundos
+            timeout=10  # Aumentando o timeout para 10 segundos
         )
         
         # Verificar resposta
         if response.status_code >= 200 and response.status_code < 300:
-            logger.info(f"Webhook enviado com sucesso para n8n: {event_type}")
+            logger.info(f"Webhook enviado com sucesso para n8n: {event_type}, Status: {response.status_code}")
             return True
         else:
             logger.error(f"Erro ao enviar webhook para n8n. Status: {response.status_code}, Resposta: {response.text}")
             return False
             
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Erro de conexão ao enviar webhook para n8n: {str(e)}")
+        return False
+    except requests.exceptions.Timeout as e:
+        logger.error(f"Timeout ao enviar webhook para n8n: {str(e)}")
+        return False
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro de requisição ao enviar webhook para n8n: {str(e)}")
+        return False
     except Exception as e:
-        logger.error(f"Erro ao enviar webhook para n8n: {str(e)}", exc_info=True)
+        logger.error(f"Erro não esperado ao enviar webhook para n8n: {str(e)}", exc_info=True)
         return False
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])  # A autenticação é feita pelo APIKeyAuthMiddleware
 def get_tickets(request):
     """
     Retorna a lista de tickets com base nos parâmetros de filtro.
     Usado pelo n8n para obter tickets para processamento.
     """
     try:
-        # Parametros de filtro
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Parâmetros de filtro
         empresa_id = request.GET.get('empresa_id')
         status_filter = request.GET.get('status')
         categoria_id = request.GET.get('categoria_id')
@@ -136,13 +165,17 @@ def get_tickets(request):
         )
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def get_ticket_detail(request, ticket_id):
     """
     Retorna os detalhes de um ticket específico.
     Usado pelo n8n para obter informações detalhadas de um ticket.
     """
     try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
         ticket = Ticket.objects.select_related(
             'empresa', 'categoria', 'criado_por', 'atribuido_a'
         ).get(id=ticket_id)
@@ -215,13 +248,17 @@ def get_ticket_detail(request, ticket_id):
         )
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def update_ticket(request, ticket_id):
     """
     Atualiza um ticket existente.
     Usado pelo n8n para atualizar o status, prioridade ou atribuir um ticket.
     """
     try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
         ticket = Ticket.objects.get(id=ticket_id)
         
         # Dados a atualizar
@@ -318,13 +355,17 @@ def update_ticket(request, ticket_id):
         )
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def add_comment(request, ticket_id):
     """
     Adiciona um comentário a um ticket.
     Usado pelo n8n para adicionar comentários automaticamente.
     """
     try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
         ticket = Ticket.objects.get(id=ticket_id)
         
         # Dados do comentário
@@ -381,13 +422,17 @@ def add_comment(request, ticket_id):
         )
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def create_ticket(request):
     """
     Cria um novo ticket.
     Usado pelo n8n para criar tickets automaticamente.
     """
     try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
         data = request.data
         
         # Campos obrigatórios

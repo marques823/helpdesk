@@ -386,6 +386,7 @@ def listar_notas_tecnicas(request, ticket_id):
     })
 
 @login_required
+@ratelimit(key='user', rate='20/h', block=True)
 def adicionar_nota_tecnica(request, ticket_id):
     ticket = get_object_or_404(Ticket, pk=ticket_id)
     
@@ -672,6 +673,7 @@ def criar_ticket(request):
         return redirect('tickets:dashboard')
 
 @login_required
+@ratelimit(key='user', rate='60/h', method='POST', block=True)
 def detalhe_ticket(request, ticket_id):
     try:
         logger.info(f"Tentando acessar ticket {ticket_id} para usuário {request.user.username}")
@@ -1046,6 +1048,7 @@ def lista_empresas(request):
         return redirect('tickets:dashboard')
 
 @login_required
+@ratelimit(key='user_or_ip', rate='10/h', block=True)
 def criar_empresa(request):
     try:
         # Verifica se o usuário tem permissão para criar empresas
@@ -2011,6 +2014,7 @@ def campo_perfil_compartilhamento_excluir(request, pk):
     })
 
 @login_required
+@ratelimit(key='user', rate='20/h', block=True)
 def compartilhar_ticket_pdf(request, ticket_id):
     """Compartilha um ticket em formato PDF."""
     ticket = get_object_or_404(Ticket, pk=ticket_id)
@@ -3357,6 +3361,7 @@ def excluir_email_verificado(request, email_id):
         return redirect('tickets:gerenciar_emails_verificados')
 
 @login_required
+@ratelimit(key='user', rate='5/h', block=True)
 def testar_envio_email(request):
     """View para testar o envio de emails"""
     try:
@@ -3494,6 +3499,7 @@ def configuracoes(request):
         messages.error(request, "Ocorreu um erro ao carregar as configurações.")
         return redirect('tickets:dashboard')
 
+@ratelimit(key='ip', rate='5/h', block=True)
 def solicitar_verificacao_email(request):
     """
     View pública para solicitar verificação de email para cadastro no sistema
@@ -3646,6 +3652,7 @@ def marcar_verificado(request, solicitacao_id):
         return redirect('tickets:gerenciar_verificacoes_email')
 
 @login_required
+@ratelimit(key='user', rate='10/h', block=True)
 def enviar_notificacao(request, solicitacao_id):
     """
     View para enviar notificação de email verificado
@@ -3747,6 +3754,7 @@ def excluir_solicitacao(request, solicitacao_id):
         messages.error(request, "Ocorreu um erro ao excluir a solicitação.")
         return redirect('tickets:gerenciar_verificacoes_email')
 
+@ratelimit(key='ip', rate='10/h', block=True)
 def completar_cadastro(request, token):
     """
     View para completar o cadastro a partir do token enviado por email

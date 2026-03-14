@@ -186,6 +186,7 @@ LOGIN_EXEMPT_URLS = [
     'logout',
     'logout-success',
     'home',
+    'api/auth/login',
 ]
 
 # Configurações de autenticação

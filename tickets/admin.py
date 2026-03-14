@@ -4,11 +4,12 @@ from .models import (
     CategoriaChamado, CampoPersonalizado, ValorCampoPersonalizado,
     EmpresaConfig, AtribuicaoTicket, PerfilCompartilhamento, 
     CampoPerfilCompartilhamento, NotaTecnica, PreferenciasNotificacao,
-    CategoriaPermissao
+    CategoriaPermissao, APIKey, N8nConfig
 )
 from django.utils import timezone
-from django.urls import path
+from django.urls import path, reverse
 from . import admin_views
+from django.utils.html import format_html
 
 # Obtém uma referência para o site de administração existente
 admin_site = admin.site
@@ -253,3 +254,30 @@ class CategoriaPermissaoAdmin(admin.ModelAdmin):
     list_filter = ('categoria__empresa', 'categoria')
     search_fields = ('funcionario__usuario__username', 'categoria__nome')
     raw_id_fields = ('funcionario', 'categoria')
+
+@admin.register(APIKey)
+class APIKeyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'service', 'created_at', 'last_used', 'active', 'key_actions')
+    list_filter = ('service', 'active', 'created_at')
+    search_fields = ('name', 'key')
+    readonly_fields = ('key', 'created_at', 'last_used')
+    
+    def key_actions(self, obj):
+        app_url = reverse('tickets:n8n_settings')
+        return format_html('<a href="{}" class="button">Gerenciar Integrações</a>', app_url)
+    key_actions.short_description = 'Ações'
+
+@admin.register(N8nConfig)
+class N8nConfigAdmin(admin.ModelAdmin):
+    list_display = ('webhook_url', 'webhook_enabled', 'created_at', 'updated_at', 'config_actions')
+    list_filter = ('webhook_enabled',)
+    readonly_fields = ('created_at', 'updated_at')
+    
+    def config_actions(self, obj):
+        app_url = reverse('tickets:n8n_settings')
+        return format_html('<a href="{}" class="button">Configurar Integrações</a>', app_url)
+    config_actions.short_description = 'Ações'
+    
+    def has_add_permission(self, request):
+        # Limitar a criação de apenas um objeto
+        return not N8nConfig.objects.exists()

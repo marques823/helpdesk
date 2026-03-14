@@ -21,11 +21,16 @@ from tickets import views
 
 from django_ratelimit.decorators import ratelimit
 from django_ratelimit.exceptions import Ratelimited
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 
 def handler403(request, exception=None):
     if isinstance(exception, Ratelimited):
+        if request.path.startswith('/api/'):
+            return JsonResponse({'error': 'Muitas solicitações ("Too Many Requests"). Por favor, tente novamente mais tarde.'}, status=403)
         return HttpResponseForbidden('Muitas solicitações ("Too Many Requests"). Por favor, tente novamente mais tarde.')
+        
+    if request.path.startswith('/api/'):
+        return JsonResponse({'error': 'Acesso negado ("Forbidden").'}, status=403)
     return HttpResponseForbidden('Acesso negado ("Forbidden").')
 
 # Aplicar rate limiting à view de login:
