@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'django_filters',
     'tickets',
-    # 'csp',  # Content Security Policy - comentado temporariamente
+    'csp',  # Content Security Policy
 ]
 
 MIDDLEWARE = [
@@ -60,10 +60,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'tickets.middleware.security_middleware.UserFuncionarioMiddleware',
     'tickets.middleware.security_middleware.LoginExemptMiddleware',
+    'tickets.middleware.security_middleware.APIKeyAuthMiddleware',  # Middleware de autenticação por API key
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'tickets.middleware.security_middleware.SecurityMiddleware',
-    # 'csp.middleware.CSPMiddleware',  # Comentado temporariamente
+    'csp.middleware.CSPMiddleware',
 ]
 
 ROOT_URLCONF = 'helpdesk_app.urls'
@@ -94,6 +95,14 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+# Configuração de Cache (Necessário para django-ratelimit)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'helpdesk_cache_table',
     }
 }
 
@@ -177,6 +186,7 @@ LOGIN_EXEMPT_URLS = [
     'logout',
     'logout-success',
     'home',
+    'api/auth/login',
 ]
 
 # Configurações de autenticação
@@ -258,13 +268,25 @@ LOGGING = {
     },
 }
 
-# Comentando temporariamente as configurações CSP enquanto resolvemos problemas de inicialização
-# CONTENT_SECURITY_POLICY = {
-#     'DIRECTIVES': {
-#         'default-src': ("'self'",),
-#         'style-src': ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"),
-#         'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net"),
-#         'font-src': ("'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"),
-#         'img-src': ("'self'", "data:", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"),
-#     }
-# }
+# Content Security Policy Settings
+# Formato compatível com django-csp >= 4.0
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'style-src': ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.com"),
+        'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net", "code.jquery.com", "cdnjs.cloudflare.com"),
+        'font-src': ("'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.gstatic.com"),
+        'img-src': ("'self'", "data:", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "blob:"),
+        'connect-src': ("'self'",),
+        'frame-src': ("'self'",),
+        'media-src': ("'self'",),
+        'object-src': ("'none'",),
+    }
+}
+
+# Opcional: Para testar sem bloquear nada, ative o Report-Only primeiro:
+# CSP_REPORT_ONLY = True
+
+# Configurações da API para n8n
+N8N_WEBHOOK_ENABLED = os.environ.get('N8N_WEBHOOK_ENABLED', 'False').lower() == 'true'
+N8N_WEBHOOK_URL = os.environ.get('N8N_WEBHOOK_URL', '')

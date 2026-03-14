@@ -31,6 +31,14 @@ urlpatterns = [
     path('admin/backups/', admin_views.backup_manager, name='admin_backup_manager'),
     path('admin/backups/download/<int:backup_id>/', admin_views.download_backup, name='admin_backup_download'),
     
+    # URLs para configuração do n8n
+    path('admin/n8n/', views.n8n_settings, name='n8n_settings'),
+    path('admin/n8n/test/', views.n8n_test_webhook, name='n8n_test_webhook'),
+    
+    # URL para gerenciamento de APIs
+    path('admin/api/', admin_views.api_management, name='api_management'),
+    path('admin/api/docs/', admin_views.api_documentation, name='api_documentation'),
+    
     # URLs para relatórios
     path('relatorios/', views.relatorios_menu, name='relatorios_menu'),
     path('relatorios/tickets/', views.relatorio_tickets, name='relatorio_tickets'),

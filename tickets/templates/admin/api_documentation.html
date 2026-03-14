@@ -1,0 +1,344 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Documentação da API" %} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .endpoints-list {
+        margin-top: 20px;
+    }
+    .endpoint {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #eee;
+    }
+    .endpoint h3 {
+        margin-bottom: 5px;
+    }
+    .http-method {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: bold;
+        margin-right: 10px;
+        color: white;
+    }
+    .method-get {
+        background-color: #61affe;
+    }
+    .method-post {
+        background-color: #49cc90;
+    }
+    .method-put {
+        background-color: #fca130;
+    }
+    .method-delete {
+        background-color: #f93e3e;
+    }
+    .url-path {
+        font-family: monospace;
+        background-color: #f5f5f5;
+        padding: 2px 5px;
+        border-radius: 3px;
+    }
+    .parameter-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+    }
+    .parameter-table th, .parameter-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .parameter-table th {
+        background-color: #f5f5f5;
+    }
+    .code-example {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 3px;
+        overflow-x: auto;
+        font-family: monospace;
+        margin: 10px 0;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'tickets:api_management' %}">{% trans 'Gerenciamento de APIs' %}</a>
+    &rsaquo; {% trans 'Documentação da API' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>{% trans 'Documentação da API' %}</h1>
+    
+    <div class="module">
+        <h2>{% trans 'Introdução' %}</h2>
+        <p>
+            {% trans 'Esta API permite interagir com o sistema de tickets do Helpdesk programaticamente. Todas as requisições devem incluir uma chave de API válida para autenticação.' %}
+        </p>
+        
+        <h3>{% trans 'Autenticação' %}</h3>
+        <p>
+            {% trans 'Para acessar qualquer endpoint da API, você precisa incluir sua chave de API no cabeçalho HTTP da requisição:' %}
+        </p>
+        <div class="code-example">
+            X-API-Key: sua_chave_api_aqui
+        </div>
+    </div>
+    
+    <div class="module endpoints-list">
+        <h2>{% trans 'Endpoints Disponíveis' %}</h2>
+        
+        <!-- Listar Tickets -->
+        <div class="endpoint">
+            <h3>
+                <span class="http-method method-get">GET</span>
+                <span class="url-path">/api/tickets/</span>
+            </h3>
+            <p>{% trans 'Retorna uma lista de tickets com base nos filtros fornecidos.' %}</p>
+            
+            <h4>{% trans 'Parâmetros de Query' %}</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>{% trans 'Parâmetro' %}</th>
+                        <th>{% trans 'Tipo' %}</th>
+                        <th>{% trans 'Descrição' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>status</td>
+                        <td>string</td>
+                        <td>{% trans 'Filtrar por status (ex: aberto, em_andamento, resolvido)' %}</td>
+                    </tr>
+                    <tr>
+                        <td>empresa_id</td>
+                        <td>integer</td>
+                        <td>{% trans 'Filtrar por ID da empresa' %}</td>
+                    </tr>
+                    <tr>
+                        <td>categoria_id</td>
+                        <td>integer</td>
+                        <td>{% trans 'Filtrar por categoria' %}</td>
+                    </tr>
+                    <tr>
+                        <td>limit</td>
+                        <td>integer</td>
+                        <td>{% trans 'Número máximo de resultados (padrão: 50)' %}</td>
+                    </tr>
+                    <tr>
+                        <td>offset</td>
+                        <td>integer</td>
+                        <td>{% trans 'Deslocamento para paginação (padrão: 0)' %}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>{% trans 'Exemplo de Resposta' %}</h4>
+            <div class="code-example">
+{
+    "count": 125,
+    "next": "/api/tickets/?offset=50&limit=50",
+    "previous": null,
+    "results": [
+        {
+            "id": 1,
+            "numero_empresa": 1,
+            "titulo": "Problema de impressão",
+            "status": "aberto",
+            "prioridade": "media",
+            "empresa": {
+                "id": 1,
+                "nome": "Acme Inc."
+            },
+            "criado_em": "2023-06-15T10:30:00Z",
+            "atualizado_em": "2023-06-15T10:30:00Z"
+        },
+        // ... mais tickets
+    ]
+}
+            </div>
+        </div>
+        
+        <!-- Detalhe de Ticket -->
+        <div class="endpoint">
+            <h3>
+                <span class="http-method method-get">GET</span>
+                <span class="url-path">/api/tickets/{id}/</span>
+            </h3>
+            <p>{% trans 'Retorna informações detalhadas sobre um ticket específico.' %}</p>
+            
+            <h4>{% trans 'Parâmetros de URL' %}</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>{% trans 'Parâmetro' %}</th>
+                        <th>{% trans 'Tipo' %}</th>
+                        <th>{% trans 'Descrição' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>id</td>
+                        <td>integer</td>
+                        <td>{% trans 'ID do ticket' %}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>{% trans 'Exemplo de Resposta' %}</h4>
+            <div class="code-example">
+{
+    "id": 1,
+    "numero_empresa": 1,
+    "titulo": "Problema de impressão",
+    "descricao": "A impressora não está funcionando corretamente",
+    "status": "aberto",
+    "prioridade": "media",
+    "empresa": {
+        "id": 1,
+        "nome": "Acme Inc."
+    },
+    "categoria": {
+        "id": 3,
+        "nome": "Hardware"
+    },
+    "criado_por": {
+        "id": 5,
+        "username": "usuario1",
+        "email": "usuario1@exemplo.com"
+    },
+    "atribuido_a": {
+        "id": 2,
+        "nome": "Técnico Silva"
+    },
+    "comentarios": [
+        {
+            "id": 1,
+            "autor": "usuario1",
+            "texto": "Tentei reiniciar mas não funcionou",
+            "criado_em": "2023-06-15T10:35:00Z"
+        }
+    ],
+    "campos_personalizados": [
+        {
+            "nome": "Modelo da Impressora",
+            "valor": "HP LaserJet Pro"
+        }
+    ],
+    "criado_em": "2023-06-15T10:30:00Z",
+    "atualizado_em": "2023-06-15T10:35:00Z"
+}
+            </div>
+        </div>
+        
+        <!-- Criar Ticket -->
+        <div class="endpoint">
+            <h3>
+                <span class="http-method method-post">POST</span>
+                <span class="url-path">/api/tickets/</span>
+            </h3>
+            <p>{% trans 'Cria um novo ticket no sistema.' %}</p>
+            
+            <h4>{% trans 'Corpo da Requisição' %}</h4>
+            <table class="parameter-table">
+                <thead>
+                    <tr>
+                        <th>{% trans 'Campo' %}</th>
+                        <th>{% trans 'Tipo' %}</th>
+                        <th>{% trans 'Obrigatório' %}</th>
+                        <th>{% trans 'Descrição' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>titulo</td>
+                        <td>string</td>
+                        <td>Sim</td>
+                        <td>{% trans 'Título do ticket' %}</td>
+                    </tr>
+                    <tr>
+                        <td>descricao</td>
+                        <td>string</td>
+                        <td>Sim</td>
+                        <td>{% trans 'Descrição detalhada do problema' %}</td>
+                    </tr>
+                    <tr>
+                        <td>empresa_id</td>
+                        <td>integer</td>
+                        <td>Sim</td>
+                        <td>{% trans 'ID da empresa' %}</td>
+                    </tr>
+                    <tr>
+                        <td>categoria_id</td>
+                        <td>integer</td>
+                        <td>Não</td>
+                        <td>{% trans 'ID da categoria (opcional)' %}</td>
+                    </tr>
+                    <tr>
+                        <td>prioridade</td>
+                        <td>string</td>
+                        <td>Não</td>
+                        <td>{% trans 'Prioridade (baixa, media, alta, urgente)' %}</td>
+                    </tr>
+                    <tr>
+                        <td>criado_por_id</td>
+                        <td>integer</td>
+                        <td>Sim</td>
+                        <td>{% trans 'ID do usuário que está criando o ticket' %}</td>
+                    </tr>
+                    <tr>
+                        <td>campos_personalizados</td>
+                        <td>array</td>
+                        <td>Não</td>
+                        <td>{% trans 'Array de objetos com campo_id e valor' %}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>{% trans 'Exemplo de Requisição' %}</h4>
+            <div class="code-example">
+{
+    "titulo": "Problema com Internet",
+    "descricao": "A conexão com a internet está instável desde ontem",
+    "empresa_id": 1,
+    "categoria_id": 2,
+    "prioridade": "alta",
+    "criado_por_id": 5,
+    "campos_personalizados": [
+        {
+            "campo_id": 3,
+            "valor": "Sala 101"
+        }
+    ]
+}
+            </div>
+            
+            <h4>{% trans 'Exemplo de Resposta' %}</h4>
+            <div class="code-example">
+{
+    "id": 126,
+    "numero_empresa": 23,
+    "titulo": "Problema com Internet",
+    "status": "aberto",
+    "prioridade": "alta",
+    "empresa": {
+        "id": 1,
+        "nome": "Acme Inc."
+    },
+    "criado_em": "2023-06-17T09:15:00Z"
+}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

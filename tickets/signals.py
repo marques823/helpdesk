@@ -1,10 +1,11 @@
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.db import transaction
 
 from .models import Ticket, Comentario, HistoricoTicket, AtribuicaoTicket, PreferenciasNotificacao
 from .email_notifications import EmailNotificationService, ConfiguracaoNotificacao
+from .api.n8n import send_webhook_to_n8n, N8N_WEBHOOK_ENABLED
 
 import logging
 
@@ -172,4 +173,123 @@ def enviar_notificacao_comentario(comentario):
         EmailNotificationService.notificar_novo_comentario(comentario)
         logger.info(f"Notificação de novo comentário enviada para o ticket #{comentario.ticket.id}")
     except Exception as e:
-        logger.error(f"Erro ao enviar notificação de novo comentário no ticket #{comentario.ticket.id}: {str(e)}") 
+        logger.error(f"Erro ao enviar notificação de novo comentário no ticket #{comentario.ticket.id}: {str(e)}")
+
+@receiver(post_save, sender=Ticket)
+def ticket_saved(sender, instance, created, **kwargs):
+    """
+    Sinal disparado quando um ticket é criado ou atualizado.
+    Envia webhook para o n8n se habilitado.
+    """
+    if not N8N_WEBHOOK_ENABLED:
+        return
+    
+    try:
+        # Dados básicos do ticket
+        ticket_data = {
+            'id': instance.id,
+            'numero_empresa': instance.numero_empresa,
+            'titulo': instance.titulo,
+            'descricao': instance.descricao,
+            'status': instance.status,
+            'prioridade': instance.prioridade,
+            'empresa': {
+                'id': instance.empresa.id,
+                'nome': instance.empresa.nome
+            } if instance.empresa else None,
+            'categoria': {
+                'id': instance.categoria.id,
+                'nome': instance.categoria.nome
+            } if instance.categoria else None,
+            'criado_por': {
+                'id': instance.criado_por.id,
+                'username': instance.criado_por.username,
+                'email': instance.criado_por.email
+            } if instance.criado_por else None,
+            'atribuido_a': {
+                'id': instance.atribuido_a.id,
+                'usuario': {
+                    'id': instance.atribuido_a.usuario.id,
+                    'username': instance.atribuido_a.usuario.username,
+                    'email': instance.atribuido_a.usuario.email
+                }
+            } if instance.atribuido_a else None,
+            'criado_em': instance.criado_em.isoformat(),
+            'atualizado_em': instance.atualizado_em.isoformat() if instance.atualizado_em else None
+        }
+        
+        # Determinar o tipo de evento
+        event_type = 'ticket_created' if created else 'ticket_updated'
+        
+        # Enviar webhook
+        send_webhook_to_n8n(event_type, ticket_data)
+        
+    except Exception as e:
+        logger.error(f"Erro ao processar sinal de ticket salvo: {str(e)}", exc_info=True)
+
+@receiver(post_save, sender=Comentario)
+def comentario_saved(sender, instance, created, **kwargs):
+    """
+    Sinal disparado quando um comentário é criado.
+    Envia webhook para o n8n se habilitado.
+    """
+    if not N8N_WEBHOOK_ENABLED or not created:  # Somente para novos comentários
+        return
+    
+    try:
+        # Dados do comentário
+        comentario_data = {
+            'id': instance.id,
+            'ticket_id': instance.ticket.id,
+            'ticket_numero_empresa': instance.ticket.numero_empresa,
+            'ticket_titulo': instance.ticket.titulo,
+            'conteudo': instance.conteudo,
+            'publico': instance.publico,
+            'autor': {
+                'id': instance.autor.id,
+                'username': instance.autor.username,
+                'email': instance.autor.email
+            } if instance.autor else None,
+            'data_criacao': instance.data_criacao.isoformat()
+        }
+        
+        # Enviar webhook
+        send_webhook_to_n8n('comment_added', comentario_data)
+        
+    except Exception as e:
+        logger.error(f"Erro ao processar sinal de comentário criado: {str(e)}", exc_info=True)
+
+@receiver(post_save, sender=HistoricoTicket)
+def historico_ticket_saved(sender, instance, created, **kwargs):
+    """
+    Sinal disparado quando um histórico de ticket é criado.
+    Envia webhook para o n8n se habilitado.
+    """
+    if not N8N_WEBHOOK_ENABLED or not created:
+        return
+    
+    try:
+        # Verificar se é uma alteração de status
+        if instance.tipo_alteracao == 'status':
+            # Dados da alteração de status
+            historico_data = {
+                'id': instance.id,
+                'ticket_id': instance.ticket.id,
+                'ticket_numero_empresa': instance.ticket.numero_empresa,
+                'ticket_titulo': instance.ticket.titulo,
+                'tipo_alteracao': instance.tipo_alteracao,
+                'valor_anterior': instance.valor_anterior,
+                'valor_novo': instance.valor_novo,
+                'usuario': {
+                    'id': instance.usuario.id,
+                    'username': instance.usuario.username,
+                    'email': instance.usuario.email
+                } if instance.usuario else None,
+                'data_alteracao': instance.data_alteracao.isoformat()
+            }
+            
+            # Enviar webhook
+            send_webhook_to_n8n('ticket_status_changed', historico_data)
+            
+    except Exception as e:
+        logger.error(f"Erro ao processar sinal de histórico de ticket: {str(e)}", exc_info=True) 

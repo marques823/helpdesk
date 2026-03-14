@@ -1,0 +1,86 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Gerenciamento de APIs" %} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; {% trans 'Gerenciamento de APIs' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>{% trans 'Gerenciamento de APIs e Integrações' %}</h1>
+    
+    <div class="module">
+        <h2>{% trans 'Integrações Disponíveis' %}</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>{% trans 'Serviço' %}</th>
+                    <th>{% trans 'Descrição' %}</th>
+                    <th>{% trans 'Ações' %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>n8n</strong></td>
+                    <td>{% trans 'Integração com a plataforma de automação n8n para webhooks e notificações.' %}</td>
+                    <td>
+                        <a href="{% url 'tickets:n8n_settings' %}" class="button">{% trans 'Configurar' %}</a>
+                        <a href="{% url 'admin:tickets_apikey_changelist' %}?service__exact=n8n" class="button">{% trans 'Chaves API' %}</a>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <td><strong>Rest API</strong></td>
+                    <td>{% trans 'API REST para integração com sistemas externos.' %}</td>
+                    <td>
+                        <a href="{% url 'admin:tickets_apikey_changelist' %}" class="button">{% trans 'Gerenciar Chaves' %}</a>
+                        <a href="{% url 'tickets:api_documentation' %}" class="button">{% trans 'Ver Documentação' %}</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="module">
+        <h2>{% trans 'Criação Rápida de Chave API' %}</h2>
+        
+        <form method="post" action="{% url 'tickets:n8n_settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_key">
+            <div class="form-row">
+                <div>
+                    <label for="key_name">{% trans 'Nome da Chave:' %}</label>
+                    <input type="text" id="key_name" name="key_name" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label for="service">{% trans 'Serviço:' %}</label>
+                    <select id="service" name="service">
+                        <option value="n8n">n8n</option>
+                        <option value="api">REST API</option>
+                    </select>
+                </div>
+            </div>
+            <div class="submit-row">
+                <input type="submit" value="{% trans 'Criar Nova Chave API' %}" class="default">
+            </div>
+        </form>
+    </div>
+    
+    <div class="module">
+        <h2>{% trans 'Documentação' %}</h2>
+        <p>{% trans 'Para mais informações sobre como utilizar as APIs e integrações disponíveis, consulte a documentação abaixo:' %}</p>
+        <ul>
+            <li><a href="{% url 'tickets:n8n_settings' %}#documentacao" target="_blank">{% trans 'Documentação da API n8n' %}</a></li>
+            <li><a href="{% url 'tickets:api_documentation' %}" target="_blank">{% trans 'Documentação da REST API' %}</a></li>
+        </ul>
+    </div>
+</div>
+{% endblock %} 

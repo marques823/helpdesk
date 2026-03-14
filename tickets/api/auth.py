@@ -6,8 +6,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 import json
 
+from django_ratelimit.decorators import ratelimit
+
 @csrf_exempt
 @require_http_methods(["POST"])
+@ratelimit(key='ip', rate='5/m', block=True)
 def api_login(request):
     try:
         # Parse JSON data from request body

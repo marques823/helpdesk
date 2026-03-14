@@ -1,11 +1,13 @@
 import re
-from django.http import HttpResponseForbidden, HttpResponseRedirect
+from django.http import HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.urls import resolve, reverse
 from django.contrib import messages
 from django.utils.deprecation import MiddlewareMixin
 from django.contrib.auth.views import redirect_to_login
 from django.conf import settings
-from tickets.models import Funcionario, Ticket, Empresa
+from tickets.models import Funcionario, Ticket, Empresa, APIKey
+from django.shortcuts import redirect
+import logging
 
 
 class SecurityMiddleware(MiddlewareMixin):
@@ -34,6 +36,10 @@ class SecurityMiddleware(MiddlewareMixin):
         r'^/tickets/categorias/': {'check_func': 'check_category_permission'},
         r'^/tickets/campos/': {'check_func': 'check_custom_field_permission'},
     }
+    
+    def __init__(self, get_response=None):
+        super().__init__(get_response)
+        self.async_mode = False
     
     def is_exempt(self, path):
         """Verifica se a URL está isenta de verificação"""
@@ -224,6 +230,10 @@ class UserFuncionarioMiddleware(MiddlewareMixin):
     Isso permite acessar funcionario diretamente nos templates via request.funcionario.
     """
     
+    def __init__(self, get_response=None):
+        super().__init__(get_response)
+        self.async_mode = False
+    
     def process_request(self, request):
         """
         Adiciona o objeto funcionário ao request se o usuário estiver autenticado
@@ -245,6 +255,10 @@ class LoginExemptMiddleware(MiddlewareMixin):
     Middleware para isentar URLs específicas da necessidade de autenticação.
     Usa a configuração LOGIN_EXEMPT_URLS definida em settings.py.
     """
+    
+    def __init__(self, get_response=None):
+        super().__init__(get_response)
+        self.async_mode = False
     
     def process_request(self, request):
         """
@@ -268,4 +282,69 @@ class LoginExemptMiddleware(MiddlewareMixin):
                 request.exempt = True
                 break
         
+        return None 
+
+
+class APIKeyAuthMiddleware(MiddlewareMixin):
+    """
+    Middleware para autenticar requisições de API usando chaves API.
+    """
+    
+    # Prefixos de URL que requerem autenticação por API key
+    API_URL_PATTERNS = [
+        r'^/api/n8n/',  # URLs da API n8n
+    ]
+    
+    def __init__(self, get_response=None):
+        self.get_response = get_response
+        self.logger = logging.getLogger(__name__)
+        self.async_mode = False
+    
+    def __call__(self, request):
+        # Verificar se a URL requer autenticação por API key
+        path = request.path
+        
+        # Verificar se a URL corresponde a algum padrão protegido
+        requires_api_key = any(re.match(pattern, path) for pattern in self.API_URL_PATTERNS)
+        
+        if requires_api_key:
+            # Verificar a chave API no cabeçalho
+            api_key = request.headers.get('X-API-Key')
+            
+            if not api_key:
+                self.logger.warning(f"Tentativa de acesso à API sem chave: {path}")
+                return JsonResponse({'error': 'API key não fornecida'}, status=401)
+            
+            # Verificar se a chave API existe e está ativa
+            try:
+                # Verificamos apenas se a chave existe - o campo active será verificado se existir
+                key_obj = APIKey.objects.get(key=api_key)
+                
+                # Verificar se a chave está ativa, se o modelo tiver esse campo
+                if hasattr(key_obj, 'active') and not key_obj.active:
+                    self.logger.warning(f"Tentativa de acesso à API com chave inativa: {path}")
+                    return JsonResponse({'error': 'API key inativa'}, status=401)
+                
+                # Registrar o uso da chave
+                if hasattr(key_obj, 'mark_used') and callable(key_obj.mark_used):
+                    key_obj.mark_used()
+                else:
+                    # Método alternativo se mark_used não existir
+                    if hasattr(key_obj, 'last_used'):
+                        from django.utils import timezone
+                        key_obj.last_used = timezone.now()
+                        key_obj.save(update_fields=['last_used'])
+                
+                # Adicionar informações da chave API ao request para uso nas views
+                request.api_key = key_obj
+                
+            except APIKey.DoesNotExist:
+                self.logger.warning(f"Tentativa de acesso à API com chave inválida: {path}")
+                return JsonResponse({'error': 'API key inválida ou inativa'}, status=401)
+        
+        # Continuar com o próximo middleware/view
+        return self.get_response(request)
+    
+    # Mantém o método process_request para compatibilidade, mas ele não será chamado
+    def process_request(self, request):
         return None 

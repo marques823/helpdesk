@@ -1,0 +1,534 @@
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.conf import settings
+import json
+import logging
+import requests
+from ..models import Ticket, Empresa, Funcionario, CategoriaChamado, Comentario, APIKey
+
+logger = logging.getLogger(__name__)
+
+# Configurações N8N
+N8N_WEBHOOK_URL = getattr(settings, 'N8N_WEBHOOK_URL', None)
+N8N_WEBHOOK_ENABLED = getattr(settings, 'N8N_WEBHOOK_ENABLED', False)
+
+def send_webhook_to_n8n(event_type, data):
+    """
+    Envia um webhook para o n8n com informações sobre eventos do sistema.
+    
+    Args:
+        event_type: Tipo do evento ('ticket_created', 'ticket_updated', 'comment_added', etc)
+        data: Dados do evento a serem enviados
+    
+    Returns:
+        bool: True se o webhook foi enviado com sucesso, False caso contrário
+    """
+    # Verificar se webhook está configurado e ativado
+    if not N8N_WEBHOOK_ENABLED:
+        logger.info(f"Webhook para n8n está desativado. Evento {event_type} não enviado.")
+        return False
+        
+    if not N8N_WEBHOOK_URL:
+        logger.error("URL do webhook para n8n não está configurada. Verifique as configurações N8N_WEBHOOK_URL.")
+        return False
+        
+    # Verificar se a URL parece válida
+    if not (N8N_WEBHOOK_URL.startswith('http://') or N8N_WEBHOOK_URL.startswith('https://')):
+        logger.error(f"URL do webhook inválida: {N8N_WEBHOOK_URL}. A URL deve começar com http:// ou https://")
+        return False
+    
+    try:
+        # Logar os dados que serão enviados (mas evitando dados sensíveis)
+        logger.debug(f"Enviando webhook para n8n - Evento: {event_type}")
+        
+        # Preparar payload
+        payload = {
+            'event': event_type,
+            'data': data
+        }
+        
+        # Log mais detalhado
+        logger.info(f"Enviando webhook para: {N8N_WEBHOOK_URL}")
+        
+        # Enviar para o n8n
+        response = requests.post(
+            N8N_WEBHOOK_URL,
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=10  # Aumentando o timeout para 10 segundos
+        )
+        
+        # Verificar resposta
+        if response.status_code >= 200 and response.status_code < 300:
+            logger.info(f"Webhook enviado com sucesso para n8n: {event_type}, Status: {response.status_code}")
+            return True
+        else:
+            logger.error(f"Erro ao enviar webhook para n8n. Status: {response.status_code}, Resposta: {response.text}")
+            return False
+            
+    except requests.exceptions.ConnectionError as e:
+        logger.error(f"Erro de conexão ao enviar webhook para n8n: {str(e)}")
+        return False
+    except requests.exceptions.Timeout as e:
+        logger.error(f"Timeout ao enviar webhook para n8n: {str(e)}")
+        return False
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erro de requisição ao enviar webhook para n8n: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Erro não esperado ao enviar webhook para n8n: {str(e)}", exc_info=True)
+        return False
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # A autenticação é feita pelo APIKeyAuthMiddleware
+def get_tickets(request):
+    """
+    Retorna a lista de tickets com base nos parâmetros de filtro.
+    Usado pelo n8n para obter tickets para processamento.
+    """
+    try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Parâmetros de filtro
+        empresa_id = request.GET.get('empresa_id')
+        status_filter = request.GET.get('status')
+        categoria_id = request.GET.get('categoria_id')
+        
+        # Filtro base de tickets
+        tickets = Ticket.objects.all().select_related(
+            'empresa', 'categoria', 'criado_por', 'atribuido_a'
+        )
+        
+        # Aplicar filtros
+        if empresa_id:
+            tickets = tickets.filter(empresa_id=empresa_id)
+            
+        if status_filter:
+            tickets = tickets.filter(status=status_filter)
+            
+        if categoria_id:
+            tickets = tickets.filter(categoria_id=categoria_id)
+        
+        # Limitar resultados
+        limit = int(request.GET.get('limit', 50))
+        tickets = tickets[:limit]
+        
+        # Construir resposta
+        data = []
+        for ticket in tickets:
+            data.append({
+                'id': ticket.id,
+                'numero_empresa': ticket.numero_empresa,
+                'titulo': ticket.titulo,
+                'descricao': ticket.descricao,
+                'status': ticket.status,
+                'prioridade': ticket.prioridade,
+                'empresa': {
+                    'id': ticket.empresa.id,
+                    'nome': ticket.empresa.nome
+                } if ticket.empresa else None,
+                'categoria': {
+                    'id': ticket.categoria.id,
+                    'nome': ticket.categoria.nome
+                } if ticket.categoria else None,
+                'criado_por': {
+                    'id': ticket.criado_por.id,
+                    'username': ticket.criado_por.username,
+                    'email': ticket.criado_por.email,
+                    'nome_completo': ticket.criado_por.get_full_name()
+                } if ticket.criado_por else None,
+                'atribuido_a': {
+                    'id': ticket.atribuido_a.id,
+                    'usuario': {
+                        'id': ticket.atribuido_a.usuario.id,
+                        'username': ticket.atribuido_a.usuario.username,
+                        'email': ticket.atribuido_a.usuario.email
+                    }
+                } if ticket.atribuido_a else None,
+                'criado_em': ticket.criado_em.isoformat(),
+                'atualizado_em': ticket.atualizado_em.isoformat() if ticket.atualizado_em else None
+            })
+        
+        return Response(data)
+        
+    except Exception as e:
+        logger.error(f"Erro ao obter tickets para n8n: {str(e)}", exc_info=True)
+        return Response(
+            {"error": f"Erro ao obter tickets: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_ticket_detail(request, ticket_id):
+    """
+    Retorna os detalhes de um ticket específico.
+    Usado pelo n8n para obter informações detalhadas de um ticket.
+    """
+    try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        ticket = Ticket.objects.select_related(
+            'empresa', 'categoria', 'criado_por', 'atribuido_a'
+        ).get(id=ticket_id)
+        
+        # Obter comentários do ticket
+        comentarios = Comentario.objects.filter(ticket=ticket).select_related('autor')
+        comentarios_data = []
+        
+        for comentario in comentarios:
+            comentarios_data.append({
+                'id': comentario.id,
+                'conteudo': comentario.conteudo,
+                'autor': {
+                    'id': comentario.autor.id,
+                    'username': comentario.autor.username,
+                    'email': comentario.autor.email,
+                    'nome_completo': comentario.autor.get_full_name()
+                } if comentario.autor else None,
+                'data_criacao': comentario.data_criacao.isoformat(),
+                'publico': comentario.publico
+            })
+        
+        # Dados do ticket
+        data = {
+            'id': ticket.id,
+            'numero_empresa': ticket.numero_empresa,
+            'titulo': ticket.titulo,
+            'descricao': ticket.descricao,
+            'status': ticket.status,
+            'prioridade': ticket.prioridade,
+            'empresa': {
+                'id': ticket.empresa.id,
+                'nome': ticket.empresa.nome
+            } if ticket.empresa else None,
+            'categoria': {
+                'id': ticket.categoria.id,
+                'nome': ticket.categoria.nome
+            } if ticket.categoria else None,
+            'criado_por': {
+                'id': ticket.criado_por.id,
+                'username': ticket.criado_por.username,
+                'email': ticket.criado_por.email,
+                'nome_completo': ticket.criado_por.get_full_name()
+            } if ticket.criado_por else None,
+            'atribuido_a': {
+                'id': ticket.atribuido_a.id,
+                'usuario': {
+                    'id': ticket.atribuido_a.usuario.id,
+                    'username': ticket.atribuido_a.usuario.username,
+                    'email': ticket.atribuido_a.usuario.email
+                }
+            } if ticket.atribuido_a else None,
+            'criado_em': ticket.criado_em.isoformat(),
+            'atualizado_em': ticket.atualizado_em.isoformat() if ticket.atualizado_em else None,
+            'comentarios': comentarios_data
+        }
+        
+        return Response(data)
+        
+    except Ticket.DoesNotExist:
+        return Response(
+            {"error": "Ticket não encontrado"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Erro ao obter detalhes do ticket para n8n: {str(e)}", exc_info=True)
+        return Response(
+            {"error": f"Erro ao obter detalhes do ticket: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def update_ticket(request, ticket_id):
+    """
+    Atualiza um ticket existente.
+    Usado pelo n8n para atualizar o status, prioridade ou atribuir um ticket.
+    """
+    try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        ticket = Ticket.objects.get(id=ticket_id)
+        
+        # Dados a atualizar
+        data = request.data
+        status_anterior = ticket.status
+        
+        # Atualizar status
+        if 'status' in data:
+            ticket.status = data['status']
+            
+        # Atualizar prioridade
+        if 'prioridade' in data:
+            ticket.prioridade = data['prioridade']
+            
+        # Atribuir ticket
+        if 'atribuido_a_id' in data:
+            funcionario_id = data['atribuido_a_id']
+            if funcionario_id:
+                try:
+                    funcionario = Funcionario.objects.get(id=funcionario_id)
+                    ticket.atribuido_a = funcionario
+                except Funcionario.DoesNotExist:
+                    return Response(
+                        {"error": "Funcionário não encontrado"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                ticket.atribuido_a = None
+                
+        # Adicionar comentário se fornecido
+        comentario_texto = data.get('comentario')
+        
+        # Salvar o ticket
+        ticket.save()
+        
+        # Adicionar comentário, se fornecido
+        comentario = None
+        if comentario_texto:
+            comentario = Comentario.objects.create(
+                ticket=ticket,
+                autor=request.user,
+                conteudo=comentario_texto,
+                publico=data.get('comentario_publico', True)
+            )
+            
+            # Enviar webhook para n8n sobre o novo comentário
+            if comentario:
+                comentario_data = {
+                    'id': comentario.id,
+                    'ticket_id': ticket.id,
+                    'ticket_numero_empresa': ticket.numero_empresa,
+                    'conteudo': comentario.conteudo,
+                    'publico': comentario.publico,
+                    'autor': {
+                        'id': request.user.id,
+                        'username': request.user.username,
+                        'email': request.user.email
+                    }
+                }
+                send_webhook_to_n8n('comment_added', comentario_data)
+        
+        # Enviar webhook para n8n sobre a atualização do ticket
+        ticket_data = {
+            'id': ticket.id,
+            'numero_empresa': ticket.numero_empresa,
+            'titulo': ticket.titulo,
+            'status': ticket.status,
+            'status_anterior': status_anterior,
+            'prioridade': ticket.prioridade,
+            'usuario_atualizacao': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        }
+        send_webhook_to_n8n('ticket_updated', ticket_data)
+            
+        return Response({
+            'success': True,
+            'message': 'Ticket atualizado com sucesso',
+            'ticket_id': ticket.id
+        })
+        
+    except Ticket.DoesNotExist:
+        return Response(
+            {"error": "Ticket não encontrado"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Erro ao atualizar ticket via n8n: {str(e)}", exc_info=True)
+        return Response(
+            {"error": f"Erro ao atualizar ticket: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def add_comment(request, ticket_id):
+    """
+    Adiciona um comentário a um ticket.
+    Usado pelo n8n para adicionar comentários automaticamente.
+    """
+    try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        ticket = Ticket.objects.get(id=ticket_id)
+        
+        # Dados do comentário
+        data = request.data
+        conteudo = data.get('conteudo')
+        
+        if not conteudo:
+            return Response(
+                {"error": "O conteúdo do comentário é obrigatório"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Criar comentário
+        comentario = Comentario.objects.create(
+            ticket=ticket,
+            autor=request.user,
+            conteudo=conteudo,
+            publico=data.get('publico', True)
+        )
+        
+        # Enviar webhook para n8n sobre o novo comentário
+        comentario_data = {
+            'id': comentario.id,
+            'ticket_id': ticket.id,
+            'ticket_numero_empresa': ticket.numero_empresa,
+            'ticket_titulo': ticket.titulo,
+            'conteudo': comentario.conteudo,
+            'publico': comentario.publico,
+            'autor': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        }
+        send_webhook_to_n8n('comment_added', comentario_data)
+        
+        return Response({
+            'success': True,
+            'message': 'Comentário adicionado com sucesso',
+            'ticket_id': ticket.id,
+            'comentario_id': comentario.id
+        })
+        
+    except Ticket.DoesNotExist:
+        return Response(
+            {"error": "Ticket não encontrado"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Erro ao adicionar comentário via n8n: {str(e)}", exc_info=True)
+        return Response(
+            {"error": f"Erro ao adicionar comentário: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def create_ticket(request):
+    """
+    Cria um novo ticket.
+    Usado pelo n8n para criar tickets automaticamente.
+    """
+    try:
+        # Verificar se a requisição tem uma API key válida
+        if not hasattr(request, 'api_key'):
+            return Response({"error": "Autenticação com API key é necessária"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        data = request.data
+        
+        # Campos obrigatórios
+        if not data.get('titulo') or not data.get('empresa_id'):
+            return Response(
+                {"error": "Título e ID da empresa são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Obter empresa
+        try:
+            empresa = Empresa.objects.get(id=data['empresa_id'])
+        except Empresa.DoesNotExist:
+            return Response(
+                {"error": "Empresa não encontrada"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Obter categoria, se fornecida
+        categoria = None
+        if data.get('categoria_id'):
+            try:
+                categoria = CategoriaChamado.objects.get(
+                    id=data['categoria_id'],
+                    empresa=empresa
+                )
+            except CategoriaChamado.DoesNotExist:
+                return Response(
+                    {"error": "Categoria não encontrada"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        # Obter funcionário para atribuição, se fornecido
+        funcionario = None
+        if data.get('atribuido_a_id'):
+            try:
+                funcionario = Funcionario.objects.get(id=data['atribuido_a_id'])
+                
+                # Verificar se o funcionário pertence à empresa
+                if not funcionario.empresas.filter(id=empresa.id).exists():
+                    return Response(
+                        {"error": "Funcionário não pertence à empresa selecionada"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except Funcionario.DoesNotExist:
+                return Response(
+                    {"error": "Funcionário não encontrado"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Criar o ticket
+        ticket = Ticket.objects.create(
+            titulo=data['titulo'],
+            descricao=data.get('descricao', ''),
+            status=data.get('status', 'aberto'),
+            prioridade=data.get('prioridade', 'media'),
+            empresa=empresa,
+            categoria=categoria,
+            criado_por=request.user,
+            atribuido_a=funcionario
+        )
+        
+        # Enviar webhook para n8n sobre o novo ticket
+        ticket_data = {
+            'id': ticket.id,
+            'numero_empresa': ticket.numero_empresa,
+            'titulo': ticket.titulo,
+            'descricao': ticket.descricao,
+            'status': ticket.status,
+            'prioridade': ticket.prioridade,
+            'empresa': {
+                'id': empresa.id,
+                'nome': empresa.nome
+            },
+            'categoria': {
+                'id': categoria.id,
+                'nome': categoria.nome
+            } if categoria else None,
+            'criado_por': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        }
+        send_webhook_to_n8n('ticket_created', ticket_data)
+        
+        return Response({
+            'success': True,
+            'message': 'Ticket criado com sucesso',
+            'ticket_id': ticket.id,
+            'numero_empresa': ticket.numero_empresa
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f"Erro ao criar ticket via n8n: {str(e)}", exc_info=True)
+        return Response(
+            {"error": f"Erro ao criar ticket: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        ) 
