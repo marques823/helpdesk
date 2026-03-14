@@ -43,9 +43,13 @@
                                 <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Novo Chamado</span>
                             </a>
                             {% endif %}
-                            {% if funcionario and funcionario.is_admin %}
+                            {% if request.user.is_superuser %}
+                            <a href="/admin/" class="btn btn-warning btn-sm">
+                                <i class="fas fa-shield-alt"></i> <span class="d-none d-sm-inline">Admin Global</span>
+                            </a>
+                            {% elif funcionario and funcionario.is_admin %}
                             <a href="{% url 'tickets:empresa_admin_dashboard' %}" class="btn btn-dark btn-sm">
-                                <i class="fas fa-cogs"></i> <span class="d-none d-sm-inline">Painel Admin</span>
+                                <i class="fas fa-cogs"></i> <span class="d-none d-sm-inline">Painel da Empresa</span>
                             </a>
                             {% endif %}
                             <a href="{% url 'tickets:relatorios_menu' %}" class="btn btn-info btn-sm">
@@ -244,7 +248,11 @@
                                 {% empty %}
                                 <div class="col-12">
                                     <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i> Nenhuma categoria encontrada. Entre em contato com o administrador do sistema.
+                                        {% if request.user.is_superuser %}
+                                            <i class="fas fa-info-circle me-2"></i> Base de dados vazia. <a href="/admin/" class="alert-link">Acesse o Admin Global</a> para cadastrar as Empresas, Funcionários e Categorias.
+                                        {% else %}
+                                            <i class="fas fa-info-circle me-2"></i> Nenhuma categoria encontrada. Entre em contato com o administrador do sistema.
+                                        {% endif %}
                                     </div>
                                 </div>
                                 {% endfor %}

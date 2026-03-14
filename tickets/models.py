@@ -261,7 +261,7 @@ class Funcionario(models.Model):
         # Atualiza as permissões do usuário baseado no tipo
         if self.is_admin():
             self.usuario.is_staff = True
-            self.usuario.is_superuser = True
+            self.usuario.is_superuser = False
             self.usuario.save()
         elif self.is_suporte():
             self.usuario.is_staff = True

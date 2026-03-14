@@ -34,6 +34,9 @@ class EmpresaAdmin(admin.ModelAdmin):
     search_fields = ('nome', 'cnpj', 'email')
     ordering = ('nome',)
 
+    class Media:
+        js = ('js/admin_cnpj_autofill.js?v=3',)
+
 @admin.register(EmpresaConfig)
 class EmpresaConfigAdmin(admin.ModelAdmin):
     list_display = ('empresa', 'limite_usuarios', 'usuarios_criados', 'ativo')

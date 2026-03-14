@@ -280,7 +280,7 @@ CONTENT_SECURITY_POLICY = {
         'script-src': ("'self'", "'unsafe-inline'", "'unsafe-eval'", "cdn.jsdelivr.net", "code.jquery.com", "cdnjs.cloudflare.com"),
         'font-src': ("'self'", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.gstatic.com"),
         'img-src': ("'self'", "data:", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "blob:"),
-        'connect-src': ("'self'",),
+        'connect-src': ("'self'", "https://brasilapi.com.br", "https://publica.cnpj.ws"),
         'frame-src': ("'self'",),
         'media-src': ("'self'",),
         'object-src': ("'none'",),
