@@ -97,7 +97,7 @@ class EmailNotificationService:
             return None
     
     @staticmethod
-    def enviar_email(assunto, destinatarios, template_html, contexto, reply_to=None):
+    def enviar_email(assunto, destinatarios, template_html, contexto, reply_to=None, empresa=None):
         """
         Envia um e-mail HTML com versão em texto puro como fallback
         
@@ -107,6 +107,7 @@ class EmailNotificationService:
             template_html: Caminho para o template HTML
             contexto: Dicionário com dados para renderizar o template
             reply_to: E-mail para resposta (opcional)
+            empresa: Objeto Empresa, caso a mensagem pertença a uma empresa específica
         """
         try:
             # Verificar se os destinatários são válidos
@@ -126,8 +127,18 @@ class EmailNotificationService:
             # Cria uma versão de texto puro removendo as tags HTML
             text_content = strip_tags(html_content)
             
-            # Prepara o e-mail
+            # Prepara o e-mail dinâmico se a empresa for fornecida
             from_email = settings.DEFAULT_FROM_EMAIL
+            
+            if empresa:
+                # Mascaramento: Nome da Empresa <suporte@tecnicolitoral.com>
+                # Isso permite usar o domínio verificado no SMTP contornando bloqueios de segurança
+                if empresa.nome:
+                    from_email = f"{empresa.nome} <{settings.DEFAULT_FROM_EMAIL}>"
+                
+                # Se nenhum 'reply_to' específico foi passado, force a resposta a cair na caixa de e-mail da empresa!
+                if not reply_to and empresa.email:
+                    reply_to = [empresa.email]
             
             # Filtra apenas os destinatários verificados quando usando AWS SES
             if settings.EMAIL_ENABLED and settings.EMAIL_HOST == 'email-smtp.sa-east-1.amazonaws.com':
@@ -149,7 +160,9 @@ class EmailNotificationService:
             
             # Adiciona cabeçalho de Reply-To se fornecido
             if reply_to:
-                email.headers = {'Reply-To': reply_to}
+                if isinstance(reply_to, str):
+                    reply_to = [reply_to]
+                email.reply_to = reply_to
             
             # Envia o e-mail
             enviado = email.send()
@@ -201,7 +214,7 @@ class EmailNotificationService:
             'nome_destinatario': destinatario_user.get_full_name() or destinatario_user.username
         }
         
-        return cls.enviar_email(assunto, destinatarios, template_html, contexto)
+        return cls.enviar_email(assunto, destinatarios, template_html, contexto, empresa=ticket.empresa)
     
     @classmethod
     def notificar_alteracao_status(cls, ticket, status_anterior, usuario_alteracao):
@@ -308,7 +321,8 @@ class EmailNotificationService:
                 assunto=assunto,
                 destinatarios=[destinatario['email']],
                 template_html=template_html,
-                contexto=contexto
+                contexto=contexto,
+                empresa=ticket.empresa
             )
             if success:
                 sucessos += 1
@@ -418,7 +432,8 @@ class EmailNotificationService:
                 assunto=assunto,
                 destinatarios=[destinatario['email']],
                 template_html=template_html,
-                contexto=contexto
+                contexto=contexto,
+                empresa=ticket.empresa
             )
             if success:
                 sucessos += 1
@@ -498,7 +513,8 @@ class EmailNotificationService:
                 assunto=assunto,
                 destinatarios=[destinatario['email']],
                 template_html=template_html,
-                contexto=contexto
+                contexto=contexto,
+                empresa=ticket.empresa
             )
             if success:
                 sucessos += 1

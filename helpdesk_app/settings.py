@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'django_filters',
+    'rest_framework',
+    'rest_framework_simplejwt',
     'tickets',
     'csp',  # Content Security Policy
 ]
@@ -158,14 +160,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'email-smtp.sa-east-1.amazonaws.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'AKIRNDURIDBDYRURIWI5'
-EMAIL_HOST_PASSWORD jdjdhdhrhdhjfjfjfjfjfhfhf3Lw2'
-DEFAULT_FROM_EMAIL = 'suporte@helpdesk.com'
-EMAIL_ENABLED = True
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.resend.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='resend')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='suporte@tecnicolitoral.com')
+EMAIL_ENABLED = config('EMAIL_ENABLED', default=True, cast=bool)
 
 # URL do site para uso em links de email
 SITE_URL = 'https://helpdesk.helpdesk.com'
@@ -189,7 +190,8 @@ LOGIN_EXEMPT_URLS = [
     'logout',
     'logout-success',
     'home',
-    'api/auth/login',
+    'api/auth/token',
+    'api/auth/token/refresh',
 ]
 
 # Configurações de autenticação
@@ -211,6 +213,9 @@ CSRF_TRUSTED_ORIGINS = [
     'http://helpdesk.helpdesk.com',
     'http://10.10.10.2:8002',
     'http://10.10.10.2:8000',
+    'http://10.10.10.2:3001',
+    'http://localhost:3001',
+    'http://localhost:3000',
     'http://localhost:8000'
 ]
 
@@ -227,7 +232,7 @@ else:
     SESSION_COOKIE_SECURE = False
     SECURE_SSL_REDIRECT = False
 
-CSRF_COOKIE_HTTPONLY = True  # Evita que o token CSRF seja acessível por JavaScript
+CSRF_COOKIE_HTTPONLY = False  # Permitir que o React leia o token para enviar no header X-CSRFToken
 SECURE_HSTS_SECONDS = 31536000  # 1 ano
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -289,6 +294,27 @@ CONTENT_SECURITY_POLICY = {
 
 # Opcional: Para testar sem bloquear nada, ative o Report-Only primeiro:
 # CSP_REPORT_ONLY = True
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # Configurações da API para n8n
 N8N_WEBHOOK_ENABLED = os.environ.get('N8N_WEBHOOK_ENABLED', 'False').lower() == 'true'

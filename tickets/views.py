@@ -3219,12 +3219,10 @@ def editar_permissoes_usuario(request, funcionario_id):
 def gerenciar_emails_verificados(request):
     """View para gerenciar emails verificados no sistema"""
     try:
-        # Verificar se o usuário é administrador
+        # Verificar se o usuário é administrador global do sistema
         if not request.user.is_superuser:
-            funcionario = get_object_or_404(Funcionario, usuario=request.user)
-            if not funcionario.is_admin():
-                messages.error(request, "Você não tem permissão para acessar esta página.")
-                return redirect('tickets:dashboard')
+            messages.error(request, "Apenas administradores globais têm permissão para acessar esta página.")
+            return redirect('tickets:dashboard')
         
         # Obter todos os emails verificados
         emails = EmailVerificado.objects.all().order_by('-verificado', 'email')
@@ -3271,12 +3269,10 @@ def gerenciar_emails_verificados(request):
 def adicionar_email_verificado(request):
     """View para adicionar um novo email verificado manualmente"""
     try:
-        # Verificar se o usuário é administrador
+        # Verificar se o usuário é administrador global
         if not request.user.is_superuser:
-            funcionario = get_object_or_404(Funcionario, usuario=request.user)
-            if not funcionario.is_admin():
-                messages.error(request, "Você não tem permissão para realizar esta ação.")
-                return redirect('tickets:dashboard')
+            messages.error(request, "Acesso negado. Requer privilégios de superusuário.")
+            return redirect('tickets:dashboard')
         
         if request.method == 'POST':
             email = request.POST.get('email')
@@ -3307,12 +3303,10 @@ def adicionar_email_verificado(request):
 def marcar_email_verificado(request, email_id):
     """View para marcar um email como verificado"""
     try:
-        # Verificar se o usuário é administrador
+        # Verificar se o usuário é administrador global
         if not request.user.is_superuser:
-            funcionario = get_object_or_404(Funcionario, usuario=request.user)
-            if not funcionario.is_admin():
-                messages.error(request, "Você não tem permissão para realizar esta ação.")
-                return redirect('tickets:dashboard')
+            messages.error(request, "Acesso negado. Requer privilégios de superusuário.")
+            return redirect('tickets:dashboard')
         
         email_obj = get_object_or_404(EmailVerificado, id=email_id)
         
@@ -3333,12 +3327,10 @@ def marcar_email_verificado(request, email_id):
 def excluir_email_verificado(request, email_id):
     """View para excluir um email verificado"""
     try:
-        # Verificar se o usuário é administrador
+        # Verificar se o usuário é administrador global
         if not request.user.is_superuser:
-            funcionario = get_object_or_404(Funcionario, usuario=request.user)
-            if not funcionario.is_admin():
-                messages.error(request, "Você não tem permissão para realizar esta ação.")
-                return redirect('tickets:dashboard')
+            messages.error(request, "Acesso negado. Requer privilégios de superusuário.")
+            return redirect('tickets:dashboard')
         
         email_obj = get_object_or_404(EmailVerificado, id=email_id)
         
@@ -3359,12 +3351,10 @@ def excluir_email_verificado(request, email_id):
 def testar_envio_email(request):
     """View para testar o envio de emails"""
     try:
-        # Verificar se o usuário é administrador
+        # Verificar se o usuário é administrador global
         if not request.user.is_superuser:
-            funcionario = get_object_or_404(Funcionario, usuario=request.user)
-            if not funcionario.is_admin():
-                messages.error(request, "Você não tem permissão para realizar esta ação.")
-                return redirect('tickets:dashboard')
+            messages.error(request, "Acesso negado. Requer privilégios de superusuário.")
+            return redirect('tickets:dashboard')
         
         if request.method == 'POST':
             destinatario = request.POST.get('destinatario')
