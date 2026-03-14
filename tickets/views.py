@@ -63,7 +63,7 @@ def pode_visualizar_ticket(user, ticket):
     return False
 
 def is_suporte(user):
-    return user.is_staff and not user.is_superuser
+    return hasattr(user, 'funcionarios') and user.funcionarios.exists() and user.funcionarios.first().is_suporte()
 
 def home(request):
     has_admin_access = False
@@ -222,17 +222,11 @@ def dashboard(request):
         tickets = tickets.order_by(order_by)
         
         # Obter as alterações recentes para exibir no dashboard
-        if has_admin_access or funcionario.is_suporte():
-            if funcionario.is_admin():
-                # Admin vê alterações apenas da sua empresa
-                historico_recente = HistoricoTicket.objects.filter(
-                    ticket__empresa__in=empresas
-                ).select_related('ticket', 'usuario', 'ticket__empresa').order_by('-data_alteracao')[:10]
-            else:
-                # Suporte vê todas as alterações
-                historico_recente = HistoricoTicket.objects.filter(
-                    ticket__empresa__in=empresas
-                ).select_related('ticket', 'usuario', 'ticket__empresa').order_by('-data_alteracao')[:10]
+        if has_admin_access or (funcionario and funcionario.is_suporte()):
+            # Admin e Suporte veem as alterações das empresas às quais têm acesso
+            historico_recente = HistoricoTicket.objects.filter(
+                ticket__empresa__in=empresas
+            ).select_related('ticket', 'usuario', 'ticket__empresa').order_by('-data_alteracao')[:10]
         else:
             historico_recente = HistoricoTicket.objects.none()
         
