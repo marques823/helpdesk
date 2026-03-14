@@ -158,3 +158,34 @@ def add_comment(request, ticket_id):
         return Response({"error": "Ticket não encontrado"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+@csrf_exempt
+@api_view(['PATCH', 'POST'])
+@permission_classes([IsAuthenticated])
+def update_ticket_status(request, ticket_id):
+    """
+    Atualiza o status de um ticket.
+    """
+    try:
+        # Garante que o usuário só consiga alterar tickets que ele pode ver
+        ticket = Ticket.objects.filter(
+            Q(criado_por=request.user) | Q(atribuido_a__usuario=request.user)
+        ).get(id=ticket_id)
+        
+        novo_status = request.data.get('status')
+        status_validos = [s[0] for s in Ticket.STATUS_CHOICES]
+        
+        if not novo_status or novo_status not in status_validos:
+            return Response({"error": f"Status inválido. Opções: {', '.join(status_validos)}"}, status=400)
+            
+        ticket.status = novo_status
+        ticket.save()
+        
+        return Response({
+            'id': ticket.id,
+            'status': ticket.status,
+            'message': 'Status atualizado com sucesso'
+        })
+    except Ticket.DoesNotExist:
+        return Response({"error": "Ticket não encontrado"}, status=404)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
