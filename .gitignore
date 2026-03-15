@@ -45,4 +45,24 @@ env/
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Database backups and garbage
+db.sqlite3.*
+*.backup
+*.log
+as
+erver
+erver*
+novos.txt
+modelo.txt
+tatus*
+how --name-only*
+HEAD~1
+ual:*
+udo systemctl restart*
+
+# Static files (manifest and compressed)
+staticfiles/staticfiles.json
+staticfiles/*.gz
+staticfiles/*.br
