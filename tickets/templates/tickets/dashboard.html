@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 {% load ticket_tags %}
+{% load cache %}
 
 {% block content %}
 <div class="container mt-4">
@@ -225,6 +226,7 @@
                         <!-- Categorias de chamados -->
                         <div class="col-md-12 mb-4">
                             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                                {% cache 300 dashboard_categories request.user.username %}
                                 {% for categoria in categorias %}
                                 <div class="col">
                                     <a href="{% url 'tickets:dashboard' %}?show_status=true&selected_category={{ categoria.id }}" class="text-decoration-none">
@@ -256,6 +258,7 @@
                                     </div>
                                 </div>
                                 {% endfor %}
+                                {% endcache %}
                             </div>
                         </div>
                         
@@ -268,6 +271,7 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="table-responsive">
+                                        {% cache 60 dashboard_modifications request.user.username %}
                                         <table class="table table-hover">
                                             <thead>
                                                 <tr>
@@ -324,6 +328,7 @@
                                                 {% endfor %}
                                             </tbody>
                                         </table>
+                                        {% endcache %}
                                     </div>
                                 </div>
                             </div>
@@ -551,11 +556,6 @@
 
 {% block styles %}
 <style>
-    /* Reset inicial para remover todas as transições/movimentos */
-    * {
-        transition: none !important;
-        transform: none !important;
-    }
     
     /* Configuração específica para os cards de categoria */
     .categoria-card {

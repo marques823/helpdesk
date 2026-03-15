@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-br" data-bs-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Prevenir o flash branco -->
     <script>
         // Aplicar tema imediatamente antes do carregamento da página
-        (function() {
+        (function () {
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.setAttribute('data-bs-theme', 'dark');
@@ -27,17 +28,18 @@
             --bs-warning: #ffc107;
             --bs-danger: #dc3545;
         }
-        
+
         /* Evita o piscar branco durante transições */
-        html, body {
+        html,
+        body {
             transition: background-color 0.2s ease, color 0.2s ease;
         }
-        
+
         body {
             background-color: var(--bs-body-bg);
             color: var(--bs-body-color);
         }
-        
+
         [data-bs-theme="dark"] {
             --bs-body-bg: #212529;
             --bs-body-color: #dee2e6;
@@ -46,12 +48,12 @@
             --bs-card-bg: #343a40;
             --bs-card-border-color: #495057;
             --bs-border-color: #495057;
-            
+
             /* Melhorar contraste de texto */
             --bs-body-color: #f8f9fa;
             --bs-secondary-color: #e9ecef;
             --bs-secondary-bg: #343a40;
-            
+
             /* Formulários no tema escuro */
             --bs-form-control-bg: #2b3035;
             --bs-form-control-disabled-bg: #212529;
@@ -62,74 +64,74 @@
             --bs-input-focus-border-color: #6ea8fe;
             --bs-input-focus-color: #f8f9fa;
             --bs-input-placeholder-color: #adb5bd;
-            
+
             /* Card específico para filtros */
             --bs-card-cap-bg: #343a40;
             --bs-btn-disabled-color: #adb5bd;
         }
-        
+
         /* Forçar estilo correto para card específico de filtros */
         [data-bs-theme="dark"] .card.card-body.bg-light {
             background-color: #343a40 !important;
             border-color: #495057 !important;
         }
-        
+
         /* Corrigir todos os elementos bg-light no tema escuro */
         [data-bs-theme="dark"] .bg-light {
             background-color: #343a40 !important;
             border-color: #495057 !important;
             color: #f8f9fa !important;
         }
-        
+
         /* Corrigir badges bg-light no tema escuro */
         [data-bs-theme="dark"] .badge.bg-light {
             background-color: #495057 !important;
             color: #f8f9fa !important;
         }
-        
+
         /* Melhorar visualização de elementos pre no tema escuro */
         [data-bs-theme="dark"] pre.bg-light {
             background-color: #2b3035 !important;
             color: #e9ecef !important;
             border: 1px solid #495057;
         }
-        
+
         /* Melhorar contraste do texto secundário no tema escuro */
         [data-bs-theme="dark"] .text-muted {
             color: #adb5bd !important;
         }
-        
+
         [data-bs-theme="dark"] .form-select,
         [data-bs-theme="dark"] .form-control {
             background-color: #2b3035;
             color: #f8f9fa;
             border-color: #495057;
         }
-        
+
         [data-bs-theme="dark"] .form-select:focus,
         [data-bs-theme="dark"] .form-control:focus {
             background-color: #2b3035;
             color: #f8f9fa;
             border-color: #6ea8fe;
         }
-        
+
         .navbar-brand {
             font-weight: bold;
         }
-        
+
         .card {
             margin-bottom: 1rem;
             transition: transform 0.2s ease;
         }
-        
+
         .card:hover {
             transform: translateY(-2px);
         }
-        
+
         .badge {
             font-size: 0.9rem;
         }
-        
+
         /* Theme switcher */
         .theme-icon {
             width: 1em;
@@ -137,7 +139,7 @@
             display: inline-block;
             margin-right: 0.2em;
         }
-        
+
         /* Category cards */
         .category-card {
             cursor: pointer;
@@ -145,12 +147,12 @@
             border-radius: 8px;
             overflow: hidden;
         }
-        
+
         .category-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
-        
+
         .category-icon {
             width: 60px;
             height: 60px;
@@ -161,7 +163,7 @@
             margin: 0 auto 1rem;
             font-size: 1.5rem;
         }
-        
+
         /* Status badges with same width */
         .status-badge {
             width: 100%;
@@ -171,12 +173,12 @@
             margin-bottom: 0.5rem;
             transition: all 0.2s ease;
         }
-        
+
         .status-badge:hover {
             filter: brightness(1.1);
             transform: scale(1.03);
         }
-        
+
         /* Badges com texto colorido em vez de fundo colorido */
         .badge-text-colored {
             background-color: transparent !important;
@@ -184,93 +186,262 @@
             font-weight: 600;
             padding: 0.3rem 0.6rem;
         }
-        
+
         /* Cores para os diferentes status */
-        .text-pending { color: var(--bs-warning) !important; }
-        .text-open { color: var(--bs-primary) !important; }
-        .text-in_progress { color: var(--bs-info) !important; }
-        .text-resolved { color: var(--bs-success) !important; }
-        .text-closed { color: var(--bs-secondary) !important; }
-        .text-reopened { color: var(--bs-danger) !important; }
-        
+        .text-pending {
+            color: var(--bs-warning) !important;
+        }
+
+        .text-open {
+            color: var(--bs-primary) !important;
+        }
+
+        .text-in_progress {
+            color: var(--bs-info) !important;
+        }
+
+        .text-resolved {
+            color: var(--bs-success) !important;
+        }
+
+        .text-closed {
+            color: var(--bs-secondary) !important;
+        }
+
+        .text-reopened {
+            color: var(--bs-danger) !important;
+        }
+
         /* Status alternativos com hífen */
-        .text-in-progress { color: var(--bs-info) !important; }
-        .text-re-opened { color: var(--bs-danger) !important; }
-        
+        .text-in-progress {
+            color: var(--bs-info) !important;
+        }
+
+        .text-re-opened {
+            color: var(--bs-danger) !important;
+        }
+
         /* Status com letras maiúsculas */
-        .text-PENDING { color: var(--bs-warning) !important; }
-        .text-OPEN { color: var(--bs-primary) !important; }
-        .text-IN_PROGRESS { color: var(--bs-info) !important; }
-        .text-IN-PROGRESS { color: var(--bs-info) !important; }
-        .text-RESOLVED { color: var(--bs-success) !important; }
-        .text-CLOSED { color: var(--bs-secondary) !important; }
-        .text-REOPENED { color: var(--bs-danger) !important; }
-        .text-RE-OPENED { color: var(--bs-danger) !important; }
-        
+        .text-PENDING {
+            color: var(--bs-warning) !important;
+        }
+
+        .text-OPEN {
+            color: var(--bs-primary) !important;
+        }
+
+        .text-IN_PROGRESS {
+            color: var(--bs-info) !important;
+        }
+
+        .text-IN-PROGRESS {
+            color: var(--bs-info) !important;
+        }
+
+        .text-RESOLVED {
+            color: var(--bs-success) !important;
+        }
+
+        .text-CLOSED {
+            color: var(--bs-secondary) !important;
+        }
+
+        .text-REOPENED {
+            color: var(--bs-danger) !important;
+        }
+
+        .text-RE-OPENED {
+            color: var(--bs-danger) !important;
+        }
+
         /* Cores para as diferentes prioridades */
-        .text-low { color: var(--bs-success) !important; }
-        .text-medium { color: var(--bs-warning) !important; }
-        .text-high { color: var(--bs-danger) !important; }
-        .text-critical { color: var(--bs-danger) !important; font-weight: bold !important; }
-        
+        .text-low {
+            color: var(--bs-success) !important;
+        }
+
+        .text-medium {
+            color: var(--bs-warning) !important;
+        }
+
+        .text-high {
+            color: var(--bs-danger) !important;
+        }
+
+        .text-critical {
+            color: var(--bs-danger) !important;
+            font-weight: bold !important;
+        }
+
         /* Prioridades com letras maiúsculas */
-        .text-LOW { color: var(--bs-success) !important; }
-        .text-MEDIUM { color: var(--bs-warning) !important; }
-        .text-HIGH { color: var(--bs-danger) !important; }
-        .text-CRITICAL { color: var(--bs-danger) !important; font-weight: bold !important; }
-        
+        .text-LOW {
+            color: var(--bs-success) !important;
+        }
+
+        .text-MEDIUM {
+            color: var(--bs-warning) !important;
+        }
+
+        .text-HIGH {
+            color: var(--bs-danger) !important;
+        }
+
+        .text-CRITICAL {
+            color: var(--bs-danger) !important;
+            font-weight: bold !important;
+        }
+
         /* Suporte para cores dinâmicas de categorias via data-color */
-        .badge-text-colored[data-color="primary"] { color: var(--bs-primary) !important; }
-        .badge-text-colored[data-color="secondary"] { color: var(--bs-secondary) !important; }
-        .badge-text-colored[data-color="success"] { color: var(--bs-success) !important; }
-        .badge-text-colored[data-color="danger"] { color: var(--bs-danger) !important; }
-        .badge-text-colored[data-color="warning"] { color: var(--bs-warning) !important; }
-        .badge-text-colored[data-color="info"] { color: var(--bs-info) !important; }
-        .badge-text-colored[data-color="light"] { color: var(--bs-light) !important; }
-        .badge-text-colored[data-color="dark"] { color: var(--bs-dark) !important; }
-        
+        .badge-text-colored[data-color="primary"] {
+            color: var(--bs-primary) !important;
+        }
+
+        .badge-text-colored[data-color="secondary"] {
+            color: var(--bs-secondary) !important;
+        }
+
+        .badge-text-colored[data-color="success"] {
+            color: var(--bs-success) !important;
+        }
+
+        .badge-text-colored[data-color="danger"] {
+            color: var(--bs-danger) !important;
+        }
+
+        .badge-text-colored[data-color="warning"] {
+            color: var(--bs-warning) !important;
+        }
+
+        .badge-text-colored[data-color="info"] {
+            color: var(--bs-info) !important;
+        }
+
+        .badge-text-colored[data-color="light"] {
+            color: var(--bs-light) !important;
+        }
+
+        .badge-text-colored[data-color="dark"] {
+            color: var(--bs-dark) !important;
+        }
+
         /* Adicionar classes diretas para cada badge sem depender do data-color */
-        .badge-text-primary { color: var(--bs-primary) !important; }
-        .badge-text-secondary { color: var(--bs-secondary) !important; }
-        .badge-text-success { color: var(--bs-success) !important; }
-        .badge-text-danger { color: var(--bs-danger) !important; }
-        .badge-text-warning { color: var(--bs-warning) !important; }
-        .badge-text-info { color: var(--bs-info) !important; }
-        .badge-text-light { color: var(--bs-light) !important; }
-        .badge-text-dark { color: var(--bs-dark) !important; }
-        
+        .badge-text-primary {
+            color: var(--bs-primary) !important;
+        }
+
+        .badge-text-secondary {
+            color: var(--bs-secondary) !important;
+        }
+
+        .badge-text-success {
+            color: var(--bs-success) !important;
+        }
+
+        .badge-text-danger {
+            color: var(--bs-danger) !important;
+        }
+
+        .badge-text-warning {
+            color: var(--bs-warning) !important;
+        }
+
+        .badge-text-info {
+            color: var(--bs-info) !important;
+        }
+
+        .badge-text-light {
+            color: var(--bs-light) !important;
+        }
+
+        .badge-text-dark {
+            color: var(--bs-dark) !important;
+        }
+
         /* Melhorias para responsividade mobile */
         @media (max-width: 767.98px) {
             body {
                 font-size: 0.9rem;
             }
+
             .container {
                 padding-left: 10px;
                 padding-right: 10px;
             }
+
             .btn {
                 padding: 0.375rem 0.75rem;
             }
+
             .navbar-brand {
                 font-size: 1.1rem;
             }
+
             h2 {
                 font-size: 1.5rem;
             }
+
             h3 {
                 font-size: 1.3rem;
             }
-            
+
             /* Make "Novo Ticket" button bigger on mobile */
             .btn-new-ticket {
                 font-size: 1.1rem;
                 padding: 0.5rem 1rem;
             }
         }
+
     </style>
     {% block styles %}{% endblock %}
 </head>
+
 <body>
+<body>
+    <!-- Final Robust Loader (SVG with internal animation) -->
+    <div id="helpdesk-loader" style="position:fixed; top:0; left:0; width:100%; height:100%; background:transparent; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:10000; pointer-events:none; transition: opacity 0.3s ease; opacity: 0; visibility: hidden;">
+        <div style="display:flex; flex-direction:column; align-items:center;">
+            <!-- SVG Loader: Immune to CSS overrides and JS thread blocking -->
+            <svg width="60" height="60" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg" style="color:var(--bs-primary); fill:none;">
+                <circle cx="25" cy="25" r="20" stroke="currentColor" stroke-width="4" stroke-opacity="0.1" />
+                <path d="M25 5a20 20 0 0 1 20 20" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+                    <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite" />
+                </path>
+            </svg>
+            <div style="margin-top:15px; font-weight:700; color:var(--bs-primary); letter-spacing:1px; text-transform:uppercase; font-size:0.85rem; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">Processando...</div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const loader = document.getElementById('helpdesk-loader');
+            
+            function showLoader() {
+                loader.style.opacity = '1';
+                loader.style.visibility = 'visible';
+            }
+            
+            function hideLoader() {
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+            }
+
+            // Oculta ao carregar
+            window.addEventListener('load', hideLoader);
+
+            // Mostra apenas em navegações reais e cliques em links
+            window.addEventListener('beforeunload', showLoader);
+            
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('a');
+                if (link && link.href && !link.href.startsWith('#') && !link.href.startsWith('javascript:') && link.target !== '_blank' && !e.ctrlKey && !e.metaKey) {
+                    const currentUrl = window.location.href.split('#')[0];
+                    const targetUrl = link.href.split('#')[0];
+                    if (currentUrl !== targetUrl) {
+                        showLoader();
+                    }
+                }
+            });
+        })();
+    </script>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{% url 'tickets:dashboard' %}">Helpdesk</a>
@@ -286,55 +457,59 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'tickets:dashboard' %}">Dashboard</a>
-                        </li>
-                        {% if user.funcionarios.first.pode_criar_ticket %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'tickets:criar_ticket' %}">Novo Chamado</a>
-                            </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'tickets:perfis_compartilhamento_list' %}">Perfis de PDF</a>
-                        </li>
-                        {% if request.user.is_superuser or request.funcionario.is_admin %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'tickets:gerenciar_permissoes_categoria' %}">Gerenciar Permissões</a>
-                        </li>
-                        {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'tickets:dashboard' %}">Dashboard</a>
+                    </li>
+                    {% if user.funcionarios.first.pode_criar_ticket %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'tickets:criar_ticket' %}">Novo Chamado</a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'tickets:perfis_compartilhamento_list' %}">Perfis de PDF</a>
+                    </li>
+                    {% if request.user.is_superuser or request.funcionario.is_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'tickets:gerenciar_permissoes_categoria' %}">Gerenciar
+                            Permissões</a>
+                    </li>
+                    {% endif %}
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="fa fa-user-circle me-1"></i>{{ user.first_name|default:user.username }}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'tickets:gerenciar_notificacoes' %}">
-                                        <i class="fa fa-bell me-2"></i>Configurar Notificações
-                                    </a>
-                                </li>
-                                {% if request.user.is_superuser or request.funcionario.is_admin %}
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'tickets:gerenciar_permissoes_categoria' %}">
-                                        <i class="fa fa-key me-2"></i>Gerenciar Permissões
-                                    </a>
-                                </li>
-                                {% endif %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a href="{% url 'logout' %}" class="dropdown-item">
-                                        <i class="fa fa-sign-out-alt me-2"></i>Sair
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                            data-bs-toggle="dropdown">
+                            <i class="fa fa-user-circle me-1"></i>{{ user.first_name|default:user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'tickets:gerenciar_notificacoes' %}">
+                                    <i class="fa fa-bell me-2"></i>Configurar Notificações
+                                </a>
+                            </li>
+                            {% if request.user.is_superuser or request.funcionario.is_admin %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'tickets:gerenciar_permissoes_categoria' %}">
+                                    <i class="fa fa-key me-2"></i>Gerenciar Permissões
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a href="{% url 'logout' %}" class="dropdown-item">
+                                    <i class="fa fa-sign-out-alt me-2"></i>Sair
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
                     {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'login' %}">Entrar</a>
-                        </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">Entrar</a>
+                    </li>
                     {% endif %}
                 </ul>
             </div>
@@ -343,12 +518,12 @@
 
     <div class="container mt-4">
         {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
         {% endif %}
 
         {% block content %}
@@ -358,13 +533,13 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Theme toggler
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const themeToggle = document.getElementById('theme-toggle');
             const darkIcon = document.getElementById('dark-icon');
             const lightIcon = document.getElementById('light-icon');
             const htmlElement = document.documentElement;
             const bodyElement = document.body;
-            
+
             // Check for saved theme preference or use user's system preference
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme) {
@@ -374,23 +549,23 @@
                 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                 applyTheme(prefersDark ? 'dark' : 'light');
             }
-            
+
             // Toggle theme
-            themeToggle.addEventListener('click', function() {
+            themeToggle.addEventListener('click', function () {
                 const currentTheme = htmlElement.getAttribute('data-bs-theme');
                 const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                
+
                 applyTheme(newTheme);
                 localStorage.setItem('theme', newTheme);
             });
-            
+
             function applyTheme(theme) {
                 htmlElement.setAttribute('data-bs-theme', theme);
                 bodyElement.style.backgroundColor = theme === 'dark' ? '#212529' : '#fff';
                 bodyElement.style.color = theme === 'dark' ? '#dee2e6' : '#212529';
                 updateIcons(theme);
             }
-            
+
             function updateIcons(theme) {
                 if (theme === 'dark') {
                     darkIcon.classList.add('d-none');
@@ -400,9 +575,11 @@
                     lightIcon.classList.add('d-none');
                 }
             }
+
         });
     </script>
     {% block scripts %}{% endblock %}
     {% block extra_js %}{% endblock %}
 </body>
-</html> 
+
+</html>
