@@ -240,13 +240,14 @@ class UserFuncionarioMiddleware(MiddlewareMixin):
         Adiciona o objeto funcionário ao request se o usuário estiver autenticado
         """
         if request.user.is_authenticated:
-            try:
-                funcionario = Funcionario.objects.filter(usuario=request.user).first()
-                if funcionario:
-                    request.funcionario = funcionario
-            except:
-                # Se houver algum erro, apenas continua sem adicionar o funcionário
-                pass
+            # Check if already cached in session or previous middleware
+            if not hasattr(request, 'funcionario'):
+                try:
+                    funcionario = Funcionario.objects.filter(usuario=request.user).select_related().first()
+                    if funcionario:
+                        request.funcionario = funcionario
+                except:
+                    pass
         
         return None 
 

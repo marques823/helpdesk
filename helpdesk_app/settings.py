@@ -51,11 +51,13 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'tickets',
     'csp',  # Content Security Policy
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -100,8 +102,14 @@ DATABASES = {
     'default': dj_database_url.parse(
         config('DATABASE_URL', default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
         conn_max_age=600
-    )
+    ),
+    'local_db': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db_local.sqlite3',
+    }
 }
+
+DATABASE_ROUTERS = ['helpdesk_app.router.DatabaseRouter']
 
 # Configuração de Cache (Necessário para django-ratelimit)
 CACHES = {
@@ -148,7 +156,20 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# WhiteNoise configuration for compression and caching
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# 1 Year of caching for static files
+WHITENOISE_MAX_AGE = 31536000
 
 # Media files
 MEDIA_URL = 'media/'
@@ -203,21 +224,38 @@ AUTHENTICATION_BACKENDS = [
 SESSION_COOKIE_AGE = 3600  # 1 hora
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = True  # Cookies só podem ser acessados através de HTTP, não JavaScript
-SESSION_SAVE_EVERY_REQUEST = True  # Atualiza o cookie de sessão a cada requisição
+SESSION_SAVE_EVERY_REQUEST = False  # Desabilitado para reduzir overhead
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 # Configurações de CSRF e segurança
 CSRF_TRUSTED_ORIGINS = [
-    'helpdesk.helpdesk.com',
-    'https://helpdesk.helpdesk.com:8002',
-    'http://helpdesk.helpdesk.com:8002',
-    'http://helpdesk.helpdesk.com',
+    'https://helpdesk.tecnicolitoral.com',
+    'https://helpdesk.tecnicolitoral.com:8002',
+    'http://helpdesk.tecnicolitoral.com:8002',
+    'http://helpdesk.tecnicolitoral.com',
     'http://10.10.10.2:8002',
     'http://10.10.10.2:8000',
     'http://10.10.10.2:3001',
     'http://localhost:3001',
     'http://localhost:3000',
-    'http://localhost:8000'
+    'http://localhost:8000',
+    'capacitor://localhost',
+    'http://localhost',
+    'https://localhost',
 ]
+
+# Configuração de CORS (Essencial para o App Mobile)
+CORS_ALLOWED_ORIGINS = [
+    'https://helpdesk.tecnicolitoral.com',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'capacitor://localhost',
+    'http://localhost',
+    'https://localhost',
+]
+
+# Permitir credenciais se necessário (Sessão)
+CORS_ALLOW_CREDENTIALS = True
 
 # Detecção automática se estamos em ambiente de produção
 IS_PRODUCTION = not DEBUG
