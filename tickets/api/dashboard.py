@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count, Q
-from ..models import Ticket, CategoriaChamado
+from ..models import Ticket, CategoriaChamado, Funcionario
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,22 +12,32 @@ logger = logging.getLogger(__name__)
 def get_dashboard_stats(request):
     """
     Retorna as estatísticas básicas do dashboard para o usuário autenticado.
-    Inicialmente, retorna apenas os números totais.
+    Filtra os tickets de acordo com o perfil do usuário (Admin, Suporte ou Cliente).
     """
     try:
         logger.info(f"Requisição recebida para dashboard_stats - User: {request.user.username}")
-        logger.debug(f"Headers recebidos: {request.headers}")
         
-        # Verifica autenticação
-        if not request.user.is_authenticated:
-            logger.error(f"Usuário não autenticado tentando acessar dashboard_stats")
-            return Response({"error": "Não autenticado"}, status=401)
-            
-        # Obtém os tickets associados ao usuário (seja como criador ou atribuído)
-        user_tickets = Ticket.objects.filter(
-            Q(criado_por=request.user) | 
-            Q(atribuido_a__usuario=request.user)
-        )
+        # Obtém o perfil de funcionário
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        
+        # Define a base de tickets de acordo com a permissão
+        if request.user.is_superuser:
+            user_tickets = Ticket.objects.all()
+        elif funcionario:
+            if funcionario.is_admin() or funcionario.is_suporte():
+                # Admin e Suporte veem todos os tickets das empresas que gerenciam
+                user_tickets = Ticket.objects.filter(empresa__in=funcionario.empresas.all())
+                logger.info(f"Usuário {request.user.username} é {funcionario.tipo}. Filtrando por empresas.")
+            else:
+                # Cliente vê apenas seus próprios chamados ou os atribuídos a ele
+                user_tickets = Ticket.objects.filter(
+                    Q(criado_por=request.user) | 
+                    Q(atribuido_a__usuario=request.user) |
+                    Q(atribuicoes__funcionario=funcionario)
+                ).distinct()
+        else:
+            # Fallback para usuário sem perfil de funcionário
+            user_tickets = Ticket.objects.filter(criado_por=request.user)
         
         # Log do número de tickets encontrados
         logger.info(f"Tickets encontrados para o usuário {request.user.username}: {user_tickets.count()}")

@@ -10,14 +10,31 @@ from ..models import Ticket, Comentario, Empresa, CategoriaChamado, Funcionario
 @permission_classes([IsAuthenticated])
 def list_tickets(request):
     """
-    Lista os tickets que o usuário tem acesso (criado por ou atribuído a).
-    Reflete a lógica do dashboard.
+    Lista os tickets que o usuário tem acesso.
+    Filtra os tickets de acordo com o perfil do usuário (Admin, Suporte ou Cliente).
     """
     try:
-        tickets = Ticket.objects.filter(
-            Q(criado_por=request.user) | 
-            Q(atribuido_a__usuario=request.user)
-        ).select_related('empresa', 'categoria', 'criado_por', 'atribuido_a__usuario')
+        # Obtém o perfil de funcionário
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        
+        # Define a base de tickets de acordo com a permissão
+        if request.user.is_superuser:
+            tickets = Ticket.objects.all()
+        elif funcionario:
+            if funcionario.is_admin() or funcionario.is_suporte():
+                # Admin e Suporte veem todos os tickets das empresas que gerenciam
+                tickets = Ticket.objects.filter(empresa__in=funcionario.empresas.all())
+            else:
+                # Cliente vê apenas seus próprios chamados ou os atribuídos a ele
+                tickets = Ticket.objects.filter(
+                    Q(criado_por=request.user) | 
+                    Q(atribuido_a__usuario=request.user) |
+                    Q(atribuicoes__funcionario=funcionario)
+                ).distinct()
+        else:
+            tickets = Ticket.objects.filter(criado_por=request.user)
+
+        tickets = tickets.select_related('empresa', 'categoria', 'criado_por', 'atribuido_a__usuario')
         
         data = []
         for t in tickets:
@@ -42,11 +59,27 @@ def ticket_detail(request, ticket_id):
     Retorna os detalhes de um ticket e seus comentários.
     """
     try:
-        # Verifica acesso: se é o criador ou o técnico atribuído
-        # Isso evita que um usuário veja tickets de outros (IDOR)
-        ticket = Ticket.objects.filter(
-            Q(criado_por=request.user) | Q(atribuido_a__usuario=request.user)
-        ).select_related(
+        # Obtém o perfil de funcionário
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        
+        # Filtra por ID e verifica permissão
+        if request.user.is_superuser:
+            ticket_queryset = Ticket.objects.all()
+        elif funcionario:
+            if funcionario.is_admin() or funcionario.is_suporte():
+                # Admin e Suporte veem todos os tickets das empresas que gerenciam
+                ticket_queryset = Ticket.objects.filter(empresa__in=funcionario.empresas.all())
+            else:
+                # Cliente vê apenas seus próprios chamados ou os atribuídos a ele
+                ticket_queryset = Ticket.objects.filter(
+                    Q(criado_por=request.user) | 
+                    Q(atribuido_a__usuario=request.user) |
+                    Q(atribuicoes__funcionario=funcionario)
+                ).distinct()
+        else:
+            ticket_queryset = Ticket.objects.filter(criado_por=request.user)
+
+        ticket = ticket_queryset.select_related(
             'empresa', 'categoria', 'criado_por', 'atribuido_a__usuario'
         ).get(id=ticket_id)
         
@@ -135,10 +168,25 @@ def add_comment(request, ticket_id):
     Adiciona um comentário a um ticket via sessão.
     """
     try:
-        # Garante que o usuário só consiga comentar em tickets que ele pode ver
-        ticket = Ticket.objects.filter(
-            Q(criado_por=request.user) | Q(atribuido_a__usuario=request.user)
-        ).get(id=ticket_id)
+        # Obtém o perfil de funcionário
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        
+        # Verifica permissão para ver/comentar o ticket
+        if request.user.is_superuser:
+            ticket_queryset = Ticket.objects.all()
+        elif funcionario:
+            if funcionario.is_admin() or funcionario.is_suporte():
+                ticket_queryset = Ticket.objects.filter(empresa__in=funcionario.empresas.all())
+            else:
+                ticket_queryset = Ticket.objects.filter(
+                    Q(criado_por=request.user) | 
+                    Q(atribuido_a__usuario=request.user) |
+                    Q(atribuicoes__funcionario=funcionario)
+                ).distinct()
+        else:
+            ticket_queryset = Ticket.objects.filter(criado_por=request.user)
+
+        ticket = ticket_queryset.get(id=ticket_id)
         texto = request.data.get('texto')
         
         if not texto:
@@ -166,10 +214,25 @@ def update_ticket_status(request, ticket_id):
     Atualiza o status de um ticket.
     """
     try:
-        # Garante que o usuário só consiga alterar tickets que ele pode ver
-        ticket = Ticket.objects.filter(
-            Q(criado_por=request.user) | Q(atribuido_a__usuario=request.user)
-        ).get(id=ticket_id)
+        # Obtém o perfil de funcionário
+        funcionario = Funcionario.objects.filter(usuario=request.user).first()
+        
+        # Verifica permissão para ver/alterar o ticket
+        if request.user.is_superuser:
+            ticket_queryset = Ticket.objects.all()
+        elif funcionario:
+            if funcionario.is_admin() or funcionario.is_suporte():
+                ticket_queryset = Ticket.objects.filter(empresa__in=funcionario.empresas.all())
+            else:
+                ticket_queryset = Ticket.objects.filter(
+                    Q(criado_por=request.user) | 
+                    Q(atribuido_a__usuario=request.user) |
+                    Q(atribuicoes__funcionario=funcionario)
+                ).distinct()
+        else:
+            ticket_queryset = Ticket.objects.filter(criado_por=request.user)
+
+        ticket = ticket_queryset.get(id=ticket_id)
         
         novo_status = request.data.get('status')
         status_validos = [s[0] for s in Ticket.STATUS_CHOICES]
