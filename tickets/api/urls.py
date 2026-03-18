@@ -13,6 +13,8 @@ urlpatterns = [
     path('auth/login/', auth.api_login, name='api_login'), # Mantendo compatibilidade temporária
     path('auth/logout/', auth.api_logout, name='api_logout'),
     path('auth/user/', auth.api_user, name='api_user'),
+    path('auth/push-token/', auth.api_save_push_token, name='api_push_token'),
+    path('auth/notifications/settings/', auth.api_notification_settings, name='api_notification_settings'),
     
     # Dashboard
     path('dashboard/stats/', dashboard.get_dashboard_stats, name='api_dashboard_stats'),

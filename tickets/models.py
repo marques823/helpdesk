@@ -615,14 +615,27 @@ class CampoPerfilCompartilhamento(models.Model):
 
 class PreferenciasNotificacao(models.Model):
     """
-    Preferências de notificação por e-mail para cada usuário
+    Preferências de notificação para cada usuário
     """
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferencias_notificacao')
-    notificar_todas = models.BooleanField(default=True, help_text="Receber todas as notificações")
-    notificar_atribuicao = models.BooleanField(default=True, help_text="Receber notificações quando um ticket for atribuído")
-    notificar_alteracao_status = models.BooleanField(default=True, help_text="Receber notificações quando o status de um ticket for alterado")
-    notificar_novo_comentario = models.BooleanField(default=True, help_text="Receber notificações quando um novo comentário for adicionado")
-    notificar_prioridade_alterada = models.BooleanField(default=True, help_text="Receber notificações quando a prioridade for alterada")
+    
+    # Canais
+    habilitar_push = models.BooleanField(default=True, help_text="Habilitar notificações push")
+    habilitar_email = models.BooleanField(default=True, help_text="Habilitar notificações por e-mail")
+    
+    # Eventos (para os quais o frontend envia configurações)
+    notificar_novos_tickets = models.BooleanField(default=True, help_text="Notificar sobre novos tickets")
+    notificar_comentarios = models.BooleanField(default=True, help_text="Notificar sobre novos comentários/respostas")
+    notificar_mudanca_status = models.BooleanField(default=True, help_text="Notificar sobre mudanças de status")
+    notificar_alertas_sistema = models.BooleanField(default=False, help_text="Notificar sobre alertas do sistema")
+
+    # Campos Legados (mantidos para compatibilidade com código existente se houver)
+    notificar_todas = models.BooleanField(default=True, help_text="Receber todas as notificações (LEGADO)")
+    notificar_atribuicao = models.BooleanField(default=True, help_text="Receber notificações quando um ticket for atribuído (LEGADO)")
+    notificar_alteracao_status = models.BooleanField(default=True, help_text="Receber notificações quando o status de um ticket for alterado (LEGADO)")
+    notificar_novo_comentario = models.BooleanField(default=True, help_text="Receber notificações quando um novo comentário for adicionado (LEGADO)")
+    notificar_prioridade_alterada = models.BooleanField(default=True, help_text="Receber notificações quando a prioridade for alterada (LEGADO)")
+    
     atualizado_em = models.DateTimeField(auto_now=True)
     
     def __str__(self):
@@ -631,6 +644,29 @@ class PreferenciasNotificacao(models.Model):
     class Meta:
         verbose_name = 'Preferência de Notificação'
         verbose_name_plural = 'Preferências de Notificação'
+
+class PushToken(models.Model):
+    """
+    Tokens de notificação push vinculados a dispositivos de usuários
+    """
+    PLATFORM_CHOICES = [
+        ('android', 'Android'),
+        ('ios', 'iOS'),
+        ('web', 'Web'),
+    ]
+    
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='push_tokens')
+    token = models.CharField(max_length=255, unique=True)
+    plataforma = models.CharField(max_length=20, choices=PLATFORM_CHOICES, default='web')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Token {self.plataforma} de {self.usuario.username}"
+
+    class Meta:
+        verbose_name = 'Token de Push'
+        verbose_name_plural = 'Tokens de Push'
 
 class EmailVerificado(models.Model):
     """

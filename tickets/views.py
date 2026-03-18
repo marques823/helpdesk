@@ -120,8 +120,11 @@ def dashboard(request):
         selected_status = request.GET.get('selected_status', '')
 
         # Aplica os filtros de acordo com as permissões do usuário
+        # Otimização: Adicionando select_related e prefetch_related no início
+        base_queryset = Ticket.objects.select_related('empresa', 'categoria', 'criado_por', 'atribuido_a').prefetch_related('atribuicoes')
+
         if request.user.is_superuser:
-            tickets = Ticket.objects.all()
+            tickets = base_queryset.all()
             empresas = Empresa.objects.all()
         else:
             # Obtém as empresas associadas ao funcionário
@@ -129,10 +132,10 @@ def dashboard(request):
             
             if funcionario.is_admin() or funcionario.is_suporte():
                 # Admins e suporte veem tickets das empresas deles
-                tickets = Ticket.objects.filter(empresa__in=empresas)
+                tickets = base_queryset.filter(empresa__in=empresas)
             else:
                 # Clientes veem apenas seus próprios tickets
-                tickets = Ticket.objects.filter(
+                tickets = base_queryset.filter(
                     Q(criado_por=request.user) | 
                     Q(atribuido_a=funcionario) |
                     Q(atribuicoes__funcionario=funcionario)
@@ -162,9 +165,9 @@ def dashboard(request):
                 categorias = funcionario.get_categorias_permitidas()
         
         # Prepara a contagem de tickets por categoria
-        categoria_counts = {}
-        for categoria in categorias:
-            categoria_counts[categoria.id] = tickets.filter(categoria=categoria).count()
+        # Otimização: Usando uma única consulta para obter todas as contagens
+        categoria_counts_qs = tickets.values('categoria_id').annotate(count=Count('id'))
+        categoria_counts = {item['categoria_id']: item['count'] for item in categoria_counts_qs}
         
         # Se temos uma categoria selecionada e estamos mostrando status
         if selected_category and show_status_filters:
@@ -172,10 +175,13 @@ def dashboard(request):
             categoria_obj = get_object_or_404(CategoriaChamado, id=selected_category)
             filtered_tickets = tickets.filter(categoria=categoria_obj)
             
-            # Preparar contagens por status
-            status_counts = {}
-            for status_code, status_name in Ticket.STATUS_CHOICES:
-                status_counts[status_code] = filtered_tickets.filter(status=status_code).count()
+            # Preparar contagens por status em uma única consulta
+            status_counts_qs = filtered_tickets.values('status').annotate(count=Count('id'))
+            status_counts = {item['status']: item['count'] for item in status_counts_qs}
+            # Garantir que todos os status estejam presentes no dicionário
+            for status_code, _ in Ticket.STATUS_CHOICES:
+                if status_code not in status_counts:
+                    status_counts[status_code] = 0
         else:
             status_counts = None
             categoria_obj = None
@@ -277,9 +283,17 @@ def dashboard(request):
         messages.error(request, "Ocorreu um erro ao carregar o dashboard. Por favor, tente novamente.")
         return redirect('login')
 
-def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteriores=None, dados_novos=None):
-    """Função auxiliar para registrar alterações no histórico do ticket"""
+import threading
+
+def registrar_historico_background(ticket_id, tipo_alteracao, usuario_id, descricao, dados_anteriores=None, dados_novos=None):
+    """Executa o registro de histórico em segundo plano para não bloquear a resposta do usuário"""
+    from django.contrib.auth.models import User
+    from .models import Ticket, HistoricoTicket, DetalheHistoricoTicket
+    
     try:
+        ticket = Ticket.objects.get(id=ticket_id)
+        usuario = User.objects.get(id=usuario_id)
+        
         # Criar o registro de histórico principal
         historico = HistoricoTicket.objects.create(
             ticket=ticket,
@@ -288,13 +302,9 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
             descricao=descricao
         )
         
-        # Log para debug
-        logger.debug(f"Registrando histórico tipo {tipo_alteracao} para ticket {ticket.id}")
-        
         # Adicionar os detalhes anteriores, se existirem
         if dados_anteriores:
             for chave, valor in dados_anteriores.items():
-                # Se o valor for um dicionário ou lista, converte para string
                 if isinstance(valor, (dict, list)):
                     valor = json.dumps(valor)
                 elif valor is None:
@@ -308,12 +318,10 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
                     chave=chave,
                     valor=valor
                 )
-                logger.debug(f"Registrado dado anterior: {chave} = {valor[:50]}...")
         
         # Adicionar os detalhes novos, se existirem
         if dados_novos:
             for chave, valor in dados_novos.items():
-                # Se o valor for um dicionário ou lista, converte para string
                 if isinstance(valor, (dict, list)):
                     valor = json.dumps(valor)
                 elif valor is None:
@@ -327,11 +335,22 @@ def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteri
                     chave=chave,
                     valor=valor
                 )
-                logger.debug(f"Registrado dado novo: {chave} = {valor[:50]}...")
-        
-        return historico
     except Exception as e:
-        logger.error(f"Erro ao registrar histórico: {str(e)}")
+        logger.error(f"Erro ao registrar histórico em background: {str(e)}")
+
+def registrar_historico(ticket, tipo_alteracao, usuario, descricao, dados_anteriores=None, dados_novos=None):
+    """Função auxiliar para disparar o registro de histórico em uma thread separada"""
+    try:
+        # Dispara o processamento em background para não travar a UI
+        thread = threading.Thread(
+            target=registrar_historico_background,
+            args=(ticket.id, tipo_alteracao, usuario.id, descricao, dados_anteriores, dados_novos)
+        )
+        thread.daemon = True
+        thread.start()
+        return True
+    except Exception as e:
+        logger.error(f"Erro ao iniciar thread de histórico: {str(e)}")
         return None
 
 @login_required

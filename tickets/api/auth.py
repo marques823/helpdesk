@@ -76,3 +76,61 @@ def api_user(request):
         })
     except Exception as e:
         return Response({'error': str(e)}, status=500)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def api_save_push_token(request):
+    try:
+        user = request.user
+        token_value = request.data.get('token')
+        # Mapeia a plataforma se necessário (Capacitor envia 'ios', 'android' ou 'web')
+        platform = (request.data.get('platform') or 'web').lower()
+        if platform not in ['android', 'ios', 'web']:
+            platform = 'web'
+
+        if not token_value:
+            return Response({'error': 'Token é obrigatório'}, status=400)
+
+        from tickets.models import PushToken
+        # Remove o token se ele já pertencer a outro usuário para evitar conflitos
+        PushToken.objects.filter(token=token_value).exclude(usuario=user).delete()
+        
+        # Cria ou atualiza o token para o usuário atual
+        PushToken.objects.update_or_create(
+            usuario=user,
+            token=token_value,
+            defaults={'plataforma': platform}
+        )
+
+        return Response({'success': True, 'message': 'Token salvo com sucesso'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def api_notification_settings(request):
+    try:
+        user = request.user
+        from tickets.models import PreferenciasNotificacao
+        prefs, created = PreferenciasNotificacao.objects.get_or_create(usuario=user)
+
+        if request.method == 'PUT':
+            data = request.data
+            prefs.habilitar_push = data.get('push', prefs.habilitar_push)
+            prefs.habilitar_email = data.get('email', prefs.habilitar_email)
+            prefs.notificar_novos_tickets = data.get('newTickets', prefs.notificar_novos_tickets)
+            prefs.notificar_comentarios = data.get('replies', prefs.notificar_comentarios)
+            prefs.notificar_mudanca_status = data.get('statusUpdates', prefs.notificar_mudanca_status)
+            prefs.notificar_alertas_sistema = data.get('systemAlerts', prefs.notificar_alertas_sistema)
+            prefs.save()
+
+        return Response({
+            'push': prefs.habilitar_push,
+            'email': prefs.habilitar_email,
+            'newTickets': prefs.notificar_novos_tickets,
+            'replies': prefs.notificar_comentarios,
+            'statusUpdates': prefs.notificar_mudanca_status,
+            'systemAlerts': prefs.notificar_alertas_sistema,
+        })
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
